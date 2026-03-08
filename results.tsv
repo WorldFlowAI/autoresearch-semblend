@@ -7,3 +7,5 @@ baseline	3	quality	ppl_ratio	1.00	rouge_l_2k=0.539,rouge_l_8k=0.756	keep	quality
 51892aa	3	ttft_cnn	ttft_speedup_8k	0.97	speedup_2k=1.51,speedup_4k=0.64,hit_2k=0.75,hit_4k=0.50,hit_8k=0.50	keep	CNN/DailyMail real dataset TTFT (hit-only: 1.57x/1.59x/2.39x)
 c55a59a	3	threshold_ablation	ppl_ratio_0.60	1.022	hit_rate_0.40=0.75,hit_rate_0.60=0.62,hit_rate_0.80=0.38,ppl_0.40=1.10	keep	threshold sweep on CNN/DailyMail: 0.60 best quality/hit balance
 1f09db5	3	embedding_ablation	minilm_hit_rate	0.07	jaccard_exact=1.0,jaccard_para=0.99,jaccard_p80=0.55	keep	MiniLM vs Jaccard: low hit rates due to cluster bench artifact (large tokens)
+2842f72	3	ttft_cnn_clean	ttft_speedup_8k	2.18	speedup_2k=1.55,speedup_4k=1.49,hit_2k=0.62,hit_4k=0.38,hit_8k=0.50	keep	CNN/DailyMail clean-state (hit-only speedups)
+2842f72	3	ttft_xsum	ttft_speedup_8k	2.14	speedup_2k=1.61,speedup_4k=1.45,hit_2k=1.0,hit_4k=0.75,hit_8k=1.0	keep	XSum: better hit rates than CNN (100%@2K/8K, 75%@4K)
