@@ -1518,21 +1518,27 @@ orthogonal problem of attention pattern drift, \semblend enables fully
 non-contiguous KV reuse (REORDER, PARTIAL, paraphrase) on all
 RoPE-based models.
 
-Five findings stand out: (1)~semantic KV donor injection achieves
+Six findings stand out: (1)~semantic KV donor injection achieves
 $\mathbf{7.8\times}$--$\mathbf{8.3\times}$ P50 TTFT speedup at 16K tokens (peak individual:
 $8.71\times$) across Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ on
 A10G---exceeding SemShareKV's $6.25\times$ at 5K on costlier A100
 hardware---with quality preserved (PPL ratio $0.984$--$1.025$) and
 model-agnostic operation (no per-model tuning);
-(2)~exact RoPE delta correction solves position encoding at negligible
+(2)~on real-world NLP datasets (CNN/DailyMail, XSum, MultiNews),
+SemBlend achieves $1.5\times$--$3.3\times$ TTFT speedup with
+100\% hit rates on XSum at 8K tokens, and LLaMA-3.1-8B consistently
+achieves higher hit-only speedups ($2.7\times$--$3.3\times$) than
+Qwen ($1.5\times$--$2.3\times$) due to its deeper architecture
+amplifying the constant-overhead advantage;
+(3)~exact RoPE delta correction solves position encoding at negligible
 cost (${\sim}7\,\mu$s per layer for 8K tokens), enabling non-contiguous
 KV reuse that prior systems could not achieve;
-(3)~embedding-based donor discovery supersedes Jaccard for identifying
+(4)~embedding-based donor discovery supersedes Jaccard for identifying
 semantically similar prompts (cosine 0.80 vs.\ Jaccard 0.38);
-(4)~in-process embedding (${\sim}5$\,ms MiniLM) eliminates the
-${\sim}150$\,ms bottleneck of remote embedding, yielding ${\sim}8$\,ms
-total pipeline decision overhead;
-(5)~SemBlend TTFT is approximately constant (${\sim}650$--$910$\,ms)
+(5)~throughput under concurrent load (1--32 clients) scales linearly
+to 9+ QPS with zero errors on both models, confirming SemBlend's
+$<$12\,ms pipeline overhead does not limit serving capacity;
+(6)~SemBlend TTFT is approximately constant (${\sim}650$--$910$\,ms)
 regardless of prompt length, bounded by CPU$\to$GPU KV transfer,
 while cold prefill scales linearly---producing increasing speedup
 from $2.4\times$ at 2K to $7.8\times$--$8.3\times$ at 16K tokens

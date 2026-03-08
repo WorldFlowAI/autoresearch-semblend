@@ -376,7 +376,7 @@ python -m benchmarks.e2e.semblend_per_length_bench \
 | Model | Hardware | 2K | 5K | 8K | 16K |
 |-------|----------|----|----|----|----|
 | Qwen2.5-7B-AWQ | A10G | 2.10x | 3.15x | 5.16x | 7.46x |
-| LLaMA-3.1-8B | A10G | TBD | TBD | TBD | TBD |
+| LLaMA-3.1-8B | A10G | 2.33x | — | 5.75x | — |
 
 ## 6. SemShareKV Comparison Summary
 
