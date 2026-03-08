@@ -9,3 +9,8 @@ c55a59a	3	threshold_ablation	ppl_ratio_0.60	1.022	hit_rate_0.40=0.75,hit_rate_0.
 1f09db5	3	embedding_ablation	minilm_hit_rate	0.07	jaccard_exact=1.0,jaccard_para=0.99,jaccard_p80=0.55	keep	MiniLM vs Jaccard: low hit rates due to cluster bench artifact (large tokens)
 2842f72	3	ttft_cnn_clean	ttft_speedup_8k	2.18	speedup_2k=1.55,speedup_4k=1.49,hit_2k=0.62,hit_4k=0.38,hit_8k=0.50	keep	CNN/DailyMail clean-state (hit-only speedups)
 2842f72	3	ttft_xsum	ttft_speedup_8k	2.14	speedup_2k=1.61,speedup_4k=1.45,hit_2k=1.0,hit_4k=0.75,hit_8k=1.0	keep	XSum: better hit rates than CNN (100%@2K/8K, 75%@4K)
+0cf23ef	3	ttft_multinews	ttft_speedup_8k	2.23	speedup_2k=1.57,speedup_4k=1.50,hit_2k=0.62,hit_4k=0.75,hit_8k=0.75	keep	MultiNews: best 8K speedup (2.23x), 75% hit@4K/8K
+0cf23ef	3	quality_multinews	ppl_ratio_4k	1.005	ppl_2k=1.14,ppl_8k=1.19,rouge_l_2k=0.328,rouge_l_4k=0.362,rouge_l_8k=0.401	keep	MultiNews quality: PPL@4K near-perfect (1.005), 2K/8K have outliers
+0cf23ef	3	ttft_cnn_low	ttft_speedup_8k	2.29	speedup_2k=1.59,speedup_4k=1.60,hit_2k=0.75,hit_4k=0.38,hit_8k=0.50	keep	CNN low-threshold (sim=0.50,reuse=0.30): 2K hit improved 62→75%
+0cf23ef	3	ttft_xsum_4d	ttft_speedup_8k	2.11	speedup_2k=1.57,speedup_4k=1.45,hit_2k=0.88,hit_4k=0.38,hit_8k=1.0	keep	XSum 4 donors: 100% hit@8K (2.11x), 88% hit@2K
+0cf23ef	3	ttft_synthetic_low	ttft_speedup_8k	5.64	speedup_2k=2.33,speedup_4k=2.32,hit_2k=1.0,hit_4k=1.0,hit_8k=1.0	keep	Synthetic low-threshold: 100% hits, 5.64x@8K (best result)
