@@ -14,3 +14,5 @@ c55a59a	3	threshold_ablation	ppl_ratio_0.60	1.022	hit_rate_0.40=0.75,hit_rate_0.
 0cf23ef	3	ttft_cnn_low	ttft_speedup_8k	2.29	speedup_2k=1.59,speedup_4k=1.60,hit_2k=0.75,hit_4k=0.38,hit_8k=0.50	keep	CNN low-threshold (sim=0.50,reuse=0.30): 2K hit improved 62→75%
 0cf23ef	3	ttft_xsum_4d	ttft_speedup_8k	2.11	speedup_2k=1.57,speedup_4k=1.45,hit_2k=0.88,hit_4k=0.38,hit_8k=1.0	keep	XSum 4 donors: 100% hit@8K (2.11x), 88% hit@2K
 0cf23ef	3	ttft_synthetic_low	ttft_speedup_8k	5.64	speedup_2k=2.33,speedup_4k=2.32,hit_2k=1.0,hit_4k=1.0,hit_8k=1.0	keep	Synthetic low-threshold: 100% hits, 5.64x@8K (best result)
+ef90c3d	3	ttft_xsum_full	ttft_speedup_8k	1.97	speedup_2k=1.51,speedup_4k=1.33,speedup_12k=1.63,speedup_16k=1.52,hit_8k=1.0,hit_12k=1.0,hit_16k=1.0	keep	XSum full scaling 2K-16K: 100% hit@8K/12K/16K, 16K now works
+ef90c3d	3	ttft_synthetic_full	ttft_speedup_8k	5.66	speedup_2k=2.35,speedup_4k=2.21,speedup_12k=3.62,speedup_16k=1.75,hit_2k=1.0,hit_4k=1.0,hit_8k=1.0	keep	Synthetic full scaling: 5.66x@8K (100%), 12K/16K low hit due to cache eviction
