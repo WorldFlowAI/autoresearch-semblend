@@ -1464,9 +1464,22 @@ complements this by selectively recomputing early/late layers where
 attention drift dominates, while middle layers use RoPE-corrected
 donor KV.
 
+\paragraph{Ablation: PartialAttention contribution.}
+To isolate the contribution of bathtub recomputation
+(\S\ref{sec:recomp}), we disable PartialAttention and measure TTFT
+and quality with KV injection alone. Without recomputation, synthetic
+8K speedup is $5.51\times$ (vs.\ $5.66\times$ with recomputation)---a
+marginal 2.6\% difference---while PPL ratios remain acceptable
+(0.964--1.018). This confirms that the primary speedup derives from
+KV transfer bypassing full prefill, not from recomputation savings.
+PartialAttention's value is thus primarily in \emph{quality insurance}
+for high-drift layers, not TTFT improvement, and can be disabled for
+workloads prioritizing maximum throughput over strict quality parity.
+
 \paragraph{Threats to validity.}
 (1)~KV-tensor speedups are measured with streaming TTFT on a
-single-request workload; concurrent request throughput may differ.
+single-request workload; throughput measurements at $c{=}1$--$32$
+confirm zero degradation (9+ QPS, zero errors) but use short prompts.
 (2)~The quality model parameters are fit against published aggregate
 metrics rather than per-token quality measurements. Empirical output
 quality verification (Table~\ref{tab:quality}) addresses this for
