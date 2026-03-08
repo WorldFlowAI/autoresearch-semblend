@@ -2,4 +2,6 @@ commit	tier	benchmark	primary_metric	primary_value	secondary_metrics	status	desc
 baseline	3	ttft_empirical	ttft_speedup_1k	38.0	hit_rate=0.956,speedup_512=18.7,speedup_256=10.8	keep	baseline from semblend-empirical-v2 (Qwen2.5-7B-AWQ)
 baseline	3	quality_multinews	rouge_l	0.121	hit_rate=0.711,bleu=0.007	keep	baseline from multinews-300 (Qwen2.5-1.5B)
 baseline	3	quality_bitext	rouge_l	0.233	hit_rate=0.998,bleu=0.070	keep	baseline from bitext-holdout-v2 (Qwen2.5-1.5B)
-baseline	3	ttft_scaling	ttft_speedup_8k	5.85	speedup_2k=2.45,speedup_4k=3.60,hit_rate=1.0	keep	autoresearch namespace baseline (Qwen2.5-7B-AWQ, semblend-local-v11)
+baseline	3	ttft_scaling	ttft_speedup_8k	5.85	speedup_2k=2.45,speedup_4k=3.60,speedup_16k=6.66,hit_rate=1.0	keep	autoresearch namespace baseline (Qwen2.5-7B-AWQ, semblend-local-v11)
+baseline	3	quality	ppl_ratio	1.00	rouge_l_2k=0.539,rouge_l_8k=0.756	keep	quality baseline (max_tokens=256, synthetic contexts)
+51892aa	3	ttft_cnn	ttft_speedup_8k	0.97	speedup_2k=1.51,speedup_4k=0.64,hit_2k=0.75,hit_4k=0.50,hit_8k=0.50	keep	CNN/DailyMail real dataset TTFT (hit-only: 1.57x/1.59x/2.39x)
