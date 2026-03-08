@@ -18,3 +18,7 @@ ef90c3d	3	ttft_xsum_full	ttft_speedup_8k	1.97	speedup_2k=1.51,speedup_4k=1.33,sp
 ef90c3d	3	ttft_synthetic_full	ttft_speedup_8k	5.66	speedup_2k=2.35,speedup_4k=2.21,speedup_12k=3.62,speedup_16k=1.75,hit_2k=1.0,hit_4k=1.0,hit_8k=1.0	keep	Synthetic full scaling: 5.66x@8K (100%), 12K/16K low hit due to cache eviction
 3955d3d	3	donor_scaling	ttft_speedup_pool1	10.49	pool2=10.71,pool4=10.74,pool8=10.71,pool16=10.67,pool32=9.26,hit_all=1.0	keep	Donor pool scaling@8K XSum: 100% hit all sizes, 9.3-10.7x speedup (prefix+SemBlend)
 9ed96fe	3	quality_cnn	ppl_ratio_8k	1.006	ppl_2k=0.96,ppl_4k=1.06,rouge_l_2k=0.582,rouge_l_4k=0.661,rouge_l_8k=0.765,em=0.33	keep	CNN/DM quality: PPL@8K=1.006 (excellent), 33% exact match, ROUGE-L improves with length
+1120b11	3	ttft_llama_xsum	ttft_speedup_8k	3.34	speedup_2k=3.06,speedup_4k=2.77,hit_2k=1.0,hit_4k=1.0,hit_8k=1.0	keep	LLaMA-3.1-8B XSum: 100% hit all lengths, 3.06-3.34x speedup (better than Qwen)
+1120b11	3	ttft_llama_cnn	ttft_speedup_8k	0.59	speedup_2k=2.79,speedup_4k=2.37,hit_2k=0.62,hit_4k=0.62,hit_8k=0.25	keep	LLaMA-3.1-8B CNN: hit-only 3.00/2.66/3.26x, lower hit rates at 8K
+1120b11	3	quality_llama_xsum	ppl_ratio_4k	1.011	ppl_2k=1.009,ppl_8k=1.065,rouge_l_2k=0.778,rouge_l_4k=0.926,rouge_l_8k=0.451	keep	LLaMA-3.1-8B XSum quality: PPL near-perfect (1.009-1.065), ROUGE-L varies
+1120b11	3	ttft_llama_synthetic	ttft_speedup_8k	5.75	speedup_2k=2.33,speedup_4k=2.50,hit_2k=1.0,hit_4k=1.0,hit_8k=0.88	keep	LLaMA-3.1-8B synthetic: 5.75x@8K (hit-only 5.93x), comparable to Qwen 5.66x
