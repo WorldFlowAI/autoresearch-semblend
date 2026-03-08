@@ -1,0 +1,5 @@
+commit	tier	benchmark	primary_metric	primary_value	secondary_metrics	status	description
+baseline	3	ttft_empirical	ttft_speedup_1k	38.0	hit_rate=0.956,speedup_512=18.7,speedup_256=10.8	keep	baseline from semblend-empirical-v2 (Qwen2.5-7B-AWQ)
+baseline	3	quality_multinews	rouge_l	0.121	hit_rate=0.711,bleu=0.007	keep	baseline from multinews-300 (Qwen2.5-1.5B)
+baseline	3	quality_bitext	rouge_l	0.233	hit_rate=0.998,bleu=0.070	keep	baseline from bitext-holdout-v2 (Qwen2.5-1.5B)
+baseline	3	ttft_scaling	ttft_speedup_8k	5.85	speedup_2k=2.45,speedup_4k=3.60,hit_rate=1.0	keep	autoresearch namespace baseline (Qwen2.5-7B-AWQ, semblend-local-v11)

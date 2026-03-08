@@ -1,388 +1,380 @@
 """
-One-time data preparation for autoresearch experiments.
-Downloads data shards and trains a BPE tokenizer.
+One-time setup for autoresearch-semblend experiments.
+Copies SemBlend source code, benchmarks, and paper from the synapse repo
+into this working directory for autonomous experimentation.
 
 Usage:
-    python prepare.py                  # full prep (download + tokenizer)
-    python prepare.py --num-shards 8   # download only 8 shards (for testing)
-
-Data and tokenizer are stored in ~/.cache/autoresearch/.
+    python prepare.py                    # copy code + verify
+    python prepare.py --build-datasets   # also build benchmark dataset clusters
+    python prepare.py --provision-gpu    # also provision A10G node
 """
 
-import os
-import sys
-import time
-import math
 import argparse
-import pickle
-from multiprocessing import Pool
-
-import requests
-import pyarrow.parquet as pq
-import rustbpe
-import tiktoken
-import torch
+import hashlib
+import os
+import shutil
+import subprocess
+import sys
 
 # ---------------------------------------------------------------------------
-# Constants (fixed, do not modify)
+# Paths
 # ---------------------------------------------------------------------------
 
-MAX_SEQ_LEN = 2048       # context length
-TIME_BUDGET = 300        # training time budget in seconds (5 minutes)
-EVAL_TOKENS = 40 * 524288  # number of tokens for val eval
+REPO_DIR = os.path.dirname(os.path.abspath(__file__))
+SYNAPSE_DIR = os.path.expanduser("~/dev/worldflowai/ONECONTEXT/synapse")
+
+SOURCE_PATHS = {
+    "synapse_kv_connector": os.path.join(
+        SYNAPSE_DIR, "services", "vllm", "synapse_kv_connector"
+    ),
+    "benchmarks/e2e": os.path.join(SYNAPSE_DIR, "benchmarks", "e2e"),
+    "paper": os.path.join(SYNAPSE_DIR, "paper"),
+}
+
+DEST_PATHS = {
+    "synapse_kv_connector": os.path.join(REPO_DIR, "synapse_kv_connector"),
+    "benchmarks/e2e": os.path.join(REPO_DIR, "benchmarks", "e2e"),
+    "paper": os.path.join(REPO_DIR, "paper"),
+}
+
+HASH_FILE = os.path.join(REPO_DIR, ".source_hash")
 
 # ---------------------------------------------------------------------------
-# Configuration
+# Copy logic
 # ---------------------------------------------------------------------------
 
-CACHE_DIR = os.path.join(os.path.expanduser("~"), ".cache", "autoresearch")
-DATA_DIR = os.path.join(CACHE_DIR, "data")
-TOKENIZER_DIR = os.path.join(CACHE_DIR, "tokenizer")
-BASE_URL = "https://huggingface.co/datasets/karpathy/climbmix-400b-shuffle/resolve/main"
-MAX_SHARD = 6542 # the last datashard is shard_06542.parquet
-VAL_SHARD = MAX_SHARD  # pinned validation shard (shard_06542)
-VAL_FILENAME = f"shard_{VAL_SHARD:05d}.parquet"
-VOCAB_SIZE = 8192
 
-# BPE split pattern (GPT-4 style, with \p{N}{1,2} instead of {1,3})
-SPLIT_PATTERN = r"""'(?i:[sdmt]|ll|ve|re)|[^\r\n\p{L}\p{N}]?+\p{L}+|\p{N}{1,2}| ?[^\s\p{L}\p{N}]++[\r\n]*|\s*[\r\n]|\s+(?!\S)|\s+"""
+def compute_dir_hash(path):
+    """Compute a hash of all files in a directory tree for change detection."""
+    h = hashlib.sha256()
+    for root, _dirs, files in sorted(os.walk(path)):
+        for fname in sorted(files):
+            fpath = os.path.join(root, fname)
+            rel = os.path.relpath(fpath, path)
+            h.update(rel.encode())
+            try:
+                h.update(open(fpath, "rb").read())
+            except (OSError, PermissionError):
+                pass
+    return h.hexdigest()
 
-SPECIAL_TOKENS = [f"<|reserved_{i}|>" for i in range(4)]
-BOS_TOKEN = "<|reserved_0|>"
 
-# ---------------------------------------------------------------------------
-# Data download
-# ---------------------------------------------------------------------------
+def copy_source(name, src, dst, force=False):
+    """Copy a source directory, skipping if unchanged (unless forced)."""
+    if not os.path.isdir(src):
+        print(f"  ERROR: source not found: {src}")
+        return False
 
-def download_single_shard(index):
-    """Download one parquet shard with retries. Returns True on success."""
-    filename = f"shard_{index:05d}.parquet"
-    filepath = os.path.join(DATA_DIR, filename)
-    if os.path.exists(filepath):
-        return True
-
-    url = f"{BASE_URL}/{filename}"
-    max_attempts = 5
-    for attempt in range(1, max_attempts + 1):
-        try:
-            response = requests.get(url, stream=True, timeout=30)
-            response.raise_for_status()
-            temp_path = filepath + ".tmp"
-            with open(temp_path, "wb") as f:
-                for chunk in response.iter_content(chunk_size=1024 * 1024):
-                    if chunk:
-                        f.write(chunk)
-            os.rename(temp_path, filepath)
-            print(f"  Downloaded {filename}")
+    if os.path.isdir(dst) and not force:
+        src_hash = compute_dir_hash(src)
+        dst_hash = compute_dir_hash(dst)
+        if src_hash == dst_hash:
+            file_count = sum(1 for _, _, files in os.walk(dst) for _ in files)
+            print(f"  {name}: up to date ({file_count} files)")
             return True
-        except (requests.RequestException, IOError) as e:
-            print(f"  Attempt {attempt}/{max_attempts} failed for {filename}: {e}")
-            for path in [filepath + ".tmp", filepath]:
-                if os.path.exists(path):
-                    try:
-                        os.remove(path)
-                    except OSError:
-                        pass
-            if attempt < max_attempts:
-                time.sleep(2 ** attempt)
-    return False
+
+    # Remove old copy and replace
+    if os.path.exists(dst):
+        shutil.rmtree(dst)
+
+    # Exclude __pycache__, .pyc, egg-info
+    def ignore(directory, contents):
+        return [
+            c
+            for c in contents
+            if c == "__pycache__"
+            or c.endswith(".pyc")
+            or c.endswith(".egg-info")
+        ]
+
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    shutil.copytree(src, dst, ignore=ignore)
+    file_count = sum(1 for _, _, files in os.walk(dst) for _ in files)
+    print(f"  {name}: copied {file_count} files")
+    return True
 
 
-def download_data(num_shards, download_workers=8):
-    """Download training shards + pinned validation shard."""
-    os.makedirs(DATA_DIR, exist_ok=True)
-    num_train = min(num_shards, MAX_SHARD)
-    ids = list(range(num_train))
-    if VAL_SHARD not in ids:
-        ids.append(VAL_SHARD)
-
-    # Count what's already downloaded
-    existing = sum(1 for i in ids if os.path.exists(os.path.join(DATA_DIR, f"shard_{i:05d}.parquet")))
-    if existing == len(ids):
-        print(f"Data: all {len(ids)} shards already downloaded at {DATA_DIR}")
+def copy_analysis_to_paper():
+    """Copy ANALYSIS.md into the paper/ directory if not already there."""
+    analysis_src = os.path.join(SYNAPSE_DIR, "paper", "ANALYSIS.md")
+    analysis_dst = os.path.join(REPO_DIR, "paper", "ANALYSIS.md")
+    if os.path.exists(analysis_dst):
+        print("  ANALYSIS.md: already in paper/")
         return
+    if os.path.exists(analysis_src):
+        shutil.copy2(analysis_src, analysis_dst)
+        print("  ANALYSIS.md: copied to paper/")
 
-    needed = len(ids) - existing
-    print(f"Data: downloading {needed} shards ({existing} already exist)...")
-
-    workers = max(1, min(download_workers, needed))
-    with Pool(processes=workers) as pool:
-        results = pool.map(download_single_shard, ids)
-
-    ok = sum(1 for r in results if r)
-    print(f"Data: {ok}/{len(ids)} shards ready at {DATA_DIR}")
 
 # ---------------------------------------------------------------------------
-# Tokenizer training
+# Literature seeding
 # ---------------------------------------------------------------------------
 
-def list_parquet_files():
-    """Return sorted list of parquet file paths in the data directory."""
-    files = sorted(f for f in os.listdir(DATA_DIR) if f.endswith(".parquet") and not f.endswith(".tmp"))
-    return [os.path.join(DATA_DIR, f) for f in files]
+
+def seed_literature():
+    """Create initial literature directory with reading list and notes."""
+    lit_dir = os.path.join(REPO_DIR, "literature")
+    os.makedirs(lit_dir, exist_ok=True)
+
+    reading_list = os.path.join(lit_dir, "reading_list.md")
+    if not os.path.exists(reading_list):
+        with open(reading_list, "w") as f:
+            f.write("""# Reading List
+
+## Priority 1: Direct Competitors
+- [ ] **SemShareKV** — Semantic KV Cache Sharing for Large Language Models (2025)
+  - Token-level LSH matching, RoPE-aware E-cache, 3 models x 9 datasets
+  - Key comparison target for SemBlend paper
+- [ ] **CacheBlend** — Fast Large Language Model Serving with Cached Knowledge Fusion (EuroSys'25)
+  - Selective recomputation for KV cache blending
+  - Potential baseline comparison
+
+## Priority 2: Related Systems
+- [ ] **LMCache** — KV cache management for vLLM
+  - SemBlend's underlying KV transport layer
+  - Understand chunk storage, retrieval, connector API
+- [ ] **vLLM** — PagedAttention and prefix caching
+  - Production baseline for prefix-match KV reuse
+
+## Priority 3: Theoretical Foundations
+- [ ] **RoFormer** — Enhanced Transformer with Rotary Position Embedding (Su et al., 2024)
+  - Theoretical basis for RoPE delta correction
+  - Exact position correction proof
+- [ ] **SnapKV** — LLM Knows What You Are Looking For Before Generation
+  - KV cache compression baseline (SemShareKV compares against this)
+- [ ] **PyramidKV** — Dynamic KV Cache Compression
+  - Another baseline from SemShareKV evaluation
+""")
+        print("  reading_list.md: created")
+
+    semshare_notes = os.path.join(lit_dir, "semshareKV_notes.md")
+    if not os.path.exists(semshare_notes):
+        with open(semshare_notes, "w") as f:
+            f.write("""# SemShareKV Notes
+
+## Key Architecture Differences vs SemBlend
+
+| Aspect | SemShareKV | SemBlend |
+|--------|-----------|----------|
+| Matching | Token-level LSH, O(T) | Embedding-level, O(1) |
+| Position | First-layer recompute (heuristic) | Exact RoPE delta correction |
+| Framework | HuggingFace Transformers (custom) | vLLM + LMCache (production) |
+| Donors | Single reference per target | Multi-donor store (10K+) |
+| Max sequence | 5K tokens | 16K+ tokens |
+
+## Evaluation Methodology
+- 3 models: Mistral-7B, LLaMA-3.1-8B, MPT-7B
+- 9 datasets: MultiNews, WikiHow, Qasper, SAMSum, PubMed, BookSum, BigPatent, LCC, MMLU
+- 4 baselines: Full Recompute, SnapKV, PyramidKV, H2O
+- 3 ablation studies: fuzzy+full cache, zero ablation, random ablation
+- Quality metric: ROUGE-L on full generation outputs
+- 42% KV cache memory reduction reported
+
+## What We Must Match
+1. Multi-model testing (at least 2 models)
+2. Real-world datasets (at least 3)
+3. Baseline comparisons (at least prefix caching + cold)
+4. Ablation studies (at least threshold sweep + embedder comparison)
+5. Quality metrics on meaningful output (max_tokens=256)
+
+## Where We're Already Better
+1. Production vLLM integration (vs HuggingFace hack)
+2. Exact RoPE correction (vs brute-force first-layer recompute)
+3. Longer sequences (16K vs 5K)
+4. Honest negative results (0.72x on diverse workloads)
+5. Statistical methodology (n=10, per-length restarts)
+""")
+        print("  semshareKV_notes.md: created")
+
+    lmcache_notes = os.path.join(lit_dir, "lmcache_notes.md")
+    if not os.path.exists(lmcache_notes):
+        with open(lmcache_notes, "w") as f:
+            f.write("""# LMCache Notes
+
+## Architecture
+- KV cache chunk storage and retrieval for vLLM
+- SemBlend wraps LMCacheConnectorV1 with semantic donor discovery
+- Chunk-swap injection: contiguous prefix replacement (delta=0)
+- CacheBlend mode: selective recomputation of mismatched tokens
+
+## Key Integration Points
+- `LMCacheConnectorV1`: vLLM's KV connector interface
+- `SemBlendConnectorV1`: wraps LMCache, adds semantic matching
+- Chunk storage: CPU DRAM (warm), can offload to disk (cold)
+
+## TODO
+- [ ] Read LMCache source to understand chunk format
+- [ ] Understand CacheBlend selective recomputation API
+- [ ] Map connector API for multi-model support
+""")
+        print("  lmcache_notes.md: created")
 
 
-def text_iterator(max_chars=1_000_000_000, doc_cap=10_000):
-    """Yield documents from training split (all shards except pinned val shard)."""
-    parquet_paths = [p for p in list_parquet_files() if not p.endswith(VAL_FILENAME)]
-    nchars = 0
-    for filepath in parquet_paths:
-        pf = pq.ParquetFile(filepath)
-        for rg_idx in range(pf.num_row_groups):
-            rg = pf.read_row_group(rg_idx)
-            for text in rg.column("text").to_pylist():
-                doc = text[:doc_cap] if len(text) > doc_cap else text
-                nchars += len(doc)
-                yield doc
-                if nchars >= max_chars:
-                    return
+# ---------------------------------------------------------------------------
+# Infrastructure verification
+# ---------------------------------------------------------------------------
 
 
-def train_tokenizer():
-    """Train BPE tokenizer using rustbpe, save as tiktoken pickle."""
-    tokenizer_pkl = os.path.join(TOKENIZER_DIR, "tokenizer.pkl")
-    token_bytes_path = os.path.join(TOKENIZER_DIR, "token_bytes.pt")
+def verify_kubectl():
+    """Check kubectl connectivity."""
+    try:
+        result = subprocess.run(
+            ["kubectl", "cluster-info", "--request-timeout=5s"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0:
+            print("  kubectl: connected")
+            return True
+        print(f"  kubectl: connection failed ({result.stderr.strip()})")
+        return False
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        print("  kubectl: not available or timed out")
+        return False
 
-    if os.path.exists(tokenizer_pkl) and os.path.exists(token_bytes_path):
-        print(f"Tokenizer: already trained at {TOKENIZER_DIR}")
-        return
 
-    os.makedirs(TOKENIZER_DIR, exist_ok=True)
+def check_gpu_nodes():
+    """Check if A10G GPU nodes are running."""
+    try:
+        result = subprocess.run(
+            [
+                "kubectl",
+                "get",
+                "nodes",
+                "-l",
+                "gpu-type=a10g",
+                "--no-headers",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        ready_count = result.stdout.strip().count("Ready")
+        if ready_count > 0:
+            print(f"  GPU nodes: {ready_count} A10G node(s) Ready")
+            return True
+        print("  GPU nodes: none running")
+        return False
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        print("  GPU nodes: check failed")
+        return False
 
-    parquet_files = list_parquet_files()
-    if len(parquet_files) < 2:
-        print("Tokenizer: need at least 2 data shards (1 train + 1 val). Download more data first.")
-        sys.exit(1)
 
-    # --- Train with rustbpe ---
-    print("Tokenizer: training BPE tokenizer...")
-    t0 = time.time()
-
-    tokenizer = rustbpe.Tokenizer()
-    vocab_size_no_special = VOCAB_SIZE - len(SPECIAL_TOKENS)
-    tokenizer.train_from_iterator(text_iterator(), vocab_size_no_special, pattern=SPLIT_PATTERN)
-
-    # Build tiktoken encoding from trained merges
-    pattern = tokenizer.get_pattern()
-    mergeable_ranks = {bytes(k): v for k, v in tokenizer.get_mergeable_ranks()}
-    tokens_offset = len(mergeable_ranks)
-    special_tokens = {name: tokens_offset + i for i, name in enumerate(SPECIAL_TOKENS)}
-    enc = tiktoken.Encoding(
-        name="rustbpe",
-        pat_str=pattern,
-        mergeable_ranks=mergeable_ranks,
-        special_tokens=special_tokens,
+def provision_gpu():
+    """Run ensure_gpu.sh to provision A10G node."""
+    script = os.path.join(REPO_DIR, "infra", "ensure_gpu.sh")
+    if not os.path.exists(script):
+        print("  GPU provision: ensure_gpu.sh not found")
+        return False
+    print("  Provisioning GPU node...")
+    result = subprocess.run(
+        ["bash", script],
+        capture_output=False,
+        timeout=360,
     )
+    return result.returncode == 0
 
-    # Save tokenizer
-    with open(tokenizer_pkl, "wb") as f:
-        pickle.dump(enc, f)
-
-    t1 = time.time()
-    print(f"Tokenizer: trained in {t1 - t0:.1f}s, saved to {tokenizer_pkl}")
-
-    # --- Build token_bytes lookup for BPB evaluation ---
-    print("Tokenizer: building token_bytes lookup...")
-    special_set = set(SPECIAL_TOKENS)
-    token_bytes_list = []
-    for token_id in range(enc.n_vocab):
-        token_str = enc.decode([token_id])
-        if token_str in special_set:
-            token_bytes_list.append(0)
-        else:
-            token_bytes_list.append(len(token_str.encode("utf-8")))
-    token_bytes_tensor = torch.tensor(token_bytes_list, dtype=torch.int32)
-    torch.save(token_bytes_tensor, token_bytes_path)
-    print(f"Tokenizer: saved token_bytes to {token_bytes_path}")
-
-    # Sanity check
-    test = "Hello world! Numbers: 123. Unicode: 你好"
-    encoded = enc.encode_ordinary(test)
-    decoded = enc.decode(encoded)
-    assert decoded == test, f"Tokenizer roundtrip failed: {test!r} -> {decoded!r}"
-    print(f"Tokenizer: sanity check passed (vocab_size={enc.n_vocab})")
 
 # ---------------------------------------------------------------------------
-# Runtime utilities (imported by train.py)
+# Results file
 # ---------------------------------------------------------------------------
 
-class Tokenizer:
-    """Minimal tokenizer wrapper. Training is handled above."""
 
-    def __init__(self, enc):
-        self.enc = enc
-        self.bos_token_id = enc.encode_single_token(BOS_TOKEN)
+def init_results():
+    """Create results.tsv with header if it doesn't exist."""
+    results_path = os.path.join(REPO_DIR, "results.tsv")
+    if os.path.exists(results_path):
+        print("  results.tsv: already exists")
+        return
 
-    @classmethod
-    def from_directory(cls, tokenizer_dir=TOKENIZER_DIR):
-        with open(os.path.join(tokenizer_dir, "tokenizer.pkl"), "rb") as f:
-            enc = pickle.load(f)
-        return cls(enc)
+    with open(results_path, "w") as f:
+        f.write(
+            "commit\ttier\tbenchmark\tprimary_metric\tprimary_value\t"
+            "secondary_metrics\tstatus\tdescription\n"
+        )
+    print("  results.tsv: created with header")
 
-    def get_vocab_size(self):
-        return self.enc.n_vocab
-
-    def get_bos_token_id(self):
-        return self.bos_token_id
-
-    def encode(self, text, prepend=None, num_threads=8):
-        if prepend is not None:
-            prepend_id = prepend if isinstance(prepend, int) else self.enc.encode_single_token(prepend)
-        if isinstance(text, str):
-            ids = self.enc.encode_ordinary(text)
-            if prepend is not None:
-                ids.insert(0, prepend_id)
-        elif isinstance(text, list):
-            ids = self.enc.encode_ordinary_batch(text, num_threads=num_threads)
-            if prepend is not None:
-                for row in ids:
-                    row.insert(0, prepend_id)
-        else:
-            raise ValueError(f"Invalid input type: {type(text)}")
-        return ids
-
-    def decode(self, ids):
-        return self.enc.decode(ids)
-
-
-def get_token_bytes(device="cpu"):
-    path = os.path.join(TOKENIZER_DIR, "token_bytes.pt")
-    with open(path, "rb") as f:
-        return torch.load(f, map_location=device)
-
-
-def _document_batches(split, tokenizer_batch_size=128):
-    """Infinite iterator over document batches from parquet files."""
-    parquet_paths = list_parquet_files()
-    assert len(parquet_paths) > 0, "No parquet files found. Run prepare.py first."
-    val_path = os.path.join(DATA_DIR, VAL_FILENAME)
-    if split == "train":
-        parquet_paths = [p for p in parquet_paths if p != val_path]
-    else:
-        parquet_paths = [val_path]
-    epoch = 1
-    while True:
-        for filepath in parquet_paths:
-            pf = pq.ParquetFile(filepath)
-            for rg_idx in range(pf.num_row_groups):
-                rg = pf.read_row_group(rg_idx)
-                batch = rg.column('text').to_pylist()
-                for i in range(0, len(batch), tokenizer_batch_size):
-                    yield batch[i:i+tokenizer_batch_size], epoch
-        epoch += 1
-
-
-def make_dataloader(tokenizer, B, T, split, buffer_size=1000):
-    """
-    BOS-aligned dataloader with best-fit packing.
-    Every row starts with BOS. Documents packed using best-fit to minimize cropping.
-    When no document fits remaining space, crops shortest doc to fill exactly.
-    100% utilization (no padding).
-    """
-    assert split in ["train", "val"]
-    row_capacity = T + 1
-    batches = _document_batches(split)
-    bos_token = tokenizer.get_bos_token_id()
-    doc_buffer = []
-    epoch = 1
-
-    def refill_buffer():
-        nonlocal epoch
-        doc_batch, epoch = next(batches)
-        token_lists = tokenizer.encode(doc_batch, prepend=bos_token)
-        doc_buffer.extend(token_lists)
-
-    # Pre-allocate buffers: [inputs (B*T) | targets (B*T)]
-    row_buffer = torch.empty((B, row_capacity), dtype=torch.long)
-    cpu_buffer = torch.empty(2 * B * T, dtype=torch.long, pin_memory=True)
-    gpu_buffer = torch.empty(2 * B * T, dtype=torch.long, device="cuda")
-    cpu_inputs = cpu_buffer[:B * T].view(B, T)
-    cpu_targets = cpu_buffer[B * T:].view(B, T)
-    inputs = gpu_buffer[:B * T].view(B, T)
-    targets = gpu_buffer[B * T:].view(B, T)
-
-    while True:
-        for row_idx in range(B):
-            pos = 0
-            while pos < row_capacity:
-                while len(doc_buffer) < buffer_size:
-                    refill_buffer()
-
-                remaining = row_capacity - pos
-
-                # Find largest doc that fits entirely
-                best_idx = -1
-                best_len = 0
-                for i, doc in enumerate(doc_buffer):
-                    doc_len = len(doc)
-                    if doc_len <= remaining and doc_len > best_len:
-                        best_idx = i
-                        best_len = doc_len
-
-                if best_idx >= 0:
-                    doc = doc_buffer.pop(best_idx)
-                    row_buffer[row_idx, pos:pos + len(doc)] = torch.tensor(doc, dtype=torch.long)
-                    pos += len(doc)
-                else:
-                    # No doc fits — crop shortest to fill remaining
-                    shortest_idx = min(range(len(doc_buffer)), key=lambda i: len(doc_buffer[i]))
-                    doc = doc_buffer.pop(shortest_idx)
-                    row_buffer[row_idx, pos:pos + remaining] = torch.tensor(doc[:remaining], dtype=torch.long)
-                    pos += remaining
-
-        cpu_inputs.copy_(row_buffer[:, :-1])
-        cpu_targets.copy_(row_buffer[:, 1:])
-        gpu_buffer.copy_(cpu_buffer, non_blocking=True)
-        yield inputs, targets, epoch
-
-# ---------------------------------------------------------------------------
-# Evaluation (DO NOT CHANGE — this is the fixed metric)
-# ---------------------------------------------------------------------------
-
-@torch.no_grad()
-def evaluate_bpb(model, tokenizer, batch_size):
-    """
-    Bits per byte (BPB): vocab size-independent evaluation metric.
-    Sums per-token cross-entropy (in nats), sums target byte lengths,
-    then converts nats/byte to bits/byte. Special tokens (byte length 0)
-    are excluded from both sums.
-    Uses fixed MAX_SEQ_LEN so results are comparable across configs.
-    """
-    token_bytes = get_token_bytes(device="cuda")
-    val_loader = make_dataloader(tokenizer, batch_size, MAX_SEQ_LEN, "val")
-    steps = EVAL_TOKENS // (batch_size * MAX_SEQ_LEN)
-    total_nats = 0.0
-    total_bytes = 0
-    for _ in range(steps):
-        x, y, _ = next(val_loader)
-        loss_flat = model(x, y, reduction='none').view(-1)
-        y_flat = y.view(-1)
-        nbytes = token_bytes[y_flat]
-        mask = nbytes > 0
-        total_nats += (loss_flat * mask).sum().item()
-        total_bytes += nbytes.sum().item()
-    return total_nats / (math.log(2) * total_bytes)
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Prepare data and tokenizer for autoresearch")
-    parser.add_argument("--num-shards", type=int, default=10, help="Number of training shards to download (-1 = all). Val shard is always pinned.")
-    parser.add_argument("--download-workers", type=int, default=8, help="Number of parallel download workers")
+    parser = argparse.ArgumentParser(
+        description="Prepare autoresearch-semblend working directory"
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force re-copy even if source hasn't changed",
+    )
+    parser.add_argument(
+        "--build-datasets",
+        action="store_true",
+        help="Build benchmark dataset clusters after copying",
+    )
+    parser.add_argument(
+        "--provision-gpu",
+        action="store_true",
+        help="Provision A10G GPU node if not running",
+    )
     args = parser.parse_args()
 
-    num_shards = MAX_SHARD if args.num_shards == -1 else args.num_shards
+    print("=== Autoresearch SemBlend Setup ===\n")
 
-    print(f"Cache directory: {CACHE_DIR}")
+    # Step 1: Verify synapse repo exists
+    if not os.path.isdir(SYNAPSE_DIR):
+        print(f"ERROR: synapse repo not found at {SYNAPSE_DIR}")
+        sys.exit(1)
+    print(f"Source: {SYNAPSE_DIR}")
+    print(f"Target: {REPO_DIR}\n")
+
+    # Step 2: Copy source code
+    print("Copying source code:")
+    all_ok = True
+    for name, src in SOURCE_PATHS.items():
+        dst = DEST_PATHS[name]
+        if not copy_source(name, src, dst, force=args.force):
+            all_ok = False
+    copy_analysis_to_paper()
     print()
 
-    # Step 1: Download data
-    download_data(num_shards, download_workers=args.download_workers)
+    # Step 3: Seed literature
+    print("Seeding literature:")
+    seed_literature()
     print()
 
-    # Step 2: Train tokenizer
-    train_tokenizer()
+    # Step 4: Initialize results
+    print("Results tracking:")
+    init_results()
     print()
-    print("Done! Ready to train.")
+
+    # Step 5: Verify infrastructure
+    print("Infrastructure:")
+    kubectl_ok = verify_kubectl()
+    gpu_ok = check_gpu_nodes()
+    if args.provision_gpu and not gpu_ok:
+        gpu_ok = provision_gpu()
+    print()
+
+    # Step 6: Summary
+    print("=== Setup Summary ===")
+    src_files = sum(
+        1
+        for dst in DEST_PATHS.values()
+        if os.path.isdir(dst)
+        for _, _, files in os.walk(dst)
+        for _ in files
+    )
+    print(f"  Source files copied: {src_files}")
+    print(f"  kubectl connected:  {kubectl_ok}")
+    print(f"  GPU nodes running:  {gpu_ok}")
+    print(f"  Results tracking:   {os.path.exists(os.path.join(REPO_DIR, 'results.tsv'))}")
+    print()
+
+    if all_ok:
+        print("Done! Ready for experiments.")
+    else:
+        print("WARNING: Some copies failed. Check source paths.")
+        sys.exit(1)

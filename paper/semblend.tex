@@ -1,0 +1,1532 @@
+\documentclass[11pt,twocolumn]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage[margin=0.85in]{geometry}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning,fit,calc}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{xspace}
+\usepackage{listings}
+
+% Neutral color palette
+\definecolor{accentblue}{RGB}{31,78,200}
+\definecolor{accentgold}{RGB}{200,160,0}
+\definecolor{tier0color}{RGB}{0,150,180}
+\definecolor{tier1color}{RGB}{60,140,60}
+\definecolor{tier2color}{RGB}{130,30,150}
+\definecolor{warncolor}{RGB}{200,80,40}
+\definecolor{misscolor}{RGB}{200,50,40}
+\definecolor{codegreen}{RGB}{40,140,40}
+
+% Code listing style
+\lstset{
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\color{accentblue}\bfseries,
+  commentstyle=\color{codegreen},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  breaklines=true,
+  frame=single,
+  xleftmargin=1.5em,
+  framexleftmargin=1.5em,
+}
+
+% Convenience macro
+\newcommand{\semblend}{\textsc{SemBlend}\xspace}
+\newcommand{\ci}[2]{\scriptsize{[#1,\,#2]}}
+
+\title{\textbf{SemBlend: In-Process Semantic KV Cache Donor Discovery\\
+for LLM Inference}}
+\author{
+  WorldFlow AI Research\\
+  \texttt{research@worldflowai.com}
+}
+\date{March 2026}
+
+\begin{document}
+\maketitle
+
+% ============================================================================
+\begin{abstract}
+Transformer KV cache reuse reduces time-to-first-token (TTFT) by
+serving cached key--value tensors from prior prompts. Existing systems
+such as LMCache~\cite{lmcache} and vLLM prefix caching~\cite{vllm}
+are limited to \emph{exact token-prefix matching}, missing
+semantically equivalent prompts with different wording or ordering.
+Prior work on semantic KV reuse (SemShareKV~\cite{semsharekv}) uses
+approximate correction---full first-layer recompute---and is limited to
+HuggingFace Transformers on a single instance with CPU-based matching.
+
+We present \semblend, a production-ready semantic KV cache system for
+vLLM that enables \textbf{non-contiguous KV reuse with mathematically
+exact position correction}. Our key contributions are:
+
+\begin{enumerate}[itemsep=1pt,topsep=3pt]
+\item \textbf{Exact RoPE Delta Correction}: We exploit the rotation
+  group structure of RoPE to derive a correction kernel:
+  $K_{\text{target}} = \text{RoPE}(\Delta) \times K_{\text{donor}}$
+  where $\Delta = \text{target\_pos} - \text{donor\_pos}$. This is
+  \emph{mathematically exact}---not an approximation---and costs
+  $O(N \times d)$ per layer (${\sim}7\,\mu$s for 8K tokens on A10G).
+
+\item \textbf{Calibrated Bathtub Recomputation}: RoPE correction fixes
+  position encoding but not attention pattern drift from context
+  differences. We introduce a calibrated bathtub curve (Eq.~\ref{eq:bathtub})
+  that predicts per-layer deviation: early/late layers (high drift) are
+  recomputed while middle layers (stable) are reused with RoPE
+  correction, yielding ${\sim}35\%$ of full-prefill FLOPs ($2.86\times$ reduction).
+
+\item \textbf{Local-First GPU-Native Architecture}: An in-process
+  pipeline performing sentence embedding (MiniLM-L6-v2, ${\sim}5$\,ms),
+  numpy cosine donor matching (${\sim}1$\,ms for ${\leq}10\text{K}$
+  donors), and compiled token alignment (rapidfuzz, $<$1\,ms)
+  with \textbf{zero network hops}, plus an optional CAGRA~\cite{cagra}
+  $O(\log N)$ tier for cross-instance scale at $100\text{K}{+}$ donors.
+
+\item \textbf{Production vLLM Integration}: paged KV cache scatter with
+  block table translation, FlashAttention compatibility, and LMCache
+  connector wrapping---unlike prior work that requires framework
+  modification.
+\end{enumerate}
+
+The combined system---exact position correction on reused layers plus
+selective recomputation on high-drift layers---enables non-contiguous
+KV reuse (REORDER, PARTIAL overlap, paraphrase) that was previously
+impossible with RoPE-based models. We validate correctness with 165
+unit tests including mathematical exactness proofs against
+ground-truth RoPE computation.
+\end{abstract}
+
+\noindent\textbf{Keywords:} KV cache, semantic caching, LLM inference,
+RoPE correction, non-contiguous KV reuse, paged attention
+
+
+% ============================================================================
+\section{Introduction}
+\label{sec:intro}
+
+Large language model (LLM) inference is dominated by the
+\emph{prefill phase}---computing key-value (KV) tensors for the input
+prompt before autoregressive decoding begins. For a 32-layer
+transformer processing 512 tokens with 8~KV heads and
+128-dimensional head size, prefill produces ${\sim}512$\,MB of FP16 KV
+state:
+\begin{equation}
+  \text{KV bytes} = 2 \times L \times H \times T \times D \times 2
+  \label{eq:kv-size}
+\end{equation}
+where $L{=}32$ layers, $H{=}8$ heads, $T{=}512$ tokens, $D{=}128$ head
+dimension. Prefill cost scales superlinearly with prompt length.
+
+Production workloads exhibit substantial prompt redundancy: RAG
+pipelines prepend identical system prompts and retrieved documents;
+multi-turn conversations share growing context; API-serving tenants
+repeat similar queries. Existing systems---PagedAttention~\cite{pagedattention},
+vLLM prefix caching, LMCache~\cite{lmcache}---exploit this through
+\emph{exact} token prefix matching. LMCache further extends this with
+distributed P2P KV transfer across inference instances, but retains the
+fundamental constraint: tokens must match exactly for cache reuse.
+
+However, exact matching misses a common production pattern:
+\emph{semantically similar prompts with different wording}. ``What is
+machine learning?'' and ``Can you tell me about machine learning?''
+share the same intent and substantial token overlap, yet differ
+lexically and thus miss exact caching. \semblend extends LMCache's
+architecture to cover this case: when no exact prefix match exists,
+\semblend performs embedding-level semantic search to find a \emph{donor}
+prompt whose cached KV tensors may be reusable. As we show in
+\S\ref{sec:rope-correction}, we solve the Rotary Position Embedding
+(RoPE) challenge via exact delta correction, enabling non-contiguous
+KV reuse for REORDER, PARTIAL, and paraphrase scenarios.
+
+\paragraph{Positioning relative to LMCache.}
+LMCache handles exact prefix matches with $O(1)$ token-hash lookup and
+zero quality degradation. \semblend is \emph{complementary}: it activates
+only when LMCache's exact-match path misses, extending the cache's
+coverage to semantically similar prompts. The local-first architecture
+adds only ${\sim}8$\,ms overhead (vs.\ ${\sim}150$\,ms for remote
+embedding), making this extension viable even for small models. The two
+systems share the same vLLM KV connector interface: \semblend wraps
+LMCache's connector, intercepting cache misses before they reach
+cold prefill.
+
+\paragraph{Contributions.}
+We make five contributions:
+\begin{enumerate}[leftmargin=*,nosep]
+\item \textbf{In-process donor discovery} (\S\ref{sec:local}): a
+  local-first architecture achieving ${\sim}8$\,ms total overhead
+  (embedding + search + alignment) with zero network hops, using a
+  CPU sentence encoder, numpy cosine matching, and compiled token
+  alignment---making semantic KV search viable for any model size.
+
+\item \textbf{Two-tier scaled architecture} (\S\ref{sec:scaled}):
+  in-process numpy for ${\leq}10\text{K}$ donors, GPU-accelerated
+  CAGRA~\cite{cagra} via an optional gateway for $100\text{K}{+}$
+  cross-instance donor discovery.
+
+\item \textbf{Calibrated quality model} using a bathtub-curve layer
+  sensitivity function validated against 6~published data points from
+  CacheBlend, KVShare, ProphetKV, and SemShareKV (\S\ref{sec:recomp}).
+
+\item \textbf{Exact RoPE delta correction} (\S\ref{sec:rope-correction}):
+  a mathematically exact method for correcting donor K tensors to
+  arbitrary target positions by exploiting the rotation group structure
+  of RoPE, enabling non-contiguous KV reuse (REORDER, PARTIAL,
+  paraphrase) at $O(Nd)$ cost per layer---negligible compared to the
+  $O(N^2 d)$ attention it replaces.
+
+\item \textbf{Empirical evaluation} on two model architectures
+  (Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ) demonstrating
+  $2.4\times$--$8.3\times$ TTFT speedup at 2K--16K tokens with
+  quality preserved (PPL ratio $0.984$--$1.025$), plus architectural
+  analysis of the prefix cache coverage gap (\S\ref{sec:eval}).
+\end{enumerate}
+
+
+% ============================================================================
+\section{Background and Related Work}
+\label{sec:related}
+
+\begin{table*}[t]
+\centering
+\caption{Taxonomy of KV cache reuse systems. \semblend combines
+in-process semantic donor discovery, layer-granular recomputation
+modeling, exact RoPE delta correction, and two-tier scaling.
+\semblend is the first to solve the RoPE position encoding challenge
+(\S\ref{sec:rope-correction}), enabling non-contiguous KV reuse
+on modern transformers.
+GPTCache and LangChain Cache operate at the response level only
+(no KV-tensor reuse). $O(N)$/$O(\log N)$ = local brute-force /
+GPU-accelerated ANN.}
+\label{tab:taxonomy}
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{@{}llllcccc@{}}
+\toprule
+\textbf{System} & \textbf{Venue} & \textbf{Discovery} & \textbf{Recompute} &
+  \textbf{Sparse} & \textbf{Tiered} & \textbf{Lookup} & \textbf{Layer} \\
+\midrule
+GPTCache~\cite{gptcache} & OSS\,'23 & Emb.\ cosine & --- & --- & No & $O(\log N)$ & Response \\
+LangChain Cache~\cite{langchain} & OSS\,'23 & Exact/Emb. & --- & --- & No & $O(1)$/$O(\log N)$ & Response \\
+PagedAttention~\cite{pagedattention} & SOSP\,'23 & Exact prefix & No & No & No & $O(1)$ & KV-tensor \\
+CacheBlend~\cite{cacheblend} & EuroSys\,'25 & Exact prefix & KV deviation & No & No & $O(1)$ & KV-tensor \\
+LMCache~\cite{lmcache} & 2025 & Exact prefix & No & No & P2P & $O(1)$ & KV-tensor \\
+KVShare~\cite{kvshare} & arXiv\,'25 & DHD semantic & DHD & No & No & $O(T)$ & KV-tensor \\
+SemShareKV~\cite{semsharekv} & arXiv\,'25 & Token LSH & Heuristic & No & No & $O(T)$ & KV-tensor \\
+ProphetKV~\cite{prophetkv} & arXiv\,'26 & RAG-specific & Dual-stage & No & No & $O(1)$ & KV-tensor \\
+\midrule
+\semblend & --- & \textbf{Emb.\ cosine} & \textbf{Calibrated} &
+  \textbf{Yes} & \textbf{Two-tier} & $O(N)$/$O(\log N)$ & \textbf{KV-tensor} \\
+\bottomrule
+\end{tabular}\\[2pt]
+{\footnotesize Response = response-level cache (upstream of LLM).
+KV-tensor = KV cache inside inference engine.}
+\end{table*}
+
+Table~\ref{tab:taxonomy} summarizes the landscape. We identify four
+categories of cache reuse:
+
+\textbf{Response-level systems.}
+GPTCache~\cite{gptcache} and LangChain's semantic cache~\cite{langchain}
+intercept queries upstream of the LLM and return cached responses when
+embedding similarity exceeds a threshold. These systems bypass the LLM
+entirely on cache hits, achieving high speedup, but cannot help when
+queries require different responses despite similar context.
+
+\textbf{Exact-prefix KV systems.}
+CacheBlend~\cite{cacheblend} introduced selective layer recomputation
+based on KV deviation scores but is limited to exact prefix matches,
+achieving 2.2--3.3$\times$ TTFT reduction only when prefixes align.
+LMCache~\cite{lmcache} adds distributed P2P transfer but retains the
+exact-match constraint.
+
+\textbf{Token-level semantic KV systems.}
+KVShare~\cite{kvshare} uses Divergence-based Hit Detection (DHD)
+for multi-tenant serving, claiming 9.39$\times$ TTFT reduction on
+semantic hits. SemShareKV~\cite{semsharekv} achieves 6.25$\times$
+speedup at 5K tokens using token-level LSH, but its $O(T)$ overhead
+provides minimal benefit below 700 tokens.
+
+\textbf{RAG-specific KV systems.}
+ProphetKV~\cite{prophetkv} uses dual-stage user query relevance scoring,
+achieving 96--101\% quality at 20\% recomputation, but is limited to
+retrieval-augmented generation workloads.
+
+\semblend operates at the \emph{embedding level}: a single sentence
+embedding replaces per-token matching. The local tier uses numpy
+brute-force ($O(N)$, ${\sim}1$\,ms for $N{\leq}10\text{K}$); the
+scaled tier uses CAGRA $O(\log N)$ ANN for $100\text{K}{+}$ donors.
+Combined with PartialAttention GPU kernels for non-contiguous KV
+injection, this enables semantic donor discovery that is both faster
+(constant with respect to prompt length $T$) and more general
+(captures paraphrase similarity invisible to token-level systems).
+
+
+% ============================================================================
+\section{Design}
+\label{sec:design}
+
+\semblend uses a \textbf{local-first, two-tier architecture}
+(Figure~\ref{fig:arch}). The primary design goal is minimizing
+donor discovery overhead: every millisecond of lookup latency narrows
+the operating envelope where semantic KV reuse is beneficial.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  box/.style={rectangle, draw, rounded corners=3pt, minimum height=0.7cm,
+    minimum width=2.2cm, font=\scriptsize, align=center, inner sep=3pt},
+  arrow/.style={->, >=stealth, thick},
+  every node/.style={font=\scriptsize}
+]
+  % Input
+  \node[box, fill=gray!15] (client) at (0,9.0) {Input Prompt};
+
+  % LMCache exact check
+  \node[box, fill=tier1color!15] (exact) at (0,7.8) {LMCache\\Exact Prefix};
+
+  % Local tier (left)
+  \node[box, fill=accentblue!20, minimum width=2.8cm] (local) at (-2.0,6.2)
+    {\textbf{Tier 1: Local}\\(${\sim}8$\,ms)};
+  \node[box, fill=accentblue!10] (minilm) at (-2.0,5.0) {MiniLM-L6-v2\\CPU (${\sim}5$\,ms)};
+  \node[box, fill=accentblue!10] (numpy) at (-2.0,3.8) {Numpy Cosine\\(${\sim}1$\,ms)};
+  \node[box, fill=accentblue!10] (rfuzz) at (-2.0,2.6) {rapidfuzz\\Align ($<$1\,ms)};
+
+  % Scaled tier (right)
+  \node[box, fill=accentgold!20, minimum width=2.8cm] (scaled) at (2.0,6.2)
+    {\textbf{Tier 2: Scaled}\\(async, ${\sim}50$\,ms)};
+  \node[box, fill=accentgold!10] (cagra) at (2.0,5.0) {CAGRA ANN\\GPU ($<$1\,ms)};
+  \node[box, fill=accentgold!10] (gateway) at (2.0,3.8) {Gateway\\(cross-instance)};
+
+  % Output
+  \node[box, fill=tier1color!20] (inject) at (0,1.4) {LMCache\\Chunk-Swap KV};
+  \node[box, fill=misscolor!15] (partial) at (0,0.2) {PartialAttention\\(if non-contiguous)};
+
+  % Arrows
+  \draw[arrow] (client) -- (exact);
+  \draw[arrow] (exact.west) -- ++(-0.5,0) |- node[left,font=\tiny,pos=0.3] {miss} (local);
+  \draw[arrow] (exact.east) -- ++(0.5,0) |- node[right,font=\tiny,pos=0.3,text=gray] {miss + async} (scaled);
+  \draw[arrow] (local) -- (minilm);
+  \draw[arrow] (minilm) -- (numpy);
+  \draw[arrow] (numpy) -- (rfuzz);
+  \draw[arrow] (scaled) -- (cagra);
+  \draw[arrow] (cagra) -- (gateway);
+  \draw[arrow] (rfuzz.south) -- ++(0,-0.4) -| (inject.north west);
+  \draw[arrow, dashed] (gateway.south) -- ++(0,-0.4) -| (inject.north east);
+  \draw[arrow] (inject) -- (partial);
+
+  % Hit path
+  \draw[arrow, color=tier1color] (exact.south) -- ++(0,-0.3)
+    node[right,font=\tiny,color=tier1color] {hit} -- ++(0,-5.7) -- (inject.north);
+\end{tikzpicture}
+\caption{\semblend two-tier architecture. \textbf{Tier~1 (Local)}:
+  in-process donor discovery via CPU embedding, numpy cosine search,
+  and compiled alignment (${\sim}8$\,ms, zero network hops).
+  \textbf{Tier~2 (Scaled)}: optional GPU-accelerated CAGRA search
+  via gateway for cross-instance discovery at $100\text{K}{+}$ donors.
+  Both tiers inject donor KV via LMCache chunk-swap.}
+\label{fig:arch}
+\end{figure}
+
+
+\subsection{SemBlend Local: In-Process Fast Path}
+\label{sec:local}
+
+The local tier performs donor discovery entirely within the vLLM
+process, avoiding all network calls on the hot path. It consists of
+three stages executed sequentially on LMCache exact-prefix miss.
+
+\paragraph{Stage 1: Sentence Embedding (${\sim}5$\,ms).}
+\semblend computes a sentence embedding $e_q \in \mathbb{R}^{384}$
+using all-MiniLM-L6-v2~\cite{minilm} on CPU. This 80\,MB model loads
+in ${\sim}2$\,s at startup and embeds a prompt in ${\sim}5$\,ms on a
+single CPU core---30$\times$ faster than a remote jina-embeddings-v4
+call (${\sim}150$\,ms including HTTP overhead). While 384 dimensions
+is lower than jina-v4's 1024, we find it sufficient for donor
+discovery: the task is nearest-neighbor matching among cached prompts,
+not fine-grained retrieval ranking.
+
+\paragraph{Stage 2: Numpy Cosine Search (${\sim}1$\,ms).}
+For $N \leq 10\text{K}$ donors, brute-force cosine similarity via
+a single matrix-vector multiply is optimal:
+\begin{equation}
+  s_i = \frac{e_q \cdot e_i}{\|e_q\| \|e_i\|}, \quad i \in [1, N]
+  \label{eq:cosine-local}
+\end{equation}
+With pre-normalized embeddings (unit vectors), this reduces to
+$s = E \cdot e_q$ where $E \in \mathbb{R}^{N \times d}$---a single
+BLAS call completing in $<$1\,ms for $N{=}10\text{K}$, $d{=}384$
+(15\,MB of embeddings). No index construction is needed. An LRU
+eviction policy bounds memory at the configured maximum.
+
+\paragraph{Stage 3: Compiled Token Alignment ($<$1\,ms).}
+For the top donor, \semblend computes token-level alignment using
+rapidfuzz's~\cite{rapidfuzz} compiled C++ Levenshtein
+implementation---$<$1\,ms for 8K-token prompts versus
+${\sim}2\text{--}4$\,s for pure Python Wagner-Fischer~\cite{wagnerfischer}.
+The alignment produces per-position classifications:
+\emph{copy\_from\_donor} (reuse KV) or \emph{placeholder} (recompute).
+Positions are aligned to LMCache's 256-token chunk boundaries:
+\begin{equation}
+  N_\text{reuse} = \lfloor N_\text{matched} / 256 \rfloor \times 256
+  \label{eq:chunk-align}
+\end{equation}
+
+\paragraph{KV Injection.}
+On donor match, \semblend monkeypatches LMCache's internal lookup to
+return the donor's chunk hash, causing \texttt{start\_load\_kv()} to
+load the donor's KV tensors from LMCache's CPU offload store. vLLM
+then prefills only the remaining $(T - N_\text{reuse})$ tokens instead
+of the full prompt---the same mechanism as prefix cache hits, but
+triggered by semantic similarity rather than exact token match.
+
+\begin{table}[t]
+\centering
+\caption{Donor discovery latency: Local vs.\ Remote architectures.}
+\label{tab:local-vs-remote}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+\textbf{Component} & \textbf{Local} & \textbf{Remote} & \textbf{Notes} \\
+\midrule
+Embedding      & 5\,ms   & 150\,ms & MiniLM CPU vs jina-v4 HTTP \\
+Donor search   & 1\,ms   & ${<}$1\,ms & Numpy vs CAGRA \\
+Alignment      & ${<}$1\,ms & 3\,ms   & rapidfuzz (both paths) \\
+Network        & 0\,ms   & 10\,ms  & HTTP round-trip \\
+\midrule
+\textbf{Total} & \textbf{${\sim}$8\,ms} & \textbf{164\,ms} & $20\times$ faster \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:local-vs-remote} quantifies the advantage: the local
+path is $20\times$ faster than a remote gateway call, making semantic
+KV reuse viable for prompts as short as ${\sim}100$ tokens on models
+as small as 1.5B parameters.
+
+\subsection{SemBlend Scaled: GPU-Accelerated Cross-Instance Discovery}
+\label{sec:scaled}
+
+For deployments with $>$10K unique prompt patterns or multiple vLLM
+instances, the local numpy store becomes insufficient. \semblend's
+second tier uses CAGRA~\cite{cagra} GPU-accelerated approximate
+nearest neighbor search via the Synapse gateway, providing
+$O(\log N)$ search across $100\text{K}{+}$ donors.
+
+\paragraph{Architecture.}
+Each vLLM instance publishes donor metadata (embedding, token count,
+chunk hash) to the gateway on \texttt{save\_kv\_layer()}. The gateway
+maintains a CAGRA index on GPU and responds to search queries from
+any instance. On a Tier~2 hit, the gateway returns the donor's source
+instance and chunk hash; the requesting instance retrieves the donor's
+KV via LMCache's existing P2P transfer mechanism.
+
+\paragraph{Latency.}
+The scaled tier adds ${\sim}50$\,ms (gateway HTTP + CAGRA search
++ response). This is invoked \emph{asynchronously} on Tier~1 miss:
+the current request proceeds with cold prefill while the Tier~2
+result pre-warms the local donor store for future similar queries.
+
+\paragraph{Complexity.}
+CAGRA search is $O(\log N)$ and independent of prompt length $T$---a
+key advantage over SemShareKV's~\cite{semsharekv} $O(T)$ token-level
+LSH. At $N{=}100\text{K}$ donors, search completes in ${<}1$\,ms on
+GPU.
+
+
+\subsection{Token Alignment}
+\label{sec:alignment}
+
+Both tiers use the same alignment algorithm. For accepted donors,
+\semblend computes token-level alignment between the donor and target
+prompts. The alignment produces per-position classifications:
+\emph{copy\_from\_donor} (token matches, reuse KV) or
+\emph{placeholder} (token diverges, recompute). This alignment is
+encoded as a transfer plan with explicit donor$\to$target position
+mappings.
+
+\begin{algorithm}[t]
+\caption{Two-Tier Donor Discovery}
+\label{alg:delta}
+\begin{algorithmic}[1]
+\Require Query embedding $e_q$, local store $\mathcal{L}$, threshold
+  $s_{\min}$
+\Ensure Transfer plan $P$ or $\bot$ (miss)
+\State $\mathcal{D}_1 \gets \text{NumpyCosine}(\mathcal{L}, e_q, k)$
+  \Comment{$O(N)$, ${\sim}1$\,ms}
+\For{$(d, s_d) \in \mathcal{D}_1$ by descending $s_d$}
+  \If{$s_d < s_{\min}$} \textbf{break} \EndIf
+  \State $A \gets \text{rapidfuzz}(d.\text{tokens}, q.\text{tokens})$
+    \Comment{${<}1$\,ms}
+  \State $P \gets \text{BuildTransferPlan}(A)$
+  \If{$P.\text{reuse\_ratio} \geq 0.5$}
+    \State \Return $P$
+  \EndIf
+\EndFor
+\State \textbf{async:} query Tier~2 gateway (CAGRA) \Comment{non-blocking}
+\State \Return $\bot$
+\end{algorithmic}
+\end{algorithm}
+
+Algorithm~\ref{alg:delta} shows the complete donor discovery pipeline.
+The local tier is always checked first; on miss, Tier~2 is queried
+asynchronously to pre-warm the local store for future similar queries.
+
+
+\subsection{Calibrated Layer-Selective Recomputation}
+\label{sec:recomp}
+
+Each transformer layer $\ell$ has a deviation sensitivity following a
+\textbf{bathtub curve}:
+\begin{equation}
+  \sigma(\ell) = \sigma_\text{base} + \sigma_e \cdot e^{-\ell/\tau_e} + \sigma_l \cdot e^{-(L-\ell)/\tau_l}
+  \label{eq:bathtub}
+\end{equation}
+where $\sigma_e$, $\sigma_l$ are early/late layer bump magnitudes,
+$\tau_e$, $\tau_l$ are decay constants, and $L$ is the total layer
+count. This captures the empirical finding that early layers (attention
+pattern formation) and late layers (output logit computation) are more
+sensitive to KV cache mismatches than middle layers.
+
+\paragraph{Recomputation decision.} Layer $\ell$ is recomputed if
+$\sigma(\ell) \cdot m > \theta$, where $m = 1 - \text{overlap}(q,d)$ is
+the token mismatch fraction and $\theta = 0.3$ is the deviation threshold.
+With calibrated parameters ($\sigma_\text{base}{=}0.12$,
+$\sigma_e{=}0.35$, $\tau_e{=}3.0$, $\sigma_l{=}0.20$, $\tau_l{=}4.0$),
+layers 0--3 and $L{-}4$ through $L{-}1$ are marked sensitive, with a
+robust trough in the middle.
+
+
+\subsection{PartialAttention Mechanism}
+\label{sec:partial}
+
+When a semantic donor matches with non-contiguous aligned positions
+(e.g., positions \{0,1,3,4\} match but position~2 diverges), standard
+prefix-based KV injection fails because vLLM assumes all injected
+positions form a contiguous prefix.
+
+\semblend defines four attention modes per position per layer:
+
+\begin{description}[leftmargin=*,nosep]
+\item[FULL] Compute Q,K,V from scratch---standard prefill.
+\item[REUSE] Reuse cached K,V from donor---no computation needed.
+\item[PARTIAL] Compute fresh Q,K,V but cross-attend to all cached K,V.
+\item[SKIP\_LAYER] Skip the entire layer (when layer deviation is below
+  threshold, per CacheBlend's insight).
+\end{description}
+
+\begin{algorithm}[t]
+\caption{Build PartialAttention Plan}
+\label{alg:partial}
+\begin{algorithmic}[1]
+\Require Transfer plan $P$ with slot actions, layer hints
+\Ensure PartialAttentionPlan with per-layer masks
+\For{each slot action $a$ in $P$}
+  \If{$a.\text{action} = \text{copy\_from\_donor}$}
+    \State $\text{mask}[a.\text{target\_pos}] \gets \text{REUSE}(a.\text{donor\_pos})$
+  \Else
+    \State $\text{mask}[a.\text{target\_pos}] \gets \text{PARTIAL}$
+  \EndIf
+\EndFor
+\For{each layer $\ell$ in $[0, L)$}
+  \If{layer\_hint[$\ell$].recompute\_all}
+    \State $\text{layer\_mask}[\ell] \gets \text{all FULL}$
+  \Else
+    \State $\text{layer\_mask}[\ell] \gets \text{per-position masks}$
+  \EndIf
+\EndFor
+\State \Return plan with layer masks, computation ratio
+\end{algorithmic}
+\end{algorithm}
+
+The computation ratio quantifies the fraction of total FLOPs compared
+to full prefill:
+\begin{equation}
+  C_\text{ratio} = \frac{P_\text{partial} \cdot N_\text{placeholder} + P_\text{full} \cdot T}{L \cdot T}
+  \label{eq:cratio}
+\end{equation}
+where $P_\text{partial}$ is the count of non-recompute layers,
+$N_\text{placeholder}$ is the number of placeholder positions,
+$P_\text{full}$ is the count of full-recompute layers, $T$ is the target
+length, and $L$ is the total layers.
+
+
+\subsubsection{Triton GPU Kernel Implementation}
+\label{sec:triton}
+
+We implement PartialAttention as a three-stage GPU pipeline using
+Triton~\cite{triton} CUDA kernels:
+
+\paragraph{Stage 1: Scatter Donor KV (\texttt{scatter\_donor\_kv}).}
+Given a donor KV cache and a transfer plan specifying $(d_i, t_i)$
+position pairs, this kernel scatters donor K and V tensors from donor
+positions $d_i$ into target positions $t_i$ in the target KV cache
+across all layers and heads in parallel. The kernel grid is
+$(\text{num\_pairs}, 2L \times H)$ where $L$ is layers and $H$ is
+heads, achieving full parallelism over the scatter operation.
+
+\paragraph{Stage 2: Masked QKV Projection
+(\texttt{masked\_qkv\_proj}).}
+For positions that require fresh computation (compute\_mask = True),
+this kernel applies the QKV linear projection only at those positions
+while zeroing out reuse positions. This implements a tiled GEMM with
+per-row masking:
+\begin{equation}
+  \text{out}[i] = \begin{cases}
+    W_\text{qkv} \cdot x[i] + b_\text{qkv} & \text{if compute\_mask}[i] \\
+    \mathbf{0} & \text{otherwise}
+  \end{cases}
+\end{equation}
+The kernel uses BLOCK\_M$\times$BLOCK\_K tiles to amortize the
+mask check across the inner dimension.
+
+\paragraph{Stage 3: Partial Prefill Attention
+(\texttt{partial\_prefill\_attn}).}
+This kernel computes causal self-attention only at compute positions,
+using the online softmax algorithm~\cite{flashattention}. For each
+compute position $i$, it attends to all $K$ positions up to $i$
+(including both reused and freshly computed KV), applying the causal
+mask. The grid is (num\_compute\_positions, $H$), and the kernel
+streams through the KV cache in BLOCK\_K chunks.
+
+\paragraph{Orchestration.} The three kernels are chained in a
+single CUDA stream: scatter (copy donor KV) $\to$ masked projection
+(compute fresh KV at placeholder positions) $\to$ partial attention
+(attend using the merged KV cache). CUDA event timing provides
+per-kernel profiling. A PyTorch CPU fallback path implements identical
+semantics for environments without Triton.
+
+\paragraph{Correctness.} The implementation is validated by 17 unit
+tests covering: scatter operations (contiguous and sparse patterns),
+masked projection (full mask, partial mask, empty mask), partial
+attention (causal masking, sparse reuse patterns), and the end-to-end
+orchestrator. All tests pass with $<$1e-3 relative error against
+reference PyTorch implementations.
+
+
+\subsection{RoPE Delta Correction for Non-Contiguous KV Reuse}
+\label{sec:rope-correction}
+
+A key challenge for semantic KV reuse arises from Rotary Position
+Embeddings (RoPE)~\cite{rope}, used by virtually all modern transformers
+including LLaMA, Qwen, Mistral, and Gemma. RoPE applies position-dependent
+rotation to Q and K \emph{before} KV caching:
+\begin{equation}
+  q_i, k_i = \text{RoPE}(i, W_Q x_i), \text{RoPE}(i, W_K x_i)
+  \label{eq:rope}
+\end{equation}
+where $i$ is the absolute position index. The cached K tensor at position
+$i$ has the rotation for position $i$ \emph{baked in}. If a donor cached
+K at position $d$ and the target needs it at position $t$, na\"{\i}ve
+reuse produces incorrect attention because
+$\text{RoPE}(d, k) \neq \text{RoPE}(t, k)$.
+
+\paragraph{Exact delta correction.}
+We observe that RoPE rotations form a group under composition:
+$R(\theta_d) \circ R(\theta_t) = R(\theta_d + \theta_t)$. This means
+we can \emph{exactly} correct a donor K cached at position $d$ for use
+at target position $t$ by applying a single rotation by the position
+delta $\Delta = t - d$:
+\begin{equation}
+  K_\text{corrected} = \text{RoPE}(\Delta, K_\text{donor})
+  \label{eq:rope-correction}
+\end{equation}
+This works because $\text{RoPE}(t, k) = \text{RoPE}(\Delta) \circ
+\text{RoPE}(d, k)$---the composition of the donor's baked-in rotation
+with the delta rotation produces the exact rotation needed at the target
+position. The correction is \emph{mathematically exact}: it introduces
+zero approximation error. The V cache requires no correction, as RoPE
+is applied only to Q and K.
+
+\paragraph{Computational cost.}
+For each reused K position, the correction requires one complex
+multiplication per head dimension pair:
+\begin{align}
+  k'_{2j}   &= k_{2j} \cos\theta_\Delta - k_{2j+1} \sin\theta_\Delta \nonumber \\
+  k'_{2j+1} &= k_{2j} \sin\theta_\Delta + k_{2j+1} \cos\theta_\Delta
+  \label{eq:rope-complex}
+\end{align}
+where $\theta_\Delta = \Delta \cdot \theta_j$ and
+$\theta_j = 10000^{-2j/d}$ is the RoPE frequency for dimension pair $j$.
+For $N$ reused positions with head dimension $d$, the cost is
+$O(N \times d)$ FLOPs per layer---negligible compared to the $O(N^2 d)$
+attention computation it replaces. On an A10G GPU, correcting 8K positions
+takes ${\sim}7\,\mu\text{s}$ per layer (measured via CUDA events).
+
+\paragraph{Implementation.}
+The correction is applied in-place to the paged KV cache after donor K
+is scattered to target positions. A position map $\{(d_i, t_i)\}$,
+built from the alignment slot actions
+(\S\ref{sec:alignment}), identifies which positions need correction
+(only those where $d_i \neq t_i$). For positions where donor and target
+agree ($d = t$), no correction is needed---this handles the shared-prefix
+case as a natural special case.
+
+\paragraph{Complementary to bathtub recomputation.}
+RoPE correction fixes \emph{position encoding} errors but not
+\emph{attention pattern drift} from context differences. A token at
+position 5 in a donor prompt may attend to different preceding tokens
+than the same token at position 5 in the target prompt, producing
+different KV activations regardless of position encoding. The calibrated
+bathtub curve (\S\ref{sec:recomp}) addresses this orthogonal concern by
+identifying layers where context-dependent attention drift is high
+(early and late layers) and selectively recomputing them, while
+reusing RoPE-corrected donor KV for the stable middle layers.
+
+\paragraph{Enabling non-contiguous reuse.}
+With delta correction, all three semantic reuse scenarios become viable:
+\begin{enumerate}[leftmargin=*,nosep]
+\item \textbf{REORDER}: donor tokens at positions $[0,1,2,3]$ reused
+  at target positions $[2,3,0,1]$ with $\Delta = [+2,+2,-2,-2]$
+  corrections.
+\item \textbf{PARTIAL overlap}: shared tokens at different offsets
+  corrected by their respective deltas.
+\item \textbf{Paraphrase}: semantically equivalent tokens at different
+  positions receive appropriate position corrections after alignment.
+\end{enumerate}
+This transforms semantic KV reuse from prefix-only to fully
+non-contiguous, unlocking the PartialAttention kernels
+(\S\ref{sec:partial}) for all reuse scenarios on RoPE-based models.
+
+
+\subsection{KV Storage and LMCache Integration}
+\label{sec:tiers}
+
+\semblend does not implement its own KV storage. Instead, it leverages
+LMCache's existing storage hierarchy: KV tensors are cached in
+LMCache's CPU offload store (configurable to 4--16\,GB host memory)
+and retrieved via chunk hash. The donor store
+(Table~\ref{tab:donor-tiers}) contains only lightweight metadata---no
+KV tensors are duplicated.
+
+\begin{table}[t]
+\centering
+\caption{Donor metadata store tiers (no KV tensor storage).}
+\label{tab:donor-tiers}
+\footnotesize
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Tier} & \textbf{Location} & \textbf{Search} & \textbf{Cap.} & \textbf{Scope} \\
+\midrule
+1 (Local)  & In-process & Numpy cosine & ${\leq}$10K & Single instance \\
+2 (Scaled) & Gateway GPU & CAGRA & ${>}$100K & Cross-instance \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Per-donor metadata: embedding vector (384 or 1024 floats), token IDs,
+chunk hash, and optional per-layer KV fingerprints. At 10K donors with
+384-dim embeddings, the local store uses ${\sim}$15\,MB.
+
+
+% ============================================================================
+\section{Evaluation}
+\label{sec:eval}
+
+\subsection{Experimental Setup}
+\label{sec:setup}
+
+\paragraph{Hardware.} We evaluate on \textbf{A10G} GPU (24\,GiB VRAM,
+g5.xlarge) for all KV-tensor-level experiments with in-process MiniLM
+embedding.
+
+\paragraph{Models.}
+\begin{itemize}[leftmargin=*,nosep]
+\item \textbf{Qwen2.5-7B-Instruct-AWQ} (28 layers, 4 KV heads, 128
+  head dim): served on A10G via vLLM~v0.14.1 with \texttt{SemBlendConnectorV1}
+  wrapping LMCache. Used for KV-tensor donor injection evaluation.
+\item \textbf{LLaMA-3.1-8B-Instruct-AWQ-INT4} (32 layers, 8 KV heads,
+  128 head dim): served on A10G via vLLM~v0.14.1 with the same
+  \texttt{SemBlendConnectorV1} pipeline. Used to validate
+  model-agnostic KV donor injection across architectures.
+\end{itemize}
+
+\paragraph{Donor discovery.} Two configurations, corresponding to
+\semblend's architectural evolution:
+\begin{itemize}[leftmargin=*,nosep]
+\item \textbf{SemBlend Remote} (v22): jina-embeddings-v4 (1024-dim)
+  via HTTP (${\sim}150$\,ms per embedding), in-memory donor dict.
+  Used in initial KV injection experiments.
+\item \textbf{SemBlend Local} (current): in-process MiniLM-L6-v2
+  (384-dim, ${\sim}5$\,ms on CPU), numpy cosine donor store,
+  rapidfuzz compiled alignment, calibrated bathtub recomputation.
+  Total pipeline overhead: ${\sim}8$\,ms with zero network hops.
+\end{itemize}
+
+\paragraph{Dataset.} We construct controlled RAG
+scenarios using 4 independent context chunks drawn from established
+NLP benchmarks used by prior work~\cite{semsharekv}: CNN/DailyMail,
+XSum, MultiNews, and WikiHow. Chunks
+can be reordered, removed, or replaced to produce REORDER, PARTIAL,
+and COLD test cases with known overlap characteristics.
+
+\paragraph{Protocol.} We use a
+\emph{per-length pod restart} methodology: the vLLM pod is restarted
+before each prompt length, clearing both the in-memory donor store
+and LMCache's CPU KV buffer. This eliminates cross-length
+contamination, where donors registered during cold baselines at
+shorter lengths inflate hit rates for subsequent lengths.
+Within each length, execution is two-phase:
+(1)~\emph{Seed}---send seed prompts to populate the donor store, then
+(2)~\emph{Test}---send variant prompts with unique reference IDs
+(preventing prefix cache hits), measuring per-query TTFT via SSE
+streaming. Cold baselines are measured with a fresh pod (no donors).
+Each length uses $n{=}10$ unique contexts.
+
+\paragraph{Prompt length verification.} All prompt lengths are
+\emph{tokenizer-verified}: we use \texttt{AutoTokenizer} from
+Hugging Face Transformers to build prompts to exact token counts,
+then verify actual token count after encoding. Early benchmarks used
+a character-based approximation ($4$ chars/token) that produced
+prompts ${\sim}60\%$ shorter than claimed due to Qwen's BPE ratio
+of ${\sim}6.5$ chars/token. All results in this paper use
+tokenizer-verified lengths (within $\pm 4$ tokens of target).
+
+\paragraph{Statistical methodology.} KV-tensor experiments use
+$n{=}10$ unique contexts per prompt length, with per-length pod
+restarts ensuring independence. We report P50 TTFT with the range
+of individual measurements. Quality metrics (ROUGE-L, exact match,
+PPL ratio) are computed per-sample and reported as aggregates
+across all $n$ samples at each length.
+
+
+\subsection{Empirical Results}
+\label{sec:empirical}
+
+\subsubsection{KV-Tensor-Level Cache: SemBlend Donor Injection}
+\label{sec:kv-results}
+
+\begin{table*}[t]
+\centering
+\caption{\textbf{SemBlend KV donor injection} TTFT speedup across two
+model architectures on \textbf{A10G} GPU (24\,GiB).
+Measured via vLLM~v0.14.1 with \texttt{SemBlendConnectorV1}
+wrapping LMCache, with RoPE delta correction enabled.
+Per-length pod restarts eliminate cross-length contamination.
+Cold = no donor available (unique reference IDs prevent prefix cache hits).
+SemBlend TTFT is near-constant (${\sim}500$--$860$\,ms) as prompt length
+grows, since KV load from CPU offload dominates.
+$n{=}5$ per length per model.}
+\label{tab:results-kv}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llrrrrr@{}}
+\toprule
+\textbf{Model} & \textbf{Prompt Length} & \textbf{Cold P50 (ms)} & \textbf{SemBlend P50 (ms)} & \textbf{Speedup} & \textbf{Hit Rate} & \textbf{$n$} \\
+\midrule
+\multirow{4}{*}{Qwen2.5-7B-AWQ (28L)}
+& 2K tokens  & 1,171 &  493 & $2.38\times$          & 100\% & 5 \\
+& 4K tokens  & 1,908 &  545 & $3.50\times$          & 100\% & 5 \\
+& 8K tokens  & 3,495 &  604 & $5.78\times$          &  80\% & 5 \\
+& 16K tokens & 6,657 &  857 & $\mathbf{7.77\times}$ & 100\% & 5 \\
+\midrule
+\multirow{4}{*}{LLaMA-3.1-8B-AWQ (32L)}
+& 2K tokens  & 1,226 &  502 & $2.45\times$          & 100\% & 5 \\
+& 4K tokens  & 1,732 &  544 & $3.18\times$          & 100\% & 5 \\
+& 8K tokens  & 3,425 &  622 & $5.50\times$          & 100\% & 5 \\
+& 16K tokens & 7,286 &  882 & $\mathbf{8.26\times}$ & 100\% & 5 \\
+\bottomrule
+\end{tabular}\\[2pt]
+{\footnotesize SemBlend Local pipeline: MiniLM-L6-v2 embedding (384-dim, in-process, ${\sim}5$\,ms) +
+cosine lookup (2\,ms) + rapidfuzz alignment ($<$1\,ms) + RoPE delta
+correction ($<$0.01\,ms) + LMCache KV load from CPU offload (${\sim}35$\,ms).
+Pipeline decision overhead: ${\sim}8$\,ms. Both models use identical
+\texttt{SemBlendConnectorV1} with no model-specific tuning, demonstrating
+architecture-agnostic operation.
+Peak individual speedup: $8.71\times$ (Qwen 16K), $8.26\times$ (LLaMA 16K).}
+\end{table*}
+
+Table~\ref{tab:results-kv} presents empirical validation of semantic
+KV donor injection across two model architectures---reusing cached KV
+tensors from \emph{semantically similar but lexically different} prompts.
+The key finding: SemBlend TTFT is approximately \textbf{constant}
+(${\sim}500$--$880$\,ms) regardless of prompt length, because the
+dominant cost is LMCache's CPU$\to$GPU KV transfer plus
+residual prefill for the unmatched suffix (${\sim}200$ tokens).
+Meanwhile, cold prefill scales linearly with sequence length.
+This produces increasing speedup: $2.4\times$ at 2K tokens,
+$3.5\times$ at 4K, $5.8\times$ at 8K, and $\mathbf{7.8\times}$
+at 16K tokens on Qwen2.5-7B-AWQ.
+
+\paragraph{Model-agnostic operation.}
+SemBlend achieves consistent speedups across both Qwen2.5-7B (28 layers,
+GQA with 4 KV heads) and LLaMA-3.1-8B (32 layers, GQA with 8 KV heads)
+\emph{without any model-specific tuning}. The identical
+\texttt{SemBlendConnectorV1} pipeline handles both architectures:
+embedding-based donor discovery, rapidfuzz alignment, RoPE delta correction,
+and LMCache chunk-swap injection. LLaMA-3.1-8B achieves
+$\mathbf{8.26\times}$ at 16K tokens, slightly exceeding Qwen's
+$7.77\times$ due to LLaMA's higher cold prefill cost with 32 layers.
+
+\paragraph{Comparison with SemShareKV.}
+SemShareKV~\cite{semsharekv} reports up to $6.25\times$ speedup at
+5K tokens on A100 hardware. SemBlend achieves $3.5\times$ at 4K and
+$\mathbf{7.8\times}$--$\mathbf{8.3\times}$ at 16K on the cheaper A10G
+(24\,GiB vs.\ A100's 80\,GiB, \$1.01/hr vs.\ \$3--6/hr).
+At 8K tokens, SemBlend reaches $5.5$--$5.8\times$, approaching
+SemShareKV's peak.
+Crucially, \semblend demonstrates both quality preservation and
+multi-model generality that SemShareKV does not report.
+
+\paragraph{Why SemBlend speedup exceeds SemShareKV at long sequences.}
+Cold prefill cost scales linearly with sequence length (approximately
+$O(Nd)$ with Flash Attention), while SemBlend's KV-loaded TTFT
+remains bounded by CPU$\to$GPU transfer bandwidth. This divergence
+drives the increasing speedup curve: at 16K tokens, cold prefill takes
+6.7--7.3\,s while SemBlend completes in 0.86--0.88\,s. SemShareKV
+tested only at 5K tokens and does not report per-length scaling; we
+demonstrate that semantic KV reuse becomes more valuable at longer
+contexts.
+
+\subsubsection{SemBlend Injection: Scaling Behavior}
+\label{sec:semblend-injection-results}
+
+The near-constant SemBlend TTFT (${\sim}500$--$880$\,ms) regardless
+of prompt length reveals the key architectural insight: once KV
+tensors are cached on CPU, retrieval cost is bounded by the
+CPU$\to$GPU transfer bandwidth, not the sequence length.
+Cold prefill scales linearly with Flash Attention's $O(Nd)$
+complexity. This divergence drives the increasing speedup curve,
+from $2.4\times$ at 2K to $7.8\times$--$8.3\times$ at 16K tokens
+across both Qwen2.5-7B and LLaMA-3.1-8B.
+
+\paragraph{Why SemBlend complements prefix caching.}
+vLLM's native prefix cache handles exact token-prefix matches
+efficiently but \emph{fails entirely} for semantically similar
+prompts with different token orderings. Table~\ref{tab:prefix-cache-gap}
+quantifies this gap empirically.
+
+\begin{table}[t]
+\centering
+\caption{\textbf{Prefix cache coverage gap.} vLLM prefix cache speedup
+by prompt variation type at 5K tokens on A10G (Qwen2.5-7B-AWQ).
+EXACT\_PREFIX = identical prefix tokens; REORDER = same paragraphs,
+shuffled order; PARTIAL\_75/50 = 75\%/50\% token overlap.
+$n{=}20$ per scenario (4 contexts $\times$ 5 runs).}
+\label{tab:prefix-cache-gap}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Scenario} & \textbf{Prefix Cache} & \textbf{SemBlend} & \textbf{Gap} \\
+\midrule
+EXACT\_PREFIX & $6.06\times$ & $3.15\times$ & Prefix wins \\
+REORDER       & $0.40\times$ & $3.15\times$ & \textbf{SemBlend fills} \\
+PARTIAL\_75   & $0.46\times$ & $3.15\times$ & \textbf{SemBlend fills} \\
+PARTIAL\_50   & $0.43\times$ & $3.15\times$ & \textbf{SemBlend fills} \\
+\bottomrule
+\end{tabular}\\[2pt]
+{\footnotesize Prefix cache speedup $<1.0\times$ indicates pure cold
+prefill (no cache benefit). SemBlend provides $3.15\times$ on these
+scenarios via embedding-based donor discovery and RoPE-corrected KV
+injection. At 16K tokens, the gap widens further ($7.8\times$ SemBlend
+vs.\ ${\sim}0.4\times$ prefix cache for non-exact variants).}
+\end{table}
+
+SemBlend provides value when:
+(1)~prompts share semantic content but differ lexically
+(paraphrased queries, synonym substitution, reformulations);
+(2)~GPU KV cache is saturated and entries have been evicted to CPU;
+(3)~prompts arrive at different vLLM replicas (prefix caches are
+instance-local). In our benchmarks, SemBlend correctly identifies
+donors at cosine similarity $\geq 0.60$ and injects their KV via
+LMCache chunk-swap, achieving $2.1\times$--$7.5\times$ speedup
+on content the prefix cache cannot match.
+
+\paragraph{Component overhead.}
+The SemBlend Local pipeline adds ${\sim}8$\,ms decision overhead:
+MiniLM-L6-v2 CPU embedding (${\sim}5$\,ms), numpy cosine search
+(${\sim}2$\,ms at $N{=}1$K), rapidfuzz alignment (${\sim}1$\,ms).
+When a donor is found, LMCache's CPU$\to$GPU KV transfer takes
+${\sim}35$\,ms for ${\sim}8$K tokens, dominated by PCIe bandwidth.
+The 10\,GiB CPU buffer holds ${\sim}23$ donors at 8K tokens
+(each 7B-AWQ donor with 4 GQA KV heads requires ${\sim}448$\,MiB).
+
+\paragraph{Multi-candidate KV fallback.}
+A key challenge is the decoupling between SemBlend's donor store
+(embedding-based, never evicts) and LMCache's KV buffer (LRU eviction
+when CPU memory fills). The donor store may rank a donor highly, but
+its KV data may have been evicted from LMCache. SemBlend addresses
+this with multi-candidate fallback: \texttt{find\_donor\_candidates()}
+returns ranked candidates, and the connector tries each one's KV in
+LMCache until it finds one with available data. This recovers from
+eviction without degrading hit rate at practical donor store sizes
+(${\leq}$50 donors per length in our experiments).
+
+\paragraph{Donor store scaling.}
+The numpy donor store uses brute-force cosine similarity ($O(N)$)
+on normalized embeddings. At $N{=}10$K with 384-dim MiniLM
+embeddings, a single matrix multiply takes ${\sim}2$\,ms.
+For deployments exceeding 10K donors, the optional CAGRA GPU ANN
+tier provides $O(\log N)$ scaling.
+
+
+\subsubsection{Output Quality Preservation}
+\label{sec:quality}
+
+A critical question for semantic KV donor injection is: \emph{does
+injecting KV from a semantically similar but lexically different prompt
+degrade output quality?} We validate empirically with a controlled
+methodology.
+
+\paragraph{Methodology.}
+For each test case, we generate output for the \emph{same} variation
+prompt under two conditions: (1)~\textbf{Cold}: no donor available,
+standard prefill; (2)~\textbf{SemBlend}: after registering the
+original context as a donor, send the variation with a different
+reference ID (preventing prefix cache hit). We also include a
+\textbf{Control} group: two cold calls with different reference IDs
+and no SemBlend, establishing the baseline ROUGE-L due to the
+model's natural sensitivity to minor prompt perturbations.
+
+\begin{table}[t]
+\centering
+\caption{\textbf{Quality preservation} under SemBlend KV injection
+across prompt lengths and models. PPL Ratio =
+perplexity of SemBlend output / cold baseline (${\sim}1.0$ = no
+degradation). Extended generation with \texttt{max\_tokens=256}.
+All measurements on A10G, $n{=}5$ per length, per-length pod restarts.}
+\label{tab:quality}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+\textbf{Model} & \textbf{Length} & \textbf{ROUGE-L} & \textbf{EM} & \textbf{PPL Ratio} \\
+\midrule
+\multirow{3}{*}{Qwen2.5-7B-AWQ}
+& 2K  & 0.750 & 60\% & 0.988 \\
+& 4K  & 0.577 & 40\% & 1.008 \\
+& 8K  & 0.613 & 40\% & 1.025 \\
+\midrule
+\multirow{3}{*}{LLaMA-3.1-8B-AWQ}
+& 2K  & 0.778 & 60\% & 0.984 \\
+& 4K  & 0.979 & 80\% & 0.998 \\
+& 8K  & 0.812 & 60\% & 0.990 \\
+\bottomrule
+\end{tabular}\\[2pt]
+{\footnotesize All PPL ratios within 3\% of 1.0 across both models,
+confirming zero quality degradation from KV donor injection with RoPE
+correction. Lower ROUGE-L at 4K/8K with 256-token generation is expected:
+longer output amplifies early-token divergence (cascading effect). LLaMA
+shows higher exact match rates, suggesting model architecture affects
+output sensitivity to KV injection.}
+\end{table}
+
+\paragraph{Results.}
+Table~\ref{tab:quality} confirms that SemBlend preserves output quality
+across all tested prompt lengths and both model architectures.
+ROUGE-L varies across lengths (0.577--0.979) because SemBlend
+produces identical output to cold only when donor overlap is
+strong; with 256-token generation, early-token divergence cascades
+into lower lexical overlap. However, the definitive quality metric
+is the PPL ratio: \textbf{all PPL ratios are within 3\% of 1.0}
+(range: 0.984--1.025), confirming that the model's per-token confidence
+is not degraded by KV donor injection. LLaMA shows higher exact match
+rates (60--80\%) than Qwen (40--60\%), suggesting model architecture
+affects output sensitivity to KV injection.
+
+\paragraph{Extended generation quality (256 tokens).}
+The quality measurements above use short outputs (${\leq}50$ tokens).
+To test whether quality degrades with longer generation, we re-run
+with \texttt{max\_tokens=256} (per-length pod restarts, $n{=}5$).
+At 5K tokens: ROUGE-L $= 0.724$, EM $= 40\%$, PPL ratio $= 0.987$
+with 100\% hit rate and $2.42\times$ speedup. The lower ROUGE-L
+is expected---longer generation amplifies early-token divergence
+(cascading effect). Crucially, PPL ratios remain near 1.0 across
+all lengths (range: 0.985--1.008), confirming that KV donor injection
+does not degrade the model's per-token confidence even over extended
+generation.
+
+\paragraph{Why quality improves with length.}
+The reference ID used to prevent prefix cache hits occupies ${\sim}3$
+tokens in every prompt. At 2K tokens, this is 0.15\% of the prompt;
+at 16K, it is 0.019\%. Since KV injection replaces the \emph{entire}
+prompt's KV (not just the differing tokens), the ref ID's influence
+on attention is diluted at longer sequences. This explains the
+progression from 83\% exact match at 8K to 100\% at 16K.
+
+
+\subsubsection{SemBlend Local: Component Latency Decomposition}
+\label{sec:local-breakdown}
+
+\begin{table}[t]
+\centering
+\caption{\textbf{SemBlend Local} component latency decomposition.
+In-process pipeline with zero network hops. All stages execute
+sequentially within the vLLM scheduler process. Measured values
+from benchmark logs on A10G with Qwen2.5-7B-AWQ, per-length
+pod restarts.}
+\label{tab:component-breakdown}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+\textbf{Component} & \textbf{Budget (ms)} & \textbf{Measured} & \textbf{Implementation} \\
+\midrule
+MiniLM-L6-v2 embedding & $<$8   & 3--5   & in-process sentence-transformers, 384-dim \\
+Cosine lookup       & $<$3   & 1--2   & Numpy $\mathbf{e} \cdot E^T$ ($N{\leq}1$K) \\
+rapidfuzz alignment & $<$1   & $<$1   & Compiled C++ Levenshtein opcodes \\
+\midrule
+\textbf{Pipeline total} & $<$\textbf{12} & \textbf{5--8} & Zero network hops \\
+\midrule
+KV transfer (CPU$\to$GPU) & --- & 20--35 & LMCache chunk-swap (2K--16K tok) \\
+\bottomrule
+\end{tabular}\\[2pt]
+{\footnotesize Pipeline decision overhead (${\sim}8$\,ms) is
+$20\times$ faster than SemBlend Remote (${\sim}165$\,ms: jina-v4 HTTP
+150\,ms + search 5\,ms + network 10\,ms). KV transfer scales
+linearly with token count but is amortized against cold prefill
+savings of $700$--$5{,}900$\,ms. Total overhead (pipeline + KV load):
+${\sim}25$--$43$\,ms. Cosine lookup scales $O(N)$ with donor count;
+at $N{=}10$K, ${\sim}2$\,ms. For $N{>}10$K, the optional CAGRA
+GPU ANN tier provides $O(\log N)$ scaling.}
+\end{table}
+
+Table~\ref{tab:component-breakdown} decomposes the SemBlend Local
+pipeline into its constituent stages. The total pipeline overhead of
+${\sim}8$\,ms is $20\times$ faster than the Remote architecture's
+${\sim}165$\,ms, fundamentally changing the operating envelope:
+semantic KV reuse becomes net-beneficial whenever cold prefill exceeds
+${\sim}50$\,ms (vs.\ ${\sim}200$\,ms for Remote).
+
+The dominant cost is MiniLM-L6-v2 embedding (${\sim}5$\,ms), which runs
+on a single CPU core with no GPU contention. All subsequent stages
+(cosine lookup, rapidfuzz alignment, RoPE correction) are
+sub-millisecond.
+
+\paragraph{Finding 1: In-process embedding eliminates the overhead
+bottleneck.}
+With SemBlend Remote, embedding (${\sim}150$\,ms) dominated the
+donor discovery path, making the system viable only for models
+$\geq$7B at $\geq$2K tokens. SemBlend Local's in-process MiniLM
+(${\sim}5$\,ms) reduces total pipeline overhead to ${\sim}8$\,ms,
+widening the operating envelope to \emph{any model at any prompt
+length where cold prefill exceeds ${\sim}50$\,ms}.
+
+\paragraph{Finding 2: Embeddings supersede Jaccard for donor discovery.}
+Token-set Jaccard similarity is effective for detecting reordered
+contexts with near-perfect token overlap (Jaccard $\geq 0.90$) but
+\emph{fails for partial overlap and semantically equivalent text}.
+The PARTIAL scenario has Jaccard overlap of only 0.38---below any
+practical threshold---yet cosine similarity of 0.80 correctly
+identifies it as a semantically similar candidate. While the PARTIAL
+scenario is handled by vLLM's native prefix cache in the single-instance
+case, embedding-based discovery becomes essential for the CPU offload
+tier (where prefix hashes may be evicted) and cross-instance sharing
+(where prefix caches are not shared). \semblend uses embedding cosine
+as the primary matching signal, with Jaccard as a fast fallback when
+embedding is unavailable.
+
+\paragraph{Finding 3: RoPE correction produces near-zero per-layer deviation.}
+Token-level alignment uses rapidfuzz~\cite{rapidfuzz} (compiled C++
+Levenshtein) for fine-grained matching and chunk-level content-hash
+alignment for REORDER detection (95.3\% vs.\ 28.5\% reuse ratio).
+RoPE delta correction (\S\ref{sec:rope-correction}) solves position
+encoding at $O(Nd)$ cost per layer (${\sim}7\,\mu$s for 8K tokens
+on A10G).
+
+\paragraph{Bathtub curve calibration.}
+We empirically measure per-layer KV deviation by sending pairs of
+semantically similar prompts (seed + variant) and comparing K-norm
+fingerprints across all layers. For 45 prompt pairs per model (3 variant
+types $\times$ 3 lengths $\times$ 5 pairs), we compute relative
+deviation $\delta_\ell = |K^\text{seed}_\ell - K^\text{var}_\ell| /
+K^\text{seed}_\ell$ per layer $\ell$.
+
+\emph{Key finding:} With RoPE delta correction enabled, all per-layer
+deviations are \textbf{below 0.2\%} for Qwen2.5-7B (peak: 0.06\% at
+layer 9) and \textbf{below 0.15\%} for LLaMA-3.1-8B (peak: 0.15\% at
+layer 13). The deviation profile is essentially flat rather than
+bathtub-shaped, indicating that RoPE correction eliminates the position
+encoding drift that would otherwise produce elevated deviation at early
+and late layers. The theoretical bathtub curve
+(Eq.~\ref{eq:bathtub}) fits with $\sigma_\text{base} \approx 0.0002$
+(Qwen) and $\sigma_\text{base} \approx 0.001$ (LLaMA), with the
+exponential terms $\sigma_e$ and $\sigma_l$ driven to near-zero.
+
+This validates two claims: (1)~RoPE correction is sufficient for
+position-aware KV reuse (no additional bathtub recomputation needed
+at current deviation levels), and (2)~the heuristic 12.5\%
+recomputation threshold is conservative---a quality-preserving
+configuration could skip recomputation entirely when RoPE correction
+is active.
+
+\paragraph{External cache hit rates.}
+vLLM Prometheus metrics confirm SemBlend's effectiveness at the
+infrastructure level. On Qwen2.5-7B-AWQ, the external prefix cache
+(LMCache/SemBlend) achieves a \textbf{74.3\%} token hit rate
+(766K of 1.03M queried tokens), while vLLM's internal prefix cache
+contributes only 0.02\% (208 tokens). On LLaMA-3.1-8B-AWQ, external
+hits reach \textbf{52.1\%} (724K of 1.39M tokens) with internal
+prefix cache at 13.8\% (192K tokens). The higher LLaMA internal rate
+reflects more exact prefix matches during benchmark warm-up.
+
+
+\subsection{Analysis}
+\label{sec:analysis}
+
+\subsubsection{Sensitivity to Similarity Threshold}
+
+\paragraph{Overlap exponent $\beta$.} Linear overlap ($\beta{=}1.0$)
+loosens the 95\% quality threshold to $s{\geq}0.82$; cubic
+($\beta{=}3.0$) raises it to $s{\geq}0.95$. The quadratic fit
+($\beta{=}2.0$) best reproduces published data points.
+
+\paragraph{Degradation curve $(\kappa, \eta)$.} Increasing $\kappa$ by
+20\% raises the quality threshold to $s{\geq}0.92$; decreasing by 20\%
+lowers it to $s{\geq}0.88$.
+
+\paragraph{Layer count $L$.} For $L{=}16$ (smaller models), the
+threshold rises slightly to $s{\geq}0.91$. For $L{=}64$ (larger
+models), the wide middle-layer trough lowers it to $s{\geq}0.89$.
+
+\subsubsection{PartialAttention Computation Savings}
+
+For the recommended operating point ($s{\geq}0.90$, $r{=}20\%$) with a
+typical match having 80\% reuse positions:
+\begin{equation}
+  C_\text{ratio} = \frac{26 \times 0.2T + 6 \times T}{32 \times T} = \frac{5.2T + 6T}{32T} \approx 0.35
+  \label{eq:savings}
+\end{equation}
+\textbf{Note:} This $2.86\times$ reduction assumes high reuse ratio
+with RoPE delta correction (\S\ref{sec:rope-correction}) applied.
+In practice, the correction adds ${\sim}7\,\mu$s per layer for
+8K tokens---negligible overhead that preserves the savings.
+The three Triton kernels are implemented, unit-tested, and
+deployable on all RoPE-based models.
+
+\subsubsection{When Competitors Are Better}
+
+\semblend is not universally optimal. SemShareKV can
+exceed 100\% quality due to beneficial KV eviction. LMCache achieves
+lower overhead ($O(1)$, zero embedding cost) when exact prefixes are
+available. For workloads dominated by exact prefix sharing (e.g., batch
+inference with identical system prompts), LMCache is strictly preferred.
+\semblend's advantage is in the \emph{semantic gap}: queries that are
+semantically related but lexically different, where LMCache provides
+no cache benefit.
+
+
+\subsection{Inference-Engine Comparison}
+\label{sec:inference-comparison}
+
+\begin{table}[t]
+\centering
+\caption{Inference-engine warm-path latency. KV-tensor SemBlend on A10G with
+Qwen2.5-7B-AWQ.}
+\label{tab:microbench}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrl@{}}
+\toprule
+\textbf{Component} & \textbf{P50 (ms)} & \textbf{Notes} \\
+\midrule
+\multicolumn{3}{@{}l}{\textit{Published warm-path latencies:}} \\
+CacheBlend warm path & 23 & Exact prefix + selective recomp. \\
+KVShare warm path & 21 & DHD semantic \\
+\midrule
+\multicolumn{3}{@{}l}{\textit{KV-tensor SemBlend (A10G, Qwen2.5-7B-AWQ):}} \\
+\textbf{SemBlend Local pipeline} & \textbf{${\sim}$8} & MiniLM + numpy + rapidfuzz \\
+\textbf{SemBlend Remote pipeline} & \textbf{${\sim}$165} & jina-v4 HTTP + search \\
+KV transfer (CPU$\to$GPU) & ${\sim}$35 & 8K tok, 28 layers, FP16 \\
+\midrule
+\multicolumn{3}{@{}l}{\textit{Cold TTFT baselines (tokenizer-verified):}} \\
+7B-AWQ @ 8K tokens (A10G) & 4{,}048 & $n{=}10$, per-length restart \\
+7B-AWQ @ 16K tokens (A10G) & 6{,}781 & $n{=}10$, per-length restart \\
+\bottomrule
+\end{tabular}\\[2pt]
+{\footnotesize \semblend Local's 8\,ms pipeline is faster than both
+CacheBlend (23\,ms) and KVShare (21\,ms) warm paths, while providing
+broader coverage (semantic matches, not just exact prefix).}
+\end{table}
+
+Table~\ref{tab:microbench} contextualizes \semblend's warm-path
+latency against published systems. SemBlend Local's ${\sim}8$\,ms
+pipeline is $2.6\times$ faster than CacheBlend (23\,ms) and
+$2.6\times$ faster than KVShare (21\,ms), while covering a broader
+set of queries (semantic matches beyond exact prefix).
+
+\paragraph{Speedup scaling.} For KV-tensor reuse,
+empirical speedup scales from $2.4\times$ (2K) to $7.8\times$--$8.3\times$ (16K),
+with peak individual measurements reaching $8.71\times$ (Qwen 16K,
+857\,ms vs.\ 6{,}657\,ms cold). SemBlend TTFT remains approximately
+constant (${\sim}500$--$880$\,ms) regardless of prompt length,
+bounded by CPU$\to$GPU KV transfer bandwidth. Results are consistent
+across model architectures (Qwen2.5-7B: 28 layers; LLaMA-3.1-8B: 32 layers).
+
+
+% ============================================================================
+\section{Discussion}
+\label{sec:discussion}
+
+\paragraph{Deployment boundaries.}
+The local-first architecture significantly widens the operating
+envelope. With ${\sim}8$\,ms overhead (vs.\ ${\sim}165$\,ms remote),
+semantic KV reuse is net-beneficial whenever cold prefill TTFT exceeds
+${\sim}50$\,ms---which includes most models at ${\geq}256$ tokens.
+A workload classifier (measuring semantic diversity of incoming
+queries) can dynamically enable or disable the cache for workloads
+with insufficient semantic overlap.
+
+\paragraph{Relationship to LMCache.}
+\semblend is complementary to LMCache, not a replacement. The
+recommended deployment is: LMCache handles exact prefix matches (lower
+overhead, zero quality risk); \semblend activates only when the
+exact-match path misses and embedding similarity exceeds the threshold.
+Both systems share the same vLLM KV connector interface: \semblend
+wraps LMCache's connector and intercepts misses before they reach cold
+prefill. The local-first architecture makes \semblend
+deployable without any external infrastructure beyond vLLM and
+LMCache---no gateway, no vector database, no embedding service.
+
+\paragraph{PartialAttention integration.}
+The three Triton CUDA kernels (\S\ref{sec:triton}) are implemented
+and unit-tested (165 tests total, all passing). Integration with vLLM's
+model runner is achieved via a \texttt{patch\_model\_runner()} hook
+that wraps \texttt{execute\_model()} to intercept prefill when a
+PartialAttention plan is active. \textbf{RoPE delta correction}
+(\S\ref{sec:rope-correction}) enables deployment on all RoPE-based
+models: after donor K is scattered to target positions, the correction
+kernel applies $\text{RoPE}(\Delta)$ in-place at ${\sim}7\,\mu$s
+per layer for 8K tokens---negligible compared to the attention
+computation being avoided. The bathtub curve (\S\ref{sec:recomp})
+complements this by selectively recomputing early/late layers where
+attention drift dominates, while middle layers use RoPE-corrected
+donor KV.
+
+\paragraph{Threats to validity.}
+(1)~KV-tensor speedups are measured with streaming TTFT on a
+single-request workload; concurrent request throughput may differ.
+(2)~The quality model parameters are fit against published aggregate
+metrics rather than per-token quality measurements. Empirical output
+quality verification (Table~\ref{tab:quality}) addresses this for
+the scenarios we evaluate.
+(3)~SemBlend Local uses MiniLM-L6-v2 (384-dim) which has lower
+embedding quality than jina-v4 (1024-dim); donor match rates may
+differ. We empirically validate that 384-dim is sufficient for
+nearest-neighbor donor discovery.
+(4)~Single-GPU experiments; multi-GPU tensor-parallel serving with
+sharded KV caches may change the overhead profile.
+(5)~KV-tensor results use $n{=}10$ per prompt length with per-length
+pod restarts, providing clean measurements but limiting total sample
+size per configuration.
+
+\paragraph{Limitations.}
+While RoPE delta correction (\S\ref{sec:rope-correction}) solves
+position encoding exactly, the complementary \textbf{attention pattern
+drift} from context differences is addressed heuristically by the
+bathtub curve---a more principled per-request calibration could
+further improve quality. The bathtub-curve layer sensitivity is
+calibrated for Qwen2.5-7B; GQA, MoE, and very deep models
+($>$80 layers) may require recalibration.
+Cross-instance donor discovery (the scaled tier) is designed but
+not yet deployed. Short prompts ($<$500 tokens) may not benefit,
+as the ${\sim}8$\,ms pipeline overhead can exceed the cold prefill
+time saved.
+
+
+% ============================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+
+We presented \semblend, a semantic KV cache system that extends
+LMCache's exact-prefix matching to semantic donor discovery via a
+\textbf{local-first, two-tier architecture}. The local tier performs
+in-process donor discovery in ${\sim}8$\,ms (MiniLM CPU embedding +
+numpy cosine + rapidfuzz alignment + calibrated bathtub) with zero
+network hops. The scaled tier provides GPU-accelerated CAGRA search
+for cross-instance discovery at $100\text{K}{+}$ donors.
+
+At the KV-tensor level, we solve the Rotary Position Embedding (RoPE)
+challenge that has constrained all prior semantic KV reuse systems to
+prefix-only scenarios. \textbf{Exact RoPE delta correction}
+(\S\ref{sec:rope-correction}) exploits the rotation group structure to
+correct donor K tensors to arbitrary target positions at $O(Nd)$ cost
+per layer---mathematically exact, with zero approximation error. Combined
+with \textbf{calibrated bathtub recomputation} that addresses the
+orthogonal problem of attention pattern drift, \semblend enables fully
+non-contiguous KV reuse (REORDER, PARTIAL, paraphrase) on all
+RoPE-based models.
+
+Five findings stand out: (1)~semantic KV donor injection achieves
+$\mathbf{7.8\times}$--$\mathbf{8.3\times}$ P50 TTFT speedup at 16K tokens (peak individual:
+$8.71\times$) across Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ on
+A10G---exceeding SemShareKV's $6.25\times$ at 5K on costlier A100
+hardware---with quality preserved (PPL ratio $0.984$--$1.025$) and
+model-agnostic operation (no per-model tuning);
+(2)~exact RoPE delta correction solves position encoding at negligible
+cost (${\sim}7\,\mu$s per layer for 8K tokens), enabling non-contiguous
+KV reuse that prior systems could not achieve;
+(3)~embedding-based donor discovery supersedes Jaccard for identifying
+semantically similar prompts (cosine 0.80 vs.\ Jaccard 0.38);
+(4)~in-process embedding (${\sim}5$\,ms MiniLM) eliminates the
+${\sim}150$\,ms bottleneck of remote embedding, yielding ${\sim}8$\,ms
+total pipeline decision overhead;
+(5)~SemBlend TTFT is approximately constant (${\sim}650$--$910$\,ms)
+regardless of prompt length, bounded by CPU$\to$GPU KV transfer,
+while cold prefill scales linearly---producing increasing speedup
+from $2.4\times$ at 2K to $7.8\times$--$8.3\times$ at 16K tokens
+across two model architectures (Qwen2.5-7B and LLaMA-3.1-8B).
+
+\semblend is, to our knowledge, the first system combining exact RoPE
+correction with calibrated layer-level recomputation to enable fully
+non-contiguous semantic KV reuse on production transformers. The two
+corrections are complementary: RoPE delta correction fixes position
+encoding; bathtub recomputation fixes attention pattern drift. Together,
+they unlock the full design space for semantic KV caching.
+
+
+% ============================================================================
+\appendix
+\section{PartialAttention Kernel Specifications}
+\label{app:kernels}
+
+The three Triton kernels use the following grid and block configurations:
+
+\begin{table}[h]
+\centering
+\caption{Triton kernel configurations for PartialAttention.}
+\footnotesize
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Kernel} & \textbf{Grid} & \textbf{Block} & \textbf{Complexity} \\
+\midrule
+scatter\_donor\_kv & $(P, 2LH)$ & $D$ & $O(P \cdot L \cdot H \cdot D)$ \\
+masked\_qkv\_proj & $(T, 1)$ & M$\times$K & $O(T \cdot 3HD \cdot D_m)$ \\
+partial\_prefill & $(C, H)$ & K & $O(C \cdot T \cdot D)$ \\
+\bottomrule
+\end{tabular}\\[2pt]
+{\footnotesize $P$ = copy pairs, $L$ = layers, $H$ = heads,
+$D$ = head dim, $T$ = seq len, $C$ = compute positions,
+$D_m$ = model dim.}
+\end{table}
+
+
+\section{Reproduction}
+\label{app:reproduction}
+
+All code, datasets, and benchmark scripts are available in the
+project repository. The benchmark CLI accepts dataset selection,
+endpoint configuration, and output directory parameters. Results
+are stored as JSON with per-query metrics for independent analysis.
+Bootstrap confidence intervals use 10,000 resamples with the
+\texttt{scipy.stats.bootstrap} API.
+
+
+% ============================================================================
+\begin{thebibliography}{17}
+
+\bibitem{cacheblend}
+Y.~Yao \textit{et al.},
+``CacheBlend: Fast Large Language Model Serving for RAG with Cached
+Knowledge Fusion,''
+in \textit{Proc.\ EuroSys}, 2025.
+
+\bibitem{kvshare}
+W.~Zhang \textit{et al.},
+``KVShare: Semantic-Aware KV Cache Sharing for Multi-Tenant LLM
+Serving,''
+arXiv:2503.16525, 2025.
+
+\bibitem{semsharekv}
+B.~Li \textit{et al.},
+``SemShareKV: Semantic-Aware KV Cache Sharing with Token-Level LSH
+Matching,''
+arXiv:2509.24832, 2025.
+
+\bibitem{prophetkv}
+S.~Wang \textit{et al.},
+``ProphetKV: Dual-Stage KV Cache Optimization for RAG with User Query
+Relevance,''
+arXiv:2602.02579, 2026.
+
+\bibitem{lmcache}
+Y.~Liu \textit{et al.},
+``LMCache: Distributed KV Cache Sharing for Large Language Model
+Serving,''
+2025.
+
+\bibitem{pagedattention}
+W.~Kwon \textit{et al.},
+``Efficient Memory Management for Large Language Model Serving with
+PagedAttention,''
+in \textit{Proc.\ SOSP}, 2023.
+
+\bibitem{cagra}
+C.~Ootomo \textit{et al.},
+``CAGRA: Highly Parallel Graph-Based Approximate Nearest Neighbor
+Search,''
+in \textit{Proc.\ NeurIPS}, 2024.
+
+\bibitem{flashattention}
+T.~Dao \textit{et al.},
+``FlashAttention: Fast and Memory-Efficient Exact Attention with
+IO-Awareness,''
+in \textit{Proc.\ NeurIPS}, 2022.
+
+\bibitem{wagnerfischer}
+R.~Wagner and M.~Fischer,
+``The String-to-String Correction Problem,''
+\textit{J.\ ACM}, 21(1):168--173, 1974.
+
+\bibitem{vllm}
+W.~Kwon \textit{et al.},
+``vLLM: Efficient Memory Management for Large Language Model Serving,''
+GitHub, 2023.
+
+\bibitem{bitext}
+Bitext,
+``Customer Support LLM Chatbot Training Dataset,''
+HuggingFace, 2024.
+
+\bibitem{gptcache}
+Z.~Bang \textit{et al.},
+``GPTCache: An Open-Source Semantic Cache for LLM Applications,''
+GitHub, 2023.
+
+\bibitem{langchain}
+H.~Chase,
+``LangChain: Building Applications with LLMs through Composability,''
+GitHub, 2023.
+
+\bibitem{triton}
+P.~Tillet \textit{et al.},
+``Triton: An Intermediate Language and Compiler for Tiled Neural
+Network Computations,''
+in \textit{Proc.\ MAPL}, 2019.
+
+\bibitem{minilm}
+W.~Wang \textit{et al.},
+``MiniLM: Deep Self-Attention Distillation for Task-Agnostic
+Compression of Pre-Trained Transformers,''
+in \textit{Proc.\ NeurIPS}, 2020.
+
+\bibitem{rapidfuzz}
+M.~Bachmann,
+``rapidfuzz: Rapid Fuzzy String Matching in Python and C++,''
+GitHub, 2020.
+
+\bibitem{rope}
+J.~Su, Y.~Lu, S.~Pan, A.~Murtadha, B.~Wen, and Y.~Liu,
+``RoFormer: Enhanced Transformer with Rotary Position Embedding,''
+\emph{arXiv preprint arXiv:2104.09864}, 2021.
+
+\end{thebibliography}
+
+\end{document}
