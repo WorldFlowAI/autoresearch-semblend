@@ -1464,17 +1464,29 @@ complements this by selectively recomputing early/late layers where
 attention drift dominates, while middle layers use RoPE-corrected
 donor KV.
 
-\paragraph{Ablation: PartialAttention contribution.}
-To isolate the contribution of bathtub recomputation
-(\S\ref{sec:recomp}), we disable PartialAttention and measure TTFT
-and quality with KV injection alone. Without recomputation, synthetic
-8K speedup is $5.51\times$ (vs.\ $5.66\times$ with recomputation)---a
-marginal 2.6\% difference---while PPL ratios remain acceptable
-(0.964--1.018). This confirms that the primary speedup derives from
-KV transfer bypassing full prefill, not from recomputation savings.
-PartialAttention's value is thus primarily in \emph{quality insurance}
-for high-drift layers, not TTFT improvement, and can be disabled for
-workloads prioritizing maximum throughput over strict quality parity.
+\paragraph{Ablation: component contributions.}
+We isolate two key components via ablation on Qwen2.5-7B-AWQ
+synthetic benchmarks at 8K tokens:
+
+\textbf{(1)~PartialAttention (bathtub recomputation):}
+Disabling selective layer recomputation yields $5.51\times$ speedup
+(vs.\ $5.66\times$ with recomputation)---a marginal 2.6\% difference---while
+PPL ratios remain acceptable (0.964--1.018). The primary speedup
+derives from KV transfer bypassing full prefill, not recomputation
+savings. PartialAttention's value is in \emph{quality insurance}
+for high-drift layers and can be disabled for throughput-focused
+workloads.
+
+\textbf{(2)~RoPE delta correction:}
+Disabling RoPE correction shows no quality degradation (PPL
+0.994--1.000, ROUGE-L 0.73--1.00). This is expected: LMCache's
+256-token chunk hashing reuses chunks at \emph{matching positions},
+making the RoPE delta zero. RoPE correction becomes essential when
+chunks are reused at non-matching positions---which occurs with
+sub-chunk alignment (future work) or alternative KV backends
+supporting finer-grained reuse. The correction is mathematically
+exact and computationally negligible (${\sim}7\,\mu$s/layer),
+so it is enabled by default as forward-compatible insurance.
 
 \paragraph{Threats to validity.}
 (1)~KV-tensor speedups are measured with streaming TTFT on a
