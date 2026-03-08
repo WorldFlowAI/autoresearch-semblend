@@ -17,3 +17,4 @@ c55a59a	3	threshold_ablation	ppl_ratio_0.60	1.022	hit_rate_0.40=0.75,hit_rate_0.
 ef90c3d	3	ttft_xsum_full	ttft_speedup_8k	1.97	speedup_2k=1.51,speedup_4k=1.33,speedup_12k=1.63,speedup_16k=1.52,hit_8k=1.0,hit_12k=1.0,hit_16k=1.0	keep	XSum full scaling 2K-16K: 100% hit@8K/12K/16K, 16K now works
 ef90c3d	3	ttft_synthetic_full	ttft_speedup_8k	5.66	speedup_2k=2.35,speedup_4k=2.21,speedup_12k=3.62,speedup_16k=1.75,hit_2k=1.0,hit_4k=1.0,hit_8k=1.0	keep	Synthetic full scaling: 5.66x@8K (100%), 12K/16K low hit due to cache eviction
 3955d3d	3	donor_scaling	ttft_speedup_pool1	10.49	pool2=10.71,pool4=10.74,pool8=10.71,pool16=10.67,pool32=9.26,hit_all=1.0	keep	Donor pool scaling@8K XSum: 100% hit all sizes, 9.3-10.7x speedup (prefix+SemBlend)
+9ed96fe	3	quality_cnn	ppl_ratio_8k	1.006	ppl_2k=0.96,ppl_4k=1.06,rouge_l_2k=0.582,rouge_l_4k=0.661,rouge_l_8k=0.765,em=0.33	keep	CNN/DM quality: PPL@8K=1.006 (excellent), 33% exact match, ROUGE-L improves with length
