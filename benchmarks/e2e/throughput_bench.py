@@ -254,10 +254,11 @@ async def _run_concurrency_level(
 
     sweep_start = time.monotonic()
 
-    async def _send(idx: int, prompt: str, query_type: str) -> QueryTiming:
-        async with sem:
-            wall_offset = (time.monotonic() - sweep_start) * 1000
-            async with aiohttp.ClientSession(connector=connector) as session:
+    async with aiohttp.ClientSession(connector=connector) as session:
+
+        async def _send(idx: int, prompt: str, query_type: str) -> QueryTiming:
+            async with sem:
+                wall_offset = (time.monotonic() - sweep_start) * 1000
                 ttft, total, status, err = await _measure_single_query(
                     session=session,
                     endpoint=config.proxy_endpoint,
@@ -266,23 +267,24 @@ async def _run_concurrency_level(
                     prompt=prompt,
                     timeout_secs=config.timeout_secs,
                 )
-            return QueryTiming(
-                query_index=idx,
-                concurrency=concurrency,
-                query_type=query_type,
-                prompt_prefix=prompt[:120],
-                ttft_ms=ttft,
-                total_ms=total,
-                status=status,
-                error_message=err,
-                wall_clock_offset_ms=wall_offset,
-            )
+                return QueryTiming(
+                    query_index=idx,
+                    concurrency=concurrency,
+                    query_type=query_type,
+                    prompt_prefix=prompt[:120],
+                    ttft_ms=ttft,
+                    total_ms=total,
+                    status=status,
+                    error_message=err,
+                    wall_clock_offset_ms=wall_offset,
+                )
 
-    tasks = [
-        _send(i, prompt, qtype)
-        for i, (prompt, qtype) in enumerate(queries)
-    ]
-    timings = list(await asyncio.gather(*tasks))
+        tasks = [
+            _send(i, prompt, qtype)
+            for i, (prompt, qtype) in enumerate(queries)
+        ]
+        timings = list(await asyncio.gather(*tasks))
+
     wall_clock_secs = (time.monotonic() - sweep_start)
 
     ok_timings = [t for t in timings if t.status == "ok"]
@@ -292,8 +294,6 @@ async def _run_concurrency_level(
     qps = n_ok / wall_clock_secs if wall_clock_secs > 0 else 0.0
 
     ttft_values = np.array([t.ttft_ms for t in ok_timings]) if ok_timings else np.array([])
-
-    await connector.close()
 
     return ConcurrencyResult(
         concurrency=concurrency,

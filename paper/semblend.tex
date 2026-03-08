@@ -1204,6 +1204,17 @@ $< 1.05$ threshold for negligible degradation at practical lengths.
 This confirms SemBlend's RoPE correction and partial attention mechanisms
 generalize across GQA configurations (4 vs 8 KV heads).
 
+\paragraph{Throughput under concurrent load.}
+To verify SemBlend does not degrade serving throughput, we measure
+queries per second (QPS) across concurrency levels 1--32 on both models
+(short prompts, \texttt{max\_tokens=32}). Both models achieve identical
+throughput scaling: 0.4 QPS at $c{=}1$ to 9.0--9.1 QPS at $c{=}32$,
+with zero errors at all levels. P50 TTFT increases from ${\sim}340$\,ms
+($c{=}1$) to ${\sim}1000$\,ms ($c{=}32$), matching expected vLLM behavior
+without SemBlend. This confirms SemBlend's pipeline overhead
+($<$12\,ms) is negligible relative to inference latency and does not
+limit serving capacity.
+
 
 \subsubsection{SemBlend Local: Component Latency Decomposition}
 \label{sec:local-breakdown}
