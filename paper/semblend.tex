@@ -1609,6 +1609,26 @@ PPL 1.249) and partial-40 (cosine 0.52, PPL 1.408) types with 11.7\%
 PPL degradation and zero speedup benefit. The 0.60 default is thus
 an empirically-calibrated Pareto operating point.
 
+\paragraph{Empirical threshold insensitivity.}
+A live endpoint sweep ($\tau \in \{0.50, 0.70, 0.80\}$, Qwen2.5-7B-AWQ,
+CNN/DailyMail 8K, $n{=}8$) yielded \emph{identical} PPL ratios (1.033)
+and hit patterns at all three thresholds. This occurs because all
+CNN/DailyMail cluster pairs have measured cosine similarity ${\geq}0.80$
+by construction (semantically similar articles from the same news cycle),
+so the cosine gate is not the active quality filter in this regime.
+The \emph{primary} quality gate is LMCache's 256-token block hash
+matching: only blocks with identical token sequences are injected,
+regardless of document-level cosine. One persistent quality outlier
+(PPL ratio 1.270, speedup $1.34\times$) survives all thresholds
+including $\tau{=}0.80$: the matched article covers the same news story
+(cosine ${\approx}0.85$) but the donor's 256-token block was at a
+\emph{different semantic position} in the article (incident description
+vs.\ institutional response). This illustrates the \emph{semantic
+staleness} failure mode~\cite{prophetkv}: block-level hash
+identity does not guarantee semantic position alignment. Per-chunk
+quality scoring (ProphetKV-style selective recomputation~\cite{prophetkv})
+would filter such cases at the cost of additional overhead.
+
 \paragraph{Overlap exponent $\beta$.} Linear overlap ($\beta{=}1.0$)
 loosens the 95\% quality threshold to $s{\geq}0.82$; cubic
 ($\beta{=}3.0$) raises it to $s{\geq}0.95$. The quadratic fit
