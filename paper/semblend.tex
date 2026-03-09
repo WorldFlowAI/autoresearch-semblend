@@ -1269,12 +1269,13 @@ from structured document formats.
 
 \paragraph{Quality preservation across architectures.}
 Table~\ref{tab:cross-quality} summarizes cross-dataset quality for both
-models. LLaMA on XSum shows PPL ratios 1.009/1.011/1.065 (2K/4K/8K),
-comparable to Qwen XSum. On CNN/DailyMail, LLaMA shows slightly higher
-PPL (1.039--1.077) than Qwen (0.960--1.060), which tracks the lower
-hit rates: LLaMA achieves 25--62\% hit on CNN vs Qwen's 38--75\%,
-so more miss-runs inflate the mean PPL. On WikiHow (100\% hit both
-models), both models achieve PPL $\leq 1.025$.
+models. On WikiHow (100\% hit rate for both models), Qwen achieves
+PPL 1.005--1.012 and LLaMA achieves 0.992--1.042---near-perfect quality
+preservation on both architectures. LLaMA on XSum shows PPL ratios
+1.009/1.011/1.065 (2K/4K/8K), comparable to Qwen XSum. On CNN/DailyMail,
+LLaMA shows slightly higher PPL (1.039--1.077) than Qwen (0.960--1.060),
+which tracks the lower hit rates: LLaMA achieves 25--62\% hit on CNN vs
+Qwen's 38--75\%, so more miss-runs inflate the mean PPL.
 
 \begin{table}[ht]
 \centering
@@ -1295,14 +1296,16 @@ not by KV injection quality.}
 & WikiHow         & 1.005 & 1.009 & 1.012 \\
 & SAMSum          & 1.029 & 1.071 & 1.136 \\
 \midrule
-\multirow{2}{*}{LLaMA-3.1-8B}
+\multirow{3}{*}{LLaMA-3.1-8B}
 & XSum (synth.)   & 1.009 & 1.011 & 1.065 \\
+& WikiHow         & 0.992 & 1.042 & 1.001 \\
 & CNN/DailyMail   & 1.039 & 1.059 & 1.077 \\
 \bottomrule
 \end{tabular}\\[2pt]
-{\footnotesize WikiHow and XSum (high hit rate) show PPL $\leq 1.025$.
-SAMSum and CNN/DM (lower hit rates) show elevated PPL due to miss-run
-outliers, not KV injection degradation.}
+{\footnotesize WikiHow (100\% hit, both models) achieves PPL $\leq 1.042$.
+XSum-synthetic and WikiHow confirm PPL $\leq 1.065$ on high-hit datasets.
+SAMSum and CNN/DM-LLaMA show elevated PPL due to miss-run outliers, not
+KV injection degradation. Hit rate is the primary predictor of mean PPL.}
 \end{table}
 
 This confirms SemBlend's RoPE correction and partial attention mechanisms
