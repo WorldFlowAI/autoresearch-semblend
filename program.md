@@ -38,6 +38,7 @@ Work on these roughly in order of impact. The first two tiers are already substa
 
 ### Tier 1 — IN PROGRESS (Paper Quality Gaps)
 - WildChat-1M benchmark: user-level semantic overlap validation (highest priority)
+- **Long-output quality verification** (HIGH PRIORITY): Rerun quality benchmarks at max_tokens=512/1024/2048 to verify PPL ratio stability at realistic generation lengths. Current 256-token cap is not representative of production. See "Long-Output Quality Verification" section under Running Benchmarks.
 - Ablation: similarity threshold sweep (0.40–0.80)
 - Ablation: embedder comparison (MiniLM vs Jaccard vs SimHash)
 - Ablation: bathtub fraction sweep
@@ -457,6 +458,50 @@ PYTHONUNBUFFERED=1 .venv/bin/python -u \
 **Paper narrative**: "In a sample of {N} consecutive conversation pairs from WildChat-1M,
 {hit_rate*100:.0f}% share sufficient semantic overlap for KV reuse (sim ≥ 0.60),
 achieving {hit_speedup_p50:.1f}× TTFT speedup on matched pairs vs. cold baseline."
+
+### Long-Output Quality Verification (PRIORITY: HIGH)
+
+**Motivation**: Current quality benchmarks use `max_tokens=256`, which is unrealistically short for production LLM responses. Real-world outputs are 500–2000+ tokens. We need to verify that SemBlend's PPL ratio remains stable (≈1.0) when generating much longer responses — if KV injection is correct at the prompt level, output quality should not degrade regardless of generation length.
+
+**Hypothesis**: PPL ratio stability is independent of output length because donor KV only affects prompt prefill, not autoregressive generation. If hypothesis holds, PPL ratio at max_tokens=2048 ≈ PPL ratio at max_tokens=256. If it degrades, the KV injection has positional encoding or attention artifacts that compound over long outputs.
+
+**Experiment sequence** (run in this order, one Tier 3 run each):
+
+1. **Baseline sweep** — Rerun quality benchmark at max_tokens=512, 1024, 2048 on XSum synthetic (Qwen, 8K context):
+   ```bash
+   for MAX_TOK in 512 1024 2048; do
+     python benchmarks/e2e/semblend_quality_bench.py \
+       --endpoint http://localhost:8100 \
+       --model "Qwen/Qwen2.5-7B-Instruct-AWQ" \
+       --clusters-file benchmarks/data/cnn_dailymail_clusters.json \
+       --target-length 8192 --n-clusters 25 \
+       --max-tokens $MAX_TOK \
+       --output results/quality_qwen_8k_maxtok${MAX_TOK}.json
+   done
+   ```
+
+2. **Cross-model check** — Repeat with LLaMA at max_tokens=1024 and max_tokens=2048 to verify the pattern holds across architectures.
+
+3. **Cross-dataset check** — Run max_tokens=1024 on WikiHow and SAMSum (already have 256-token baselines to compare against).
+
+4. **Degradation curve** — If PPL ratio is stable up to 2048, try max_tokens=4096. Plot PPL ratio vs. output length.
+
+**Key metrics to capture**:
+- `ppl_ratio_2k / 4k / 8k` at each max_tokens setting (should stay ~stable)
+- `rouge_l_avg` — may improve at longer max_tokens since ROUGE-L has more text to match
+- `hit_rate` — verify unchanged (hit detection is independent of max_tokens)
+- Absolute generation time (longer outputs = more GPU time, document for cost awareness)
+
+**Paper impact**: Adds a "quality at scale" subsection demonstrating production readiness. Target claim: "PPL ratio remains below {X} even at 2048 output tokens, confirming that KV donor injection does not compound quality degradation during long-form generation."
+
+**Expected result**: PPL ratio at max_tokens=2048 within ±0.02 of max_tokens=256 value. If we see PPL ratio growing with output length, investigate PartialAttention RoPE correction (check `use_alignment` flag and position ID handling in `synapse_kv_connector/partial_attn.py`).
+
+**Results to record in results.tsv**:
+```
+<commit>	3	quality_longout_512	ppl_ratio_8k	<val>	ppl_2k=<v>,ppl_4k=<v>,hit_rate=<v>	keep	quality at max_tokens=512
+<commit>	3	quality_longout_1024	ppl_ratio_8k	<val>	ppl_2k=<v>,ppl_4k=<v>,hit_rate=<v>	keep	quality at max_tokens=1024
+<commit>	3	quality_longout_2048	ppl_ratio_8k	<val>	ppl_2k=<v>,ppl_4k=<v>,hit_rate=<v>	keep	quality at max_tokens=2048
+```
 
 ### CAGRA/cuVS GPU Search Benchmark
 
