@@ -120,6 +120,13 @@ SemBlend's memory story differs from SemShareKV's 42% GPU KV reduction:
 
 ### Tier 2: Nice-to-Have / Future Work
 
+#### I-10a. WildChat-1M Per-User Semantic Overlap ⭐ HIGH VALUE
+**Priority dataset**: WildChat-1M (Allen AI, ODC-BY, 1M convos from 204K unique users with `hashed_ip` for per-user grouping).
+**Why it matters**: The only large public dataset that directly models "same tenant asks similar questions over time." Measures intra-user semantic overlap across conversations — the core SemBlend deployment thesis. Would survive investor due diligence: per-tenant KV reuse, not just corpus statistics.
+**Benchmark design**: Group by `hashed_ip` → take users with ≥4 conversations → measure hit rate, TTFT speedup, PPL ratio across consecutive conversation pairs.
+**Cross-validation**: LMSYS-Chat-1M, ShareGPT, Bitext for robustness.
+**HuggingFace**: `allenai/WildChat-1M` (~2GB download).
+
 #### I-10. Similarity Sensitivity Study
 Match SemShareKV's Figure 9: vary elimination/replacement ratio from 10% to 90% and show quality degradation curve.
 
