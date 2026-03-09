@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.1)  8 MAR 2026 08:20
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.1)  9 MAR 2026 08:18
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -300,23 +300,40 @@ Package xcolor Info: Model `HSB' substituted by `hsb' on input line 1370.
 Package xcolor Info: Model `Gray' substituted by `gray' on input line 1371.
 Package xcolor Info: Model `wave' substituted by `hsb' on input line 1372.
 )
+(/usr/local/texlive/2026/texmf-dist/tex/latex/colortbl/colortbl.sty
+Package: colortbl 2024/10/29 v1.0k Color table columns (DPC)
+
+(/usr/local/texlive/2026/texmf-dist/tex/latex/tools/array.sty
+Package: array 2025/09/25 v2.6n Tabular extension package (FMi)
+\col@sep=\dimen177
+\ar@mcellbox=\box55
+\extrarowheight=\dimen178
+\NC@list=\toks25
+\extratabsurround=\skip55
+\backup@length=\skip56
+\ar@cellbox=\box56
+)
+\everycr=\toks26
+\minrowclearance=\skip57
+\rownum=\count311
+)
 (/usr/local/texlive/2026/texmf-dist/tex/latex/algorithms/algorithm.sty
 Package: algorithm 2009/08/24 v0.1 Document Style `algorithm' - floating enviro
 nment
 
 (/usr/local/texlive/2026/texmf-dist/tex/latex/float/float.sty
 Package: float 2001/11/08 v1.3d Float enhancements (AL)
-\c@float@type=\count311
-\float@exts=\toks25
-\float@box=\box55
-\@float@everytoks=\toks26
-\@floatcapt=\box56
+\c@float@type=\count312
+\float@exts=\toks27
+\float@box=\box57
+\@float@everytoks=\toks28
+\@floatcapt=\box58
 )
 (/usr/local/texlive/2026/texmf-dist/tex/latex/base/ifthen.sty
 Package: ifthen 2024/03/16 v1.1e Standard LaTeX ifthen package (DPC)
 )
-\@float@every@algorithm=\toks27
-\c@algorithm=\count312
+\@float@every@algorithm=\toks29
+\c@algorithm=\count313
 )
 (/usr/local/texlive/2026/texmf-dist/tex/latex/algorithmicx/algpseudocode.sty
 Package: algpseudocode 
@@ -325,33 +342,33 @@ Package: algpseudocode
 Package: algorithmicx 2005/04/27 v1.2 Algorithmicx
 
 Document Style algorithmicx 1.2 - a greatly improved `algorithmic' style
-\c@ALG@line=\count313
-\c@ALG@rem=\count314
-\c@ALG@nested=\count315
-\ALG@tlm=\skip55
-\ALG@thistlm=\skip56
-\c@ALG@Lnr=\count316
-\c@ALG@blocknr=\count317
-\c@ALG@storecount=\count318
-\c@ALG@tmpcounter=\count319
-\ALG@tmplength=\skip57
+\c@ALG@line=\count314
+\c@ALG@rem=\count315
+\c@ALG@nested=\count316
+\ALG@tlm=\skip58
+\ALG@thistlm=\skip59
+\c@ALG@Lnr=\count317
+\c@ALG@blocknr=\count318
+\c@ALG@storecount=\count319
+\c@ALG@tmpcounter=\count320
+\ALG@tmplength=\skip60
 )
 Document Style - pseudocode environments for use with the `algorithmicx' style
 ) (/usr/local/texlive/2026/texmf-dist/tex/latex/multirow/multirow.sty
 Package: multirow 2024/11/12 v2.9 Span multiple rows of a table
-\multirow@colwidth=\skip58
-\multirow@cntb=\count320
-\multirow@dima=\skip59
-\bigstrutjot=\dimen177
+\multirow@colwidth=\skip61
+\multirow@cntb=\count321
+\multirow@dima=\skip62
+\bigstrutjot=\dimen179
 )
 (/usr/local/texlive/2026/texmf-dist/tex/latex/enumitem/enumitem.sty
 Package: enumitem 2025/02/06 v3.11 Customized lists
-\labelindent=\skip60
-\enit@outerparindent=\dimen178
-\enit@toks=\toks28
-\enit@inbox=\box57
-\enit@count@id=\count321
-\enitdp@description=\count322
+\labelindent=\skip63
+\enit@outerparindent=\dimen180
+\enit@toks=\toks30
+\enit@inbox=\box59
+\enit@count@id=\count322
+\enitdp@description=\count323
 )
 (/usr/local/texlive/2026/texmf-dist/tex/latex/geometry/geometry.sty
 Package: geometry 2020/01/02 v5.9 Page Geometry
@@ -359,57 +376,57 @@ Package: geometry 2020/01/02 v5.9 Page Geometry
 (/usr/local/texlive/2026/texmf-dist/tex/generic/iftex/ifvtex.sty
 Package: ifvtex 2019/10/25 v1.7 ifvtex legacy package. Use iftex instead.
 )
-\Gm@cnth=\count323
-\Gm@cntv=\count324
-\c@Gm@tempcnt=\count325
-\Gm@bindingoffset=\dimen179
-\Gm@wd@mp=\dimen180
-\Gm@odd@mp=\dimen181
-\Gm@even@mp=\dimen182
-\Gm@layoutwidth=\dimen183
-\Gm@layoutheight=\dimen184
-\Gm@layouthoffset=\dimen185
-\Gm@layoutvoffset=\dimen186
-\Gm@dimlist=\toks29
+\Gm@cnth=\count324
+\Gm@cntv=\count325
+\c@Gm@tempcnt=\count326
+\Gm@bindingoffset=\dimen181
+\Gm@wd@mp=\dimen182
+\Gm@odd@mp=\dimen183
+\Gm@even@mp=\dimen184
+\Gm@layoutwidth=\dimen185
+\Gm@layoutheight=\dimen186
+\Gm@layouthoffset=\dimen187
+\Gm@layoutvoffset=\dimen188
+\Gm@dimlist=\toks31
 )
 (/usr/local/texlive/2026/texmf-dist/tex/latex/caption/caption.sty
 Package: caption 2023/08/05 v3.6o Customizing captions (AR)
 
 (/usr/local/texlive/2026/texmf-dist/tex/latex/caption/caption3.sty
 Package: caption3 2023/07/31 v2.4d caption3 kernel (AR)
-\caption@tempdima=\dimen187
-\captionmargin=\dimen188
-\caption@leftmargin=\dimen189
-\caption@rightmargin=\dimen190
-\caption@width=\dimen191
-\caption@indent=\dimen192
-\caption@parindent=\dimen193
-\caption@hangindent=\dimen194
+\caption@tempdima=\dimen189
+\captionmargin=\dimen190
+\caption@leftmargin=\dimen191
+\caption@rightmargin=\dimen192
+\caption@width=\dimen193
+\caption@indent=\dimen194
+\caption@parindent=\dimen195
+\caption@hangindent=\dimen196
 Package caption Info: Standard document class detected.
 )
-\c@caption@flags=\count326
-\c@continuedfloat=\count327
+\c@caption@flags=\count327
+\c@continuedfloat=\count328
 Package caption Info: float package is loaded.
 Package caption Info: hyperref package is loaded.
 )
 (/usr/local/texlive/2026/texmf-dist/tex/latex/caption/subcaption.sty
 Package: subcaption 2023/07/28 v1.6b Sub-captions (AR)
 Package caption Info: New subtype `subfigure' on input line 238.
-\c@subfigure=\count328
+\c@subfigure=\count329
 Package caption Info: New subtype `subtable' on input line 238.
-\c@subtable=\count329
+\c@subtable=\count330
 )
 (/usr/local/texlive/2026/texmf-dist/tex/latex/pgf/frontendlayer/tikz.sty
 (/usr/local/texlive/2026/texmf-dist/tex/latex/pgf/basiclayer/pgf.sty
 (/usr/local/texlive/2026/texmf-dist/tex/latex/pgf/utilities/pgfrcs.sty
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/utilities/pgfutil-common.te
 x
-\pgfutil@everybye=\toks30
-\pgfutil@tempdima=\dimen195
-\pgfutil@tempdimb=\dimen196
+\pgfutil@everybye=\toks32
+\pgfutil@tempdima=\dimen197
+\pgfutil@tempdimb=\dimen198
 )
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/utilities/pgfutil-latex.def
-\pgfutil@abb=\box58
+\pgfutil@abb=\box60
 ) (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/utilities/pgfrcs.code.tex
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/pgf.revision.tex)
 Package: pgfrcs 2025-08-29 v3.1.11a (3.1.11a)
@@ -421,33 +438,33 @@ Package: pgf 2025-08-29 v3.1.11a (3.1.11a)
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/systemlayer/pgfsys.code.tex
 Package: pgfsys 2025-08-29 v3.1.11a (3.1.11a)
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/utilities/pgfkeys.code.tex
-\pgfkeys@pathtoks=\toks31
-\pgfkeys@temptoks=\toks32
+\pgfkeys@pathtoks=\toks33
+\pgfkeys@temptoks=\toks34
 
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/utilities/pgfkeyslibraryfil
 tered.code.tex
-\pgfkeys@tmptoks=\toks33
+\pgfkeys@tmptoks=\toks35
 ))
-\pgf@x=\dimen197
-\pgf@y=\dimen198
-\pgf@xa=\dimen199
-\pgf@ya=\dimen256
-\pgf@xb=\dimen257
-\pgf@yb=\dimen258
-\pgf@xc=\dimen259
-\pgf@yc=\dimen260
-\pgf@xd=\dimen261
-\pgf@yd=\dimen262
+\pgf@x=\dimen199
+\pgf@y=\dimen256
+\pgf@xa=\dimen257
+\pgf@ya=\dimen258
+\pgf@xb=\dimen259
+\pgf@yb=\dimen260
+\pgf@xc=\dimen261
+\pgf@yc=\dimen262
+\pgf@xd=\dimen263
+\pgf@yd=\dimen264
 \w@pgf@writea=\write3
 \r@pgf@reada=\read2
-\c@pgf@counta=\count330
-\c@pgf@countb=\count331
-\c@pgf@countc=\count332
-\c@pgf@countd=\count333
-\t@pgf@toka=\toks34
-\t@pgf@tokb=\toks35
-\t@pgf@tokc=\toks36
-\pgf@sys@id@count=\count334
+\c@pgf@counta=\count331
+\c@pgf@countb=\count332
+\c@pgf@countc=\count333
+\c@pgf@countd=\count334
+\t@pgf@toka=\toks36
+\t@pgf@tokb=\toks37
+\t@pgf@tokc=\toks38
+\pgf@sys@id@count=\count335
 
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/systemlayer/pgf.cfg
 File: pgf.cfg 2025-08-29 v3.1.11a (3.1.11a)
@@ -465,8 +482,8 @@ File: pgfsys-common-pdf.def 2025-08-29 v3.1.11a (3.1.11a)
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/systemlayer/pgfsyssoftpath.
 code.tex
 File: pgfsyssoftpath.code.tex 2025-08-29 v3.1.11a (3.1.11a)
-\pgfsyssoftpath@smallbuffer@items=\count335
-\pgfsyssoftpath@bigbuffer@items=\count336
+\pgfsyssoftpath@smallbuffer@items=\count336
+\pgfsyssoftpath@bigbuffer@items=\count337
 )
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/systemlayer/pgfsysprotocol.
 code.tex
@@ -477,12 +494,12 @@ Package: pgfcore 2025-08-29 v3.1.11a (3.1.11a)
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/math/pgfmath.code.tex
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/math/pgfmathutil.code.tex)
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/math/pgfmathparser.code.tex
-\pgfmath@dimen=\dimen263
-\pgfmath@count=\count337
-\pgfmath@box=\box59
-\pgfmath@toks=\toks37
-\pgfmath@stack@operand=\toks38
-\pgfmath@stack@operation=\toks39
+\pgfmath@dimen=\dimen265
+\pgfmath@count=\count338
+\pgfmath@box=\box61
+\pgfmath@toks=\toks39
+\pgfmath@stack@operand=\toks40
+\pgfmath@stack@operation=\toks41
 )
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.code.
 tex)
@@ -504,57 +521,57 @@ code.tex)
 erarithmetics.code.tex)
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/math/pgfmathcalc.code.tex)
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/math/pgfmathfloat.code.tex
-\c@pgfmathroundto@lastzeros=\count338
+\c@pgfmathroundto@lastzeros=\count339
 )) (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/math/pgfint.code.tex)
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepoints.co
 de.tex
 File: pgfcorepoints.code.tex 2025-08-29 v3.1.11a (3.1.11a)
-\pgf@picminx=\dimen264
-\pgf@picmaxx=\dimen265
-\pgf@picminy=\dimen266
-\pgf@picmaxy=\dimen267
-\pgf@pathminx=\dimen268
-\pgf@pathmaxx=\dimen269
-\pgf@pathminy=\dimen270
-\pgf@pathmaxy=\dimen271
-\pgf@xx=\dimen272
-\pgf@xy=\dimen273
-\pgf@yx=\dimen274
-\pgf@yy=\dimen275
-\pgf@zx=\dimen276
-\pgf@zy=\dimen277
+\pgf@picminx=\dimen266
+\pgf@picmaxx=\dimen267
+\pgf@picminy=\dimen268
+\pgf@picmaxy=\dimen269
+\pgf@pathminx=\dimen270
+\pgf@pathmaxx=\dimen271
+\pgf@pathminy=\dimen272
+\pgf@pathmaxy=\dimen273
+\pgf@xx=\dimen274
+\pgf@xy=\dimen275
+\pgf@yx=\dimen276
+\pgf@yy=\dimen277
+\pgf@zx=\dimen278
+\pgf@zy=\dimen279
 )
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepathconst
 ruct.code.tex
 File: pgfcorepathconstruct.code.tex 2025-08-29 v3.1.11a (3.1.11a)
-\pgf@path@lastx=\dimen278
-\pgf@path@lasty=\dimen279
+\pgf@path@lastx=\dimen280
+\pgf@path@lasty=\dimen281
 )
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepathusage
 .code.tex
 File: pgfcorepathusage.code.tex 2025-08-29 v3.1.11a (3.1.11a)
-\pgf@shorten@end@additional=\dimen280
-\pgf@shorten@start@additional=\dimen281
+\pgf@shorten@end@additional=\dimen282
+\pgf@shorten@start@additional=\dimen283
 )
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/basiclayer/pgfcorescopes.co
 de.tex
 File: pgfcorescopes.code.tex 2025-08-29 v3.1.11a (3.1.11a)
-\pgfpic=\box60
-\pgf@hbox=\box61
-\pgf@layerbox@main=\box62
-\pgf@picture@serial@count=\count339
+\pgfpic=\box62
+\pgf@hbox=\box63
+\pgf@layerbox@main=\box64
+\pgf@picture@serial@count=\count340
 )
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/basiclayer/pgfcoregraphicst
 ate.code.tex
 File: pgfcoregraphicstate.code.tex 2025-08-29 v3.1.11a (3.1.11a)
-\pgflinewidth=\dimen282
+\pgflinewidth=\dimen284
 )
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/basiclayer/pgfcoretransform
 ations.code.tex
 File: pgfcoretransformations.code.tex 2025-08-29 v3.1.11a (3.1.11a)
-\pgf@pt@x=\dimen283
-\pgf@pt@y=\dimen284
-\pgf@pt@temp=\dimen285
+\pgf@pt@x=\dimen285
+\pgf@pt@y=\dimen286
+\pgf@pt@temp=\dimen287
 )
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/basiclayer/pgfcorequick.cod
 e.tex
@@ -571,14 +588,14 @@ File: pgfcorepathprocessing.code.tex 2025-08-29 v3.1.11a (3.1.11a)
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/basiclayer/pgfcorearrows.co
 de.tex
 File: pgfcorearrows.code.tex 2025-08-29 v3.1.11a (3.1.11a)
-\pgfarrowsep=\dimen286
+\pgfarrowsep=\dimen288
 )
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreshade.cod
 e.tex
 File: pgfcoreshade.code.tex 2025-08-29 v3.1.11a (3.1.11a)
-\pgf@max=\dimen287
-\pgf@sys@shading@range@num=\count340
-\pgf@shadingcount=\count341
+\pgf@max=\dimen289
+\pgf@sys@shading@range@num=\count341
+\pgf@shadingcount=\count342
 )
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreimage.cod
 e.tex
@@ -587,7 +604,7 @@ File: pgfcoreimage.code.tex 2025-08-29 v3.1.11a (3.1.11a)
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreexternal.
 code.tex
 File: pgfcoreexternal.code.tex 2025-08-29 v3.1.11a (3.1.11a)
-\pgfexternal@startupbox=\box63
+\pgfexternal@startupbox=\box65
 )
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/basiclayer/pgfcorelayers.co
 de.tex
@@ -608,7 +625,7 @@ File: pgfcorerdf.code.tex 2025-08-29 v3.1.11a (3.1.11a)
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/modules/pgfmoduleshapes.cod
 e.tex
 File: pgfmoduleshapes.code.tex 2025-08-29 v3.1.11a (3.1.11a)
-\pgfnodeparttextbox=\box64
+\pgfnodeparttextbox=\box66
 )
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/modules/pgfmoduleplot.code.
 tex
@@ -617,8 +634,8 @@ File: pgfmoduleplot.code.tex 2025-08-29 v3.1.11a (3.1.11a)
 (/usr/local/texlive/2026/texmf-dist/tex/latex/pgf/compatibility/pgfcomp-version
 -0-65.sty
 Package: pgfcomp-version-0-65 2025-08-29 v3.1.11a (3.1.11a)
-\pgf@nodesepstart=\dimen288
-\pgf@nodesepend=\dimen289
+\pgf@nodesepstart=\dimen290
+\pgf@nodesepend=\dimen291
 )
 (/usr/local/texlive/2026/texmf-dist/tex/latex/pgf/compatibility/pgfcomp-version
 -1-18.sty
@@ -631,10 +648,10 @@ Package: pgfcomp-version-1-18 2025-08-29 v3.1.11a (3.1.11a)
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/math/pgfmath.code.tex))
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/utilities/pgffor.code.tex
 Package: pgffor 2025-08-29 v3.1.11a (3.1.11a)
-\pgffor@iter=\dimen290
-\pgffor@skip=\dimen291
-\pgffor@stack=\toks40
-\pgffor@toks=\toks41
+\pgffor@iter=\dimen292
+\pgffor@skip=\dimen293
+\pgffor@stack=\toks42
+\pgffor@toks=\toks43
 ))
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/frontendlayer/tikz/tikz.cod
 e.tex
@@ -643,34 +660,34 @@ Package: tikz 2025-08-29 v3.1.11a (3.1.11a)
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/libraries/pgflibraryplothan
 dlers.code.tex
 File: pgflibraryplothandlers.code.tex 2025-08-29 v3.1.11a (3.1.11a)
-\pgf@plot@mark@count=\count342
-\pgfplotmarksize=\dimen292
+\pgf@plot@mark@count=\count343
+\pgfplotmarksize=\dimen294
 )
-\tikz@lastx=\dimen293
-\tikz@lasty=\dimen294
-\tikz@lastxsaved=\dimen295
-\tikz@lastysaved=\dimen296
-\tikz@lastmovetox=\dimen297
-\tikz@lastmovetoy=\dimen298
-\tikzleveldistance=\dimen299
-\tikzsiblingdistance=\dimen300
-\tikz@figbox=\box65
-\tikz@figbox@bg=\box66
-\tikz@tempbox=\box67
-\tikz@tempbox@bg=\box68
-\tikztreelevel=\count343
-\tikznumberofchildren=\count344
-\tikznumberofcurrentchild=\count345
-\tikz@fig@count=\count346
+\tikz@lastx=\dimen295
+\tikz@lasty=\dimen296
+\tikz@lastxsaved=\dimen297
+\tikz@lastysaved=\dimen298
+\tikz@lastmovetox=\dimen299
+\tikz@lastmovetoy=\dimen300
+\tikzleveldistance=\dimen301
+\tikzsiblingdistance=\dimen302
+\tikz@figbox=\box67
+\tikz@figbox@bg=\box68
+\tikz@tempbox=\box69
+\tikz@tempbox@bg=\box70
+\tikztreelevel=\count344
+\tikznumberofchildren=\count345
+\tikznumberofcurrentchild=\count346
+\tikz@fig@count=\count347
 
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/modules/pgfmodulematrix.cod
 e.tex
 File: pgfmodulematrix.code.tex 2025-08-29 v3.1.11a (3.1.11a)
-\pgfmatrixcurrentrow=\count347
-\pgfmatrixcurrentcolumn=\count348
-\pgf@matrix@numberofcolumns=\count349
+\pgfmatrixcurrentrow=\count348
+\pgfmatrixcurrentcolumn=\count349
+\pgf@matrix@numberofcolumns=\count350
 )
-\tikz@expandcount=\count350
+\tikz@expandcount=\count351
 
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/frontendlayer/tikz/librarie
 s/tikzlibrarytopaths.code.tex
@@ -723,26 +740,26 @@ File: tikzlibraryshapes.multipart.code.tex 2025-08-29 v3.1.11a (3.1.11a)
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/libraries/shapes/pgflibrary
 shapes.multipart.code.tex
 File: pgflibraryshapes.multipart.code.tex 2025-08-29 v3.1.11a (3.1.11a)
-\pgfnodepartlowerbox=\box69
-\pgfnodeparttwobox=\box70
-\pgfnodepartthreebox=\box71
-\pgfnodepartfourbox=\box72
-\pgfnodeparttwentybox=\box73
-\pgfnodepartnineteenbox=\box74
-\pgfnodeparteighteenbox=\box75
-\pgfnodepartseventeenbox=\box76
-\pgfnodepartsixteenbox=\box77
-\pgfnodepartfifteenbox=\box78
-\pgfnodepartfourteenbox=\box79
-\pgfnodepartthirteenbox=\box80
-\pgfnodeparttwelvebox=\box81
-\pgfnodepartelevenbox=\box82
-\pgfnodeparttenbox=\box83
-\pgfnodepartninebox=\box84
-\pgfnodeparteightbox=\box85
-\pgfnodepartsevenbox=\box86
-\pgfnodepartsixbox=\box87
-\pgfnodepartfivebox=\box88
+\pgfnodepartlowerbox=\box71
+\pgfnodeparttwobox=\box72
+\pgfnodepartthreebox=\box73
+\pgfnodepartfourbox=\box74
+\pgfnodeparttwentybox=\box75
+\pgfnodepartnineteenbox=\box76
+\pgfnodeparteighteenbox=\box77
+\pgfnodepartseventeenbox=\box78
+\pgfnodepartsixteenbox=\box79
+\pgfnodepartfifteenbox=\box80
+\pgfnodepartfourteenbox=\box81
+\pgfnodepartthirteenbox=\box82
+\pgfnodeparttwelvebox=\box83
+\pgfnodepartelevenbox=\box84
+\pgfnodeparttenbox=\box85
+\pgfnodepartninebox=\box86
+\pgfnodeparteightbox=\box87
+\pgfnodepartsevenbox=\box88
+\pgfnodepartsixbox=\box89
+\pgfnodepartfivebox=\box90
 )))
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/frontendlayer/tikz/librarie
 s/tikzlibraryarrows.code.tex
@@ -751,7 +768,7 @@ File: tikzlibraryarrows.code.tex 2025-08-29 v3.1.11a (3.1.11a)
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/libraries/pgflibraryarrows.
 code.tex
 File: pgflibraryarrows.code.tex 2025-08-29 v3.1.11a (3.1.11a)
-\arrowsize=\dimen301
+\arrowsize=\dimen303
 ))
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/frontendlayer/tikz/librarie
 s/tikzlibrarypositioning.code.tex
@@ -770,12 +787,12 @@ File: tikzlibrarycalc.code.tex 2025-08-29 v3.1.11a (3.1.11a)
 Package: pgfplots 2025/08/14 v1.18.2 Data Visualization (1.18.2)
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgfplots/pgfplots.code.tex
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgfplots/pgfplotscore.code.tex
-\t@pgfplots@toka=\toks42
-\t@pgfplots@tokb=\toks43
-\t@pgfplots@tokc=\toks44
-\pgfplots@tmpa=\dimen302
-\c@pgfplots@coordindex=\count351
-\c@pgfplots@scanlineindex=\count352
+\t@pgfplots@toka=\toks44
+\t@pgfplots@tokb=\toks45
+\t@pgfplots@tokc=\toks46
+\pgfplots@tmpa=\dimen304
+\c@pgfplots@coordindex=\count352
+\c@pgfplots@scanlineindex=\count353
 
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgfplots/sys/pgfplotssysgeneric
 .code.tex))
@@ -795,14 +812,14 @@ liststructure.code.tex)
 liststructureext.code.tex)
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgfplots/liststructure/pgfplots
 array.code.tex
-\c@pgfplotsarray@tmp=\count353
+\c@pgfplotsarray@tmp=\count354
 )
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgfplots/liststructure/pgfplots
 matrix.code.tex)
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgfplots/numtable/pgfplotstable
 shared.code.tex
-\c@pgfplotstable@counta=\count354
-\t@pgfplotstable@a=\toks45
+\c@pgfplotstable@counta=\count355
+\t@pgfplotstable@a=\toks47
 )
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgfplots/liststructure/pgfplots
 deque.code.tex)
@@ -814,7 +831,7 @@ ta.code.tex))
 .code.tex)
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgfplots/libs/pgflibrarypgfplot
 s.surfshading.code.tex
-\c@pgfplotslibrarysurf@no=\count355
+\c@pgfplotslibrarysurf@no=\count356
 
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgfplots/sys/pgflibrarypgfplots
 .surfshading.pgfsys-pdftex.def)))
@@ -846,16 +863,16 @@ x)
 s/tikzlibrarydecorations.code.tex
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/modules/pgfmoduledecoration
 s.code.tex
-\pgfdecoratedcompleteddistance=\dimen303
-\pgfdecoratedremainingdistance=\dimen304
-\pgfdecoratedinputsegmentcompleteddistance=\dimen305
-\pgfdecoratedinputsegmentremainingdistance=\dimen306
-\pgf@decorate@distancetomove=\dimen307
-\pgf@decorate@repeatstate=\count356
-\pgfdecorationsegmentamplitude=\dimen308
-\pgfdecorationsegmentlength=\dimen309
+\pgfdecoratedcompleteddistance=\dimen305
+\pgfdecoratedremainingdistance=\dimen306
+\pgfdecoratedinputsegmentcompleteddistance=\dimen307
+\pgfdecoratedinputsegmentremainingdistance=\dimen308
+\pgf@decorate@distancetomove=\dimen309
+\pgf@decorate@repeatstate=\count357
+\pgfdecorationsegmentamplitude=\dimen310
+\pgfdecorationsegmentlength=\dimen311
 )
-\tikz@lib@dec@box=\box89
+\tikz@lib@dec@box=\box91
 )
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/frontendlayer/tikz/librarie
 s/tikzlibrarydecorations.pathmorphing.code.tex
@@ -867,13 +884,13 @@ s/tikzlibrarydecorations.pathreplacing.code.tex
 brarydecorations.pathreplacing.code.tex))
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgfplots/libs/tikzlibrarypgfplo
 ts.contourlua.code.tex)
-\pgfplots@numplots=\count357
-\pgfplots@xmin@reg=\dimen310
-\pgfplots@xmax@reg=\dimen311
-\pgfplots@ymin@reg=\dimen312
-\pgfplots@ymax@reg=\dimen313
-\pgfplots@zmin@reg=\dimen314
-\pgfplots@zmax@reg=\dimen315
+\pgfplots@numplots=\count358
+\pgfplots@xmin@reg=\dimen312
+\pgfplots@xmax@reg=\dimen313
+\pgfplots@ymin@reg=\dimen314
+\pgfplots@ymax@reg=\dimen315
+\pgfplots@zmin@reg=\dimen316
+\pgfplots@zmax@reg=\dimen317
 )
 (/usr/local/texlive/2026/texmf-dist/tex/generic/pgf/frontendlayer/tikz/librarie
 s/tikzlibraryplotmarks.code.tex
@@ -886,27 +903,27 @@ File: pgflibraryplotmarks.code.tex 2025-08-29 v3.1.11a (3.1.11a)
 Package: xspace 2014/10/28 v1.13 Space after command names (DPC,MH)
 )
 (/usr/local/texlive/2026/texmf-dist/tex/latex/listings/listings.sty
-\lst@mode=\count358
-\lst@gtempboxa=\box90
-\lst@token=\toks46
-\lst@length=\count359
-\lst@currlwidth=\dimen316
-\lst@column=\count360
-\lst@pos=\count361
-\lst@lostspace=\dimen317
-\lst@width=\dimen318
-\lst@newlines=\count362
-\lst@lineno=\count363
-\lst@maxwidth=\dimen319
+\lst@mode=\count359
+\lst@gtempboxa=\box92
+\lst@token=\toks48
+\lst@length=\count360
+\lst@currlwidth=\dimen318
+\lst@column=\count361
+\lst@pos=\count362
+\lst@lostspace=\dimen319
+\lst@width=\dimen320
+\lst@newlines=\count363
+\lst@lineno=\count364
+\lst@maxwidth=\dimen321
 
 (/usr/local/texlive/2026/texmf-dist/tex/latex/listings/lstpatch.sty
 File: lstpatch.sty 2025/11/14 1.11b (Carsten Heinz)
 )
 (/usr/local/texlive/2026/texmf-dist/tex/latex/listings/lstmisc.sty
 File: lstmisc.sty 2025/11/14 1.11b (Carsten Heinz)
-\c@lstnumber=\count364
-\lst@skipnumbers=\count365
-\lst@framebox=\box91
+\c@lstnumber=\count365
+\lst@skipnumbers=\count366
+\lst@framebox=\box93
 )
 (/usr/local/texlive/2026/texmf-dist/tex/latex/listings/listings.cfg
 File: listings.cfg 2025/11/14 1.11b listings configuration
@@ -921,7 +938,7 @@ Package: listings 2025/11/14 1.11b (Carsten Heinz)
     so I'm assuming it got fixed.
 (/usr/local/texlive/2026/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
 File: l3backend-pdftex.def 2025-10-09 L3 backend support: PDF output (pdfTeX)
-\l__color_backend_stack_int=\count366
+\l__color_backend_stack_int=\count367
 )
 (./semblend.aux)
 \openout1 = `semblend.aux'.
@@ -947,17 +964,17 @@ LaTeX Font Info:    ... okay on input line 60.
 
 (/usr/local/texlive/2026/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
-\scratchcounter=\count367
-\scratchdimen=\dimen320
-\scratchbox=\box92
-\nofMPsegments=\count368
-\nofMParguments=\count369
-\everyMPshowfont=\toks47
-\MPscratchCnt=\count370
-\MPscratchDim=\dimen321
-\MPnumerator=\count371
-\makeMPintoPDFobject=\count372
-\everyMPtoPDFconversion=\toks48
+\scratchcounter=\count368
+\scratchdimen=\dimen322
+\scratchbox=\box94
+\nofMPsegments=\count369
+\nofMParguments=\count370
+\everyMPshowfont=\toks49
+\MPscratchCnt=\count371
+\MPscratchDim=\dimen323
+\MPnumerator=\count372
+\makeMPintoPDFobject=\count373
+\everyMPtoPDFconversion=\toks50
 ) (/usr/local/texlive/2026/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
 Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
 Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
@@ -1014,7 +1031,7 @@ Package caption Info: End \AtBeginDocument code.
 Package pgfplots notification 'compat/show suggested version=true': document ha
 s been generated with the most recent feature set (\pgfplotsset{compat=1.18}).
 
-\c@lstlisting=\count373
+\c@lstlisting=\count374
 LaTeX Font Info:    Trying to load font information for U+msa on input line 62.
 
 (/usr/local/texlive/2026/texmf-dist/tex/latex/amsfonts/umsa.fd
@@ -1037,153 +1054,147 @@ Underfull \hbox (badness 10000) in paragraph at lines 86--92
  []
 
 
-Underfull \hbox (badness 1571) in paragraph at lines 93--99
+Underfull \hbox (badness 1571) in paragraph at lines 93--101
 []\T1/cmr/bx/n/10.95 Local-First GPU-Native Ar-chi-tec-ture\T1/cmr/m/n/10.95 :
  []
 
 
-Underfull \hbox (badness 2221) in paragraph at lines 93--99
-\T1/cmr/m/n/10.95 and com-piled to-ken align-ment (rapid-fuzz,
- []
-
-[1{/usr/local/texlive/2026/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/usr/l
-ocal/texlive/2026/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc}
-
-
-]
-Underfull \hbox (badness 10000) in paragraph at lines 135--143
-[]\T1/cmr/m/n/10.95 Production work-loads ex-hibit sub-stan-tial
- []
-
-
-Underfull \hbox (badness 2698) in paragraph at lines 135--143
-\T1/cmr/m/n/10.95 prompt re-dun-dancy: RAG pipelines prepend
- []
-
-
-Underfull \hbox (badness 1360) in paragraph at lines 135--143
-\T1/cmr/m/n/10.95 this with dis-tributed P2P KV trans-fer across
- []
-
-
-Underfull \hbox (badness 1314) in paragraph at lines 176--180
-[]\T1/cmr/bx/n/10.95 Two-tier scaled ar-chi-tec-ture \T1/cmr/m/n/10.95 (Ÿ[]3.2[
-]): in-
- []
-
-
-Underfull \hbox (badness 6725) in paragraph at lines 176--180
-\T1/cmr/m/n/10.95 process numpy for $[]\OT1/cmr/m/n/10.95 10[]$ \T1/cmr/m/n/10.
-95 donors, GPU-
- []
-
-
-Underfull \hbox (badness 2343) in paragraph at lines 181--184
-\T1/cmr/m/n/10.95 6 pub-lished data points from CacheBlend,
- []
-
-
-Underfull \hbox (badness 1394) in paragraph at lines 185--191
-\T1/cmr/m/n/10.95 math-e-mat-i-cally ex-act method for cor-rect-ing
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 259--265
-[]\T1/cmr/bx/n/10.95 Token-level se-man-tic KV sys-tems.
- []
-
-[2]
-Underfull \hbox (badness 3260) in paragraph at lines 266--270
-\T1/cmr/m/n/10.95 uses dual-stage user query rel-e-vance scor-ing,
- []
-
-
-Underfull \hbox (badness 1052) in paragraph at lines 343--343
-\T1/cmr/bx/n/10.95 (Lo-cal)\T1/cmr/m/n/10.95 : in-process donor dis-cov-ery via
- CPU
- []
-
-
-Underfull \hbox (badness 2635) in paragraph at lines 343--343
-\T1/cmr/bx/n/10.95 (Scaled)\T1/cmr/m/n/10.95 : op-tional GPU-accelerated CA-GRA
-
+Underfull \hbox (badness 7203) in paragraph at lines 93--101
+\T1/cmr/m/n/10.95 em-bed-ding (MiniLM-L6-v2 ONNX GPU,
  []
 
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
+ [1{/usr/local/texlive/2026/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/usr/
+local/texlive/2026/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc}
 
-Underfull \hbox (badness 2027) in paragraph at lines 356--364
+
+]
+Underfull \hbox (badness 10000) in paragraph at lines 143--151
+[]\T1/cmr/m/n/10.95 Production work-loads ex-hibit sub-stan-tial
+ []
+
+
+Underfull \hbox (badness 2698) in paragraph at lines 143--151
+\T1/cmr/m/n/10.95 prompt re-dun-dancy: RAG pipelines prepend
+ []
+
+
+Underfull \hbox (badness 1360) in paragraph at lines 143--151
+\T1/cmr/m/n/10.95 this with dis-tributed P2P KV trans-fer across
+ []
+
+
+Underfull \hbox (badness 1314) in paragraph at lines 184--188
+[]\T1/cmr/bx/n/10.95 Two-tier scaled ar-chi-tec-ture \T1/cmr/m/n/10.95 (Ÿ[]3.2[
+]): in-
+ []
+
+
+Underfull \hbox (badness 6725) in paragraph at lines 184--188
+\T1/cmr/m/n/10.95 process numpy for $[]\OT1/cmr/m/n/10.95 10[]$ \T1/cmr/m/n/10.
+95 donors, GPU-
+ []
+
+
+Underfull \hbox (badness 2343) in paragraph at lines 189--192
+\T1/cmr/m/n/10.95 6 pub-lished data points from CacheBlend,
+ []
+
+
+Underfull \hbox (badness 1394) in paragraph at lines 193--199
+\T1/cmr/m/n/10.95 math-e-mat-i-cally ex-act method for cor-rect-ing
+ []
+
+[2]
+Underfull \hbox (badness 10000) in paragraph at lines 267--273
+[]\T1/cmr/bx/n/10.95 Token-level se-man-tic KV sys-tems.
+ []
+
+
+Underfull \hbox (badness 3260) in paragraph at lines 274--278
+\T1/cmr/m/n/10.95 uses dual-stage user query rel-e-vance scor-ing,
+ []
+
+
+Underfull \hbox (badness 1052) in paragraph at lines 351--351
+\T1/cmr/bx/n/10.95 (Lo-cal)\T1/cmr/m/n/10.95 : in-process donor dis-cov-ery via
+ CPU
+ []
+
+
+Underfull \hbox (badness 2635) in paragraph at lines 351--351
+\T1/cmr/bx/n/10.95 (Scaled)\T1/cmr/m/n/10.95 : op-tional GPU-accelerated CA-GRA
+
+ []
+
+
+Underfull \hbox (badness 2027) in paragraph at lines 364--372
  []\T1/cmr/bx/n/10.95 Stage 1: Sen-tence Em-bed-ding ($[]\OT1/cmr/m/n/10.95 5$\
 T1/cmr/bx/n/10.95 ms).[]
  []
 
-
-Underfull \hbox (badness 5954) in paragraph at lines 379--386
+[3]
+Underfull \hbox (badness 5954) in paragraph at lines 387--394
  []\T1/cmr/bx/n/10.95 Stage 3: Com-piled To-ken Align-ment
  []
 
 
-Underfull \hbox (badness 6188) in paragraph at lines 379--386
+Underfull \hbox (badness 6188) in paragraph at lines 387--394
 \T1/cmr/m/n/10.95 com-piled C++ Lev-en-shtein implementation---
  []
 
 
-Underfull \hbox (badness 6961) in paragraph at lines 379--386
+Underfull \hbox (badness 6961) in paragraph at lines 387--394
 \OML/cmm/m/it/10.95 <$\T1/cmr/m/n/10.95 1ms for 8K-token prompts ver-sus $[]\OT
 1/cmr/m/n/10.95 2[]4$\T1/cmr/m/n/10.95 s
  []
 
 
-Underfull \hbox (badness 4441) in paragraph at lines 379--386
+Underfull \hbox (badness 4441) in paragraph at lines 387--394
 \T1/cmr/m/n/10.95 for pure Python Wagner-Fischer [[]]. The
  []
 
 
-Underfull \hbox (badness 2828) in paragraph at lines 379--386
+Underfull \hbox (badness 2828) in paragraph at lines 387--394
 \T1/cmr/m/n/10.95 align-ment pro-duces per-position clas-si-fi-ca-tions:
  []
 
-[3]
-Underfull \hbox (badness 10000) in paragraph at lines 392--398
+
+Underfull \hbox (badness 10000) in paragraph at lines 400--406
 \T1/cmr/m/n/10.95 mon-key-patches LM-Cache's in-ter-nal lookup
  []
 
 
-Underfull \hbox (badness 5008) in paragraph at lines 392--398
+Underfull \hbox (badness 5008) in paragraph at lines 400--406
 \T1/cmr/m/n/10.95 to re-turn the donor's chunk hash, caus-ing
  []
 
 
-Overfull \hbox (22.81622pt too wide) in paragraph at lines 405--417
+Overfull \hbox (22.81616pt too wide) in paragraph at lines 413--425
  [][] 
  []
 
 
-Underfull \hbox (badness 1270) in paragraph at lines 425--431
- []\T1/cmr/bx/n/10.95 Fallback: SimHash pre-filter.[] \T1/cmr/m/n/10.95 When ev
-en
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 433--433
+Underfull \hbox (badness 10000) in paragraph at lines 432--432
 []\T1/cmr/bx/n/12 SemBlend Scaled: GPU-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 433--433
+Underfull \hbox (badness 10000) in paragraph at lines 432--432
 \T1/cmr/bx/n/12 Accelerated Cross-Instance Dis-
  []
 
 [4]
-Underfull \hbox (badness 1205) in paragraph at lines 466--473
+Underfull \hbox (badness 1205) in paragraph at lines 465--472
 \T1/cmr/m/n/10.95 The align-ment pro-duces per-position clas-si-fi-ca-
  []
 
 Package hyperref Info: bookmark level for unknown algorithm defaults to 0 on in
-put line 475.
+put line 474.
 
-Underfull \hbox (badness 1158) in paragraph at lines 478--480
+Underfull \hbox (badness 1158) in paragraph at lines 477--479
 []\T1/cmr/m/n/10.95 Query em-bed-ding $\OML/cmm/m/it/10.95 e[]$\T1/cmr/m/n/10.9
 5 , lo-cal store $\OMS/cmsy/m/n/10.95 L$\T1/cmr/m/n/10.95 ,
  []
@@ -1192,423 +1203,655 @@ Underfull \hbox (badness 1158) in paragraph at lines 478--480
 Underfull \vbox (badness 3780) has occurred while \output is active []
 
 
-Underfull \hbox (badness 3568) in paragraph at lines 529--533
+Underfull \hbox (badness 3568) in paragraph at lines 528--532
 \T1/cmr/m/n/10.95 When a se-man-tic donor matches with non-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 529--533
+Underfull \hbox (badness 10000) in paragraph at lines 528--532
 \T1/cmr/m/n/10.95 contiguous aligned po-si-tions (e.g., po-si-tions
  []
 
 
-Underfull \hbox (badness 1584) in paragraph at lines 529--533
+Underfull \hbox (badness 1584) in paragraph at lines 528--532
 \T1/cmr/m/n/10.95 prefix-based KV in-jec-tion fails be-cause vLLM
  []
 
 
 Package enumitem Warning: Negative labelwidth. This does not make much
-(enumitem)                sense, on input line 536.
+(enumitem)                sense, on input line 535.
 
 
-Underfull \hbox (badness 3919) in paragraph at lines 539--540
+Underfull \hbox (badness 3919) in paragraph at lines 538--539
 []\T1/cmr/m/n/10.95 Compute fresh Q,K,V but cross-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 549--550
+Underfull \hbox (badness 10000) in paragraph at lines 548--549
 []\T1/cmr/m/n/10.95 PartialAttentionPlan with per-layer
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 552--553
+Underfull \hbox (badness 10000) in paragraph at lines 551--552
 [] $[]\OT1/cmr/m/n/10.95 [\OML/cmm/m/it/10.95 a:[]\OT1/cmr/m/n/10.95 ] \OMS/cms
 y/m/n/10.95  
  []
 
 [5]
 LaTeX Font Info:    Font shape `T1/cmtt/bx/n' in size <10.95> not available
-(Font)              Font shape `T1/cmtt/m/n' tried instead on input line 587.
+(Font)              Font shape `T1/cmtt/m/n' tried instead on input line 586.
 
-Underfull \hbox (badness 10000) in paragraph at lines 587--593
+Underfull \hbox (badness 10000) in paragraph at lines 586--592
  []\T1/cmr/bx/n/10.95 Stage 1: Scat-ter Donor KV
  []
 
 
-Underfull \hbox (badness 1082) in paragraph at lines 587--593
+Underfull \hbox (badness 1082) in paragraph at lines 586--592
 \T1/cmr/m/n/10.95 and a trans-fer plan spec-i-fy-ing $\OT1/cmr/m/n/10.95 (\OML/
 cmm/m/it/10.95 d[]; t[]\OT1/cmr/m/n/10.95 )$ \T1/cmr/m/n/10.95 po-si-tion
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 596--600
+Underfull \hbox (badness 10000) in paragraph at lines 595--599
  []\T1/cmr/bx/n/10.95 Stage 2: Masked QKV Pro-jec-tion
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 596--600
+Underfull \hbox (badness 10000) in paragraph at lines 595--599
 \T1/cmr/bx/n/10.95 (\T1/cmtt/m/n/10.95 masked_qkv_proj\T1/cmr/bx/n/10.95 ).[] \
 T1/cmr/m/n/10.95 For po-si-tions that re-
  []
 
 
-Underfull \hbox (badness 1248) in paragraph at lines 596--600
+Underfull \hbox (badness 1248) in paragraph at lines 595--599
 \T1/cmr/m/n/10.95 this ker-nel ap-plies the QKV lin-ear pro-jec-tion
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 611--617
+Underfull \hbox (badness 10000) in paragraph at lines 610--616
  []\T1/cmr/bx/n/10.95 Stage 3: Par-tial Pre-fill At-ten-tion
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 611--617
+Underfull \hbox (badness 10000) in paragraph at lines 610--616
 \T1/cmr/bx/n/10.95 (\T1/cmtt/m/n/10.95 partial_prefill_attn\T1/cmr/bx/n/10.95 )
 .[] \T1/cmr/m/n/10.95 This ker-nel com-
  []
 
 
-Underfull \hbox (badness 5817) in paragraph at lines 611--617
+Underfull \hbox (badness 5817) in paragraph at lines 610--616
 \T1/cmr/m/n/10.95 putes causal self-attention only at com-pute
  []
 
 
-Underfull \hbox (badness 1496) in paragraph at lines 611--617
+Underfull \hbox (badness 1496) in paragraph at lines 610--616
 \T1/cmr/m/n/10.95 the ker-nel streams through the KV cache in
  []
 
 [6]
-Underfull \hbox (badness 10000) in paragraph at lines 705--708
+Underfull \hbox (badness 10000) in paragraph at lines 704--707
 []\T1/cmr/bx/n/10.95 REORDER\T1/cmr/m/n/10.95 : donor to-kens at po-si-tions
  []
 
 
-Overfull \hbox (23.94997pt too wide) in paragraph at lines 734--742
- [][] 
- []
-
-[7]
-Underfull \hbox (badness 1152) in paragraph at lines 767--771
-\T1/cmr/m/n/10.95 where $\OML/cmm/m/it/10.95 S$ \T1/cmr/m/n/10.95 is the set of
- non-recomputed lay-ers,
- []
-
-
-Underfull \hbox (badness 2384) in paragraph at lines 907--911
-\T1/cmr/m/n/10.95 gap widens with di-ver-sity: at $\OML/cmm/m/it/10.95 d[]\OT1/
-cmr/m/n/10.95 1\OML/cmm/m/it/10.95 :\OT1/cmr/m/n/10.95 0$\T1/cmr/m/n/10.95 , \T
-1/cmr/m/sc/10.95 Sem-
- []
-
-[8]
-Overfull \hbox (1.87433pt too wide) in paragraph at lines 950--953
+Overfull \hbox (23.94989pt too wide) in paragraph at lines 733--741
  [][] 
  []
 
 
-Underfull \hbox (badness 1077) in paragraph at lines 953--953
-[]\T1/cmr/m/n/10.95 Figure 3: |\T1/cmr/bx/n/10.95 [An-a-lyt-i-cal] \T1/cmr/m/n/
-10.95 Warm-path TTFT vs
- []
+Underfull \vbox (badness 5862) has occurred while \output is active []
 
-
-Underfull \hbox (badness 2205) in paragraph at lines 953--953
-\T1/cmr/m/n/10.95 grows lin-early; \T1/cmr/m/sc/10.95 Sem-Blend\T1/cmr/m/n/10.9
-5 's em-bed-ding+ANN
- []
-
-
-Underfull \hbox (badness 2181) in paragraph at lines 972--974
-\T1/cmr/m/n/10.95 level cache ex-per-i-ments with Qwen2.5-1.5B-
- []
-
-
-Underfull \hbox (badness 2837) in paragraph at lines 974--976
-\T1/cmr/m/n/10.95 level ex-per-i-ments with Qwen2.5-7B-Instruct-
- []
-
-
-Underfull \hbox (badness 1436) in paragraph at lines 982--985
-[]\T1/cmr/bx/n/10.95 Qwen2.5-1.5B-Instruct \T1/cmr/m/n/10.95 (24 lay-ers, 14 KV
-
- []
-
-
-Underfull \hbox (badness 1997) in paragraph at lines 982--985
-\T1/cmr/m/n/10.95 heads, 128 head dim): served on T4 via
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 988--992
+ [7]
+Underfull \hbox (badness 10000) in paragraph at lines 764--768
 []\T1/cmr/bx/n/10.95 LLaMA-3.1-8B-Instruct-AWQ-INT4 \T1/cmr/m/n/10.95 (32
  []
 
 
-Underfull \hbox (badness 1097) in paragraph at lines 988--992
+Underfull \hbox (badness 1097) in paragraph at lines 764--768
 \T1/cmr/m/n/10.95 on A10G via vLLM v0.14.1 with the same
  []
 
 
-Underfull \hbox (badness 1286) in paragraph at lines 994--996
+Underfull \hbox (badness 1286) in paragraph at lines 770--772
  []\T1/cmr/bx/n/10.95 Donor dis-cov-ery.[] \T1/cmr/m/n/10.95 Two con-fig-u-ra-t
 ions, cor-re-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1000--1004
+Underfull \hbox (badness 10000) in paragraph at lines 776--780
 []\T1/cmr/bx/n/10.95 SemBlend Lo-cal \T1/cmr/m/n/10.95 (cur-rent): in-process
  []
 
 
-Underfull \hbox (badness 5316) in paragraph at lines 1000--1004
+Underfull \hbox (badness 5316) in paragraph at lines 776--780
 \T1/cmr/m/n/10.95 MiniLM-L6-v2 (384-dim, $[]\OT1/cmr/m/n/10.95 5$\T1/cmr/m/n/10
 .95 ms on CPU),
  []
 
 
-Underfull \hbox (badness 2875) in paragraph at lines 1000--1004
+Underfull \hbox (badness 2875) in paragraph at lines 776--780
 \T1/cmr/m/n/10.95 To-tal pipeline over-head: $[]\OT1/cmr/m/n/10.95 8$\T1/cmr/m/
 n/10.95 ms with zero
  []
 
 
-Underfull \hbox (badness 3179) in paragraph at lines 1016--1019
-[]\T1/cmr/bx/n/10.95 ShareGPT\T1/cmr/m/n/10.95 : Di-verse con-ver-sa-tions span
--ning
+Underfull \hbox (badness 1331) in paragraph at lines 782--788
+\T1/cmr/m/n/10.95 CNN/DailyMail, XSum, Multi-News, Wik-i-How,
  []
 
 
-Underfull \hbox (badness 2818) in paragraph at lines 1028--1031
-[]\T1/cmr/bx/n/10.95 Response-level cache \T1/cmr/m/n/10.95 (proxy): in-ter-cep
-ts
+Underfull \hbox (badness 5022) in paragraph at lines 789--803
+ []\T1/cmr/bx/n/10.95 Protocol.[] \T1/cmr/m/n/10.95 We use a \T1/cmr/m/it/10.95
+ per-length pod restart
  []
 
-[9{/usr/local/texlive/2026/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc
-}]
-Underfull \hbox (badness 10000) in paragraph at lines 1057--1065
+
+Underfull \hbox (badness 10000) in paragraph at lines 804--812
  []\T1/cmr/bx/n/10.95 Prompt length ver-i-fi-ca-tion.[] \T1/cmr/m/n/10.95 All p
 rompt
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1057--1065
+Underfull \hbox (badness 10000) in paragraph at lines 804--812
 \T1/cmr/m/n/10.95 lengths are \T1/cmr/m/it/10.95 tokenizer-verified\T1/cmr/m/n/
 10.95 : we use
  []
 
 
-Underfull \hbox (badness 1210) in paragraph at lines 1057--1065
+Underfull \hbox (badness 1210) in paragraph at lines 804--812
 \T1/cmr/m/n/10.95 ($\OT1/cmr/m/n/10.95 4$ \T1/cmr/m/n/10.95 chars/token) that p
 ro-duced prompts $[]\OT1/cmr/m/n/10.95 60%$
  []
 
 
-Underfull \hbox (badness 1072) in paragraph at lines 1057--1065
+Underfull \hbox (badness 1072) in paragraph at lines 804--812
 \T1/cmr/m/n/10.95 tokenizer-verified lengths (within $\OMS/cmsy/m/n/10.95 ^^F\O
 T1/cmr/m/n/10.95 4$ \T1/cmr/m/n/10.95 to-kens of
  []
 
 
-Underfull \hbox (badness 3364) in paragraph at lines 1066--1076
- []\T1/cmr/bx/n/10.95 Statistical method-ol-ogy.[] \T1/cmr/m/n/10.95 KV-tensor 
-ex-per-i-
+Underfull \hbox (badness 10000) in paragraph at lines 813--819
+ []\T1/cmr/bx/n/10.95 Statistical method-ol-ogy.[] \T1/cmr/m/n/10.95 We re-port
+ P50
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1078--1078
-[]\T1/cmr/bx/n/12 Analytical Com-par-i-son [Model-
+Underfull \hbox (badness 3815) in paragraph at lines 872--883
+\T1/cmr/m/n/10.95 Table []4[] presents em-pir-i-cal val-i-da-tion of se-
  []
 
 
-Underfull \hbox (badness 1199) in paragraph at lines 1087--1092
-\T1/cmr/m/n/8 pa-pers, not mea-sure-ments on iden-ti-cal hard-ware. We in-
+Underfull \hbox (badness 1642) in paragraph at lines 872--883
+\T1/cmr/m/n/10.95 man-tic KV donor in-jec-tion across two model
  []
 
 
-Underfull \hbox (badness 1308) in paragraph at lines 1198--1206
-\T1/cmr/m/n/8 sis-tent speedups across both Qwen2.5-7B (28 lay-ers, GQA
+Underfull \hbox (badness 1810) in paragraph at lines 872--883
+\T1/cmr/bx/n/10.95 con-stant \T1/cmr/m/n/10.95 ($[]\OT1/cmr/m/n/10.95 500$\T1/c
+mr/m/n/10.95 --$\OT1/cmr/m/n/10.95 880$\T1/cmr/m/n/10.95 ms) re-gard-less of pr
+ompt
  []
 
-[10]
-Underfull \hbox (badness 10000) in paragraph at lines 1218--1226
+[8{/usr/local/texlive/2026/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc
+}]
+Underfull \hbox (badness 10000) in paragraph at lines 885--893
+ []\T1/cmr/bx/n/10.95 Model-agnostic op-er-a-tion.[] \T1/cmr/m/n/10.95 Sem-Blen
+d
+ []
+
+
+Underfull \hbox (badness 1454) in paragraph at lines 885--893
+\T1/cmr/m/n/10.95 7B (28 lay-ers, GQA with 4 KV heads) and
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 885--893
+\T1/cmtt/m/n/10.95 SemBlendConnectorV1 \T1/cmr/m/n/10.95 pipeline han-dles both
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 895--903
+ []\T1/cmr/bx/n/10.95 Comparison with SemShareKV.[]
+ []
+
+
+Underfull \hbox (badness 1210) in paragraph at lines 895--903
+\T1/cmr/m/n/10.95 at 5K to-kens on A100 hard-ware. Sem-Blend
+ []
+
+
+Underfull \hbox (badness 1048) in paragraph at lines 895--903
+\T1/cmr/m/n/10.95 the cheaper A10G (24GiB vs. A100's 80GiB,
+ []
+
+
+Underfull \hbox (badness 5431) in paragraph at lines 895--903
+\T1/cmr/m/n/10.95 reaches $\OT1/cmr/m/n/10.95 5\OML/cmm/m/it/10.95 :\OT1/cmr/m/
+n/10.95 5$\T1/cmr/m/n/10.95 --$\OT1/cmr/m/n/10.95 5\OML/cmm/m/it/10.95 :\OT1/cm
+r/m/n/10.95 8\OMS/cmsy/m/n/10.95 ^^B$\T1/cmr/m/n/10.95 , ap-proach-ing SemShare
+KV's
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 905--913
  []\T1/cmr/bx/n/10.95 Why Sem-Blend speedup ex-ceeds
  []
 
 
-Underfull \hbox (badness 2103) in paragraph at lines 1218--1226
-\T1/cmr/bx/n/10.95 SemShareKV at long se-quences.[] \T1/cmr/m/n/8 Cold pre-
+Underfull \hbox (badness 10000) in paragraph at lines 905--913
+\T1/cmr/bx/n/10.95 SemShareKV at long se-quences.[] \T1/cmr/m/n/10.95 Cold
  []
 
 
-Overfull \hbox (26.57982pt too wide) in paragraph at lines 1255--1264
+Underfull \hbox (badness 2426) in paragraph at lines 905--913
+\T1/cmr/m/n/10.95 (ap-prox-i-mately $\OML/cmm/m/it/10.95 O\OT1/cmr/m/n/10.95 (\
+OML/cmm/m/it/10.95 Nd\OT1/cmr/m/n/10.95 )$ \T1/cmr/m/n/10.95 with Flash At-ten-
+tion),
+ []
+
+
+Underfull \hbox (badness 5548) in paragraph at lines 905--913
+\T1/cmr/m/n/10.95 while Sem-Blend's KV-loaded TTFT re-mains
+ []
+
+
+Underfull \hbox (badness 7081) in paragraph at lines 929--937
+\T1/cmr/m/n/10.95 The near-constant Sem-Blend TTFT ($[]\OT1/cmr/m/n/10.95 500$\
+T1/cmr/m/n/10.95 --
+ []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [9]
+Underfull \hbox (badness 1014) in paragraph at lines 991--998
+\T1/cmr/m/n/10.95 search ($[]\OT1/cmr/m/n/10.95 2$\T1/cmr/m/n/10.95 ms at $\OML
+/cmm/m/it/10.95 N[]\OT1/cmr/m/n/10.95 1$\T1/cmr/m/n/10.95 K), rapid-fuzz align-
+ment
+ []
+
+[10]
+Underfull \hbox (badness 1077) in paragraph at lines 1109--1118
+\T1/cmr/m/n/10.95 sce-nar-ios, we eval-u-ate TTFT speedup on five
+ []
+
+
+Underfull \hbox (badness 1365) in paragraph at lines 1109--1118
+\T1/cmr/m/n/10.95 PARA-PHRASE, DI-VERSE). We mea-sure cold
+ []
+
+
+Overfull \hbox (23.3694pt too wide) in paragraph at lines 1129--1167
  [][] 
  []
 
 [11]
-Overfull \hbox (21.33177pt too wide) in paragraph at lines 1338--1352
+Underfull \hbox (badness 1189) in paragraph at lines 1205--1207
+ []\T1/cmr/bx/n/10.95 Quality on real data.[] \T1/cmr/m/n/10.95 We mea-sure out
+-put
+ []
+
+
+Underfull \hbox (badness 3386) in paragraph at lines 1205--1207
+\T1/cmr/m/n/10.95 qual-ity across three real-world datasets with
+ []
+
+
+Underfull \hbox (badness 3019) in paragraph at lines 1218--1222
+\T1/cmr/m/n/10.95 by miss-induced out-liers (2/8 runs show
+ []
+
+
+Overfull \hbox (30.31923pt too wide) in paragraph at lines 1248--1280
  [][] 
  []
 
 
-Underfull \hbox (badness 1303) in paragraph at lines 1394--1394
+Underfull \hbox (badness 1436) in paragraph at lines 1290--1301
+\T1/cmr/m/n/10.95 are con-sis-tently $\OT1/cmr/m/n/10.95 1\OML/cmm/m/it/10.95 :
+\OT1/cmr/m/n/10.95 5$\T1/cmr/m/n/10.95 --$\OT1/cmr/m/n/10.95 2\OMS/cmsy/m/n/10.
+95 ^^B$ \T1/cmr/m/n/10.95 higher across all four
+ []
+
+
+Underfull \hbox (badness 1038) in paragraph at lines 1303--1314
+ []\T1/cmr/bx/n/10.95 Quality preser-va-tion across ar-chi-tec-tures.[]
+ []
+
+
+Overfull \hbox (40.75896pt too wide) in paragraph at lines 1324--1342
+ [][] 
+ []
+
+
+Underfull \hbox (badness 1990) in paragraph at lines 1356--1363
+\T1/cmr/m/n/10.95 par-tial at-ten-tion mech-a-nisms gen-er-al-ize across
+ []
+
+[12]
+Underfull \hbox (badness 1303) in paragraph at lines 1388--1388
 []\T1/cmr/bx/n/10.95 SemBlend Lo-cal: Com-po-nent La-
  []
 
 
-Overfull \hbox (138.27348pt too wide) in paragraph at lines 1407--1420
+Overfull \hbox (67.65446pt too wide) in paragraph at lines 1401--1414
  [][] 
  []
 
-[12]
-Underfull \hbox (badness 1264) in paragraph at lines 1484--1490
-\T1/cmr/m/n/8 rapid-fuzz [[]] (com-piled C++ Lev-en-shtein) for fine-grained
+
+Underfull \hbox (badness 1484) in paragraph at lines 1444--1459
+\T1/cmr/m/n/10.95 men-tary strengths: Jac-card achieves 99--100%
  []
 
 
-Underfull \hbox (badness 2486) in paragraph at lines 1518--1526
-\T1/cmr/m/n/8 rics con-firm Sem-Blend's ef-fec-tive-ness at the in-fras-truc-tu
-re
+Underfull \hbox (badness 1983) in paragraph at lines 1444--1459
+\T1/cmr/m/n/10.95 donor match rate for clus-ter vari-a-tions (RE-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1534--1534
-\T1/cmr/m/n/10.95 level, customer-support work-load, co-located
+Underfull \hbox (badness 1231) in paragraph at lines 1469--1475
+ []\T1/cmr/bx/n/10.95 Bathtub curve cal-i-bra-tion.[] \T1/cmr/m/n/10.95 We em-p
+ir-i-cally
  []
-
-
-LaTeX Font Warning: Font shape `T1/cmr/m/scit' undefined
-(Font)              using `T1/cmr/m/scsl' instead on input line 1555.
 
 [13]
-Underfull \hbox (badness 10000) in paragraph at lines 1608--1608
-[]\T1/cmr/bx/n/12 Operating En-ve-lope: When
+Underfull \hbox (badness 2922) in paragraph at lines 1494--1507
+\T1/cmr/m/n/10.95 with $\OML/cmm/m/it/10.95 ^^[[][]\OT1/cmr/m/n/10.95 0\OML/cmm
+/m/it/10.95 :\OT1/cmr/m/n/10.95 12$ \T1/cmr/m/n/10.95 against pub-lished data f
+rom
  []
 
 
-Underfull \hbox (badness 2103) in paragraph at lines 1616--1616
-\T1/cmr/m/n/10.95 net-work round-trip be-tween client and proxy.
+Underfull \hbox (badness 10000) in paragraph at lines 1509--1524
+ []\T1/cmr/bx/n/10.95 Prefill com-pu-ta-tion sav-ings.[] \T1/cmr/m/n/10.95 vLLM
+
  []
 
 
-Overfull \hbox (21.20389pt too wide) in paragraph at lines 1620--1628
- [][] 
+Underfull \hbox (badness 1721) in paragraph at lines 1509--1524
+\T1/cmr/m/n/10.95 vLLM's in-ter-nal pre-fix cache con-tributes only
  []
 
 
-Underfull \hbox (badness 1946) in paragraph at lines 1737--1737
-[]\T1/cmr/m/n/10.95 Table 14: |Com-po-nent la-tency de-com-po-si-tion.
+Underfull \hbox (badness 10000) in paragraph at lines 1531--1534
+\T1/cmr/m/n/10.95 Table []11[] shows the full coverage-quality-
  []
 
 
-Overfull \hbox (28.36012pt too wide) in paragraph at lines 1741--1759
- [][] 
+Underfull \vbox (badness 1789) has occurred while \output is active []
+
+
+Underfull \hbox (badness 3428) in paragraph at lines 1540--1540
+[]\T1/cmr/m/n/10.95 Table 11: |\T1/cmr/bx/n/10.95 Sim-i-lar-ity thresh-old ab-l
+a-tion.
  []
 
 [14]
-Underfull \hbox (badness 1057) in paragraph at lines 1788--1788
-[]\T1/cmr/m/n/10.95 Table 15: |Inference-engine warm-path la-tency.
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 1788--1788
-\T1/cmr/m/n/10.95 1.5B. KV-tensor Sem-Blend on A10G with
- []
-
-
-Overfull \hbox (74.28958pt too wide) in paragraph at lines 1792--1815
+Overfull \hbox (147.80176pt too wide) in paragraph at lines 1652--1658
  [][] 
+ []
+
+
+Underfull \hbox (badness 1009) in paragraph at lines 1671--1681
+\T1/cmr/m/sc/10.95 SemBlend \T1/cmr/m/n/10.95 is not uni-ver-sally op-ti-mal. S
+ome
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1671--1681
+\T1/cmr/m/n/10.95 con-fig-u-ra-tions yield PPL ra-tio $\OML/cmm/m/it/10.95 <$\T
+1/cmr/m/n/10.95 1.0 (ben-
+ []
+
+
+Underfull \hbox (badness 4739) in paragraph at lines 1671--1681
+\T1/cmr/m/n/10.95 e-fi-cial KV in-jec-tion, ob-served in our data:
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1671--1681
+\T1/cmr/m/n/10.95 Qwen CNN/DM@2K=0.960, LLaMA Wik-i-
+ []
+
+
+Underfull \hbox (badness 3826) in paragraph at lines 1671--1681
+\T1/cmr/m/n/10.95 How@2K=0.992), in-di-cat-ing that se-man-ti-cally
+ []
+
+
+Underfull \hbox (badness 5359) in paragraph at lines 1671--1681
+\T1/cmr/m/n/10.95 re-lated con-text oc-ca-sion-ally im-proves out-put
+ []
+
+
+Underfull \hbox (badness 1057) in paragraph at lines 1671--1681
+\T1/cmr/m/n/10.95 KV work. LM-Cache achieves lower over-head
+ []
+
+
+Underfull \hbox (badness 3219) in paragraph at lines 1671--1681
+\T1/cmr/m/n/10.95 dif-fer-ent, where LM-Cache pro-vides no cache
+ []
+
+
+Underfull \hbox (badness 1057) in paragraph at lines 1689--1689
+[]\T1/cmr/m/n/10.95 Table 14: |Inference-engine warm-path la-tency.
+ []
+
+
+Overfull \hbox (98.43504pt too wide) in paragraph at lines 1693--1712
+ [][] 
+ []
+
+
+Underfull \hbox (badness 1028) in paragraph at lines 1724--1732
+ []\T1/cmr/bx/n/10.95 Speedup scal-ing.[] \T1/cmr/m/n/10.95 In con-trolled same
+-context
+ []
+
+
+Underfull \hbox (badness 1226) in paragraph at lines 1724--1732
+\T1/cmr/m/n/10.95 reuse sce-nar-ios, em-pir-i-cal speedup scales from
+ []
+
+
+Underfull \hbox (badness 2735) in paragraph at lines 1724--1732
+\T1/cmr/m/n/10.95 16K to-kens. Sem-Blend TTFT re-mains ap-
+ []
+
+
+Underfull \hbox (badness 3815) in paragraph at lines 1748--1757
+ []\T1/cmr/bx/n/10.95 Relationship to LM-Cache.[] \T1/cmr/m/sc/10.95 Sem-Blend 
+\T1/cmr/m/n/10.95 is
+ []
+
+
+Underfull \hbox (badness 1616) in paragraph at lines 1759--1772
+\T1/cmr/m/n/10.95 com-pared to the at-ten-tion com-pu-ta-tion be-ing
+ []
+
+
+Underfull \hbox (badness 1755) in paragraph at lines 1777--1785
+\T1/cmr/bx/n/10.95 ta-tion): \T1/cmr/m/n/10.95 Dis-abling se-lec-tive layer re-
+com-pu-ta-
+ []
+
+
+Underfull \hbox (badness 5064) in paragraph at lines 1777--1785
+\T1/cmr/m/n/10.95 tion yields $\OT1/cmr/m/n/10.95 5\OML/cmm/m/it/10.95 :\OT1/cm
+r/m/n/10.95 51\OMS/cmsy/m/n/10.95 ^^B$ \T1/cmr/m/n/10.95 speedup (vs. $\OT1/cmr
+/m/n/10.95 5\OML/cmm/m/it/10.95 :\OT1/cmr/m/n/10.95 66\OMS/cmsy/m/n/10.95 ^^B$ 
+\T1/cmr/m/n/10.95 with
+ []
+
+
+Underfull \hbox (badness 4686) in paragraph at lines 1777--1785
+\T1/cmr/m/n/10.95 recomputation)---a marginal 2.6% difference---
+ []
+
+
+Underfull \hbox (badness 1152) in paragraph at lines 1777--1785
+\T1/cmr/m/n/10.95 The pri-mary speedup de-rives from KV trans-
  []
 
 [15]
-Underfull \hbox (badness 1577) in paragraph at lines 1917--1930
- []\T1/cmr/bx/n/10.95 PartialAttention in-te-gra-tion.[] \T1/cmr/m/n/8 The thre
-e Tri-ton
+Underfull \hbox (badness 2418) in paragraph at lines 1786--1807
+\T1/cmr/bx/n/10.95 val-i-da-tion: \T1/cmr/m/n/10.95 RoPE cor-rec-tion ac-ti-vat
+es when
  []
 
 
-Underfull \hbox (badness 1163) in paragraph at lines 1984--1990
-[]\T1/cmr/m/n/8 On domain-specific work-loads (Bi-text cus-tomer sup-port),
+Underfull \hbox (badness 10000) in paragraph at lines 1834--1846
+ []\T1/cmr/bx/n/10.95 Limitations.[] \T1/cmr/m/n/10.95 While RoPE delta cor-rec
+-tion
  []
 
 
-Underfull \vbox (badness 2376) has occurred while \output is active []
+Underfull \hbox (badness 5847) in paragraph at lines 1834--1846
+\T1/cmr/m/n/10.95 (Ÿ[]3.6[]) solves po-si-tion en-cod-ing ex-actly, the
+ []
 
- [16]
-Overfull \hbox (3.93271pt too wide) in paragraph at lines 2058--2066
+
+Underfull \hbox (badness 3989) in paragraph at lines 1834--1846
+\T1/cmr/m/n/10.95 Qwen2.5-7B and val-i-dated on LLaMA-3.1-8B
+ []
+
+
+Underfull \hbox (badness 1755) in paragraph at lines 1834--1846
+\T1/cmr/m/n/10.95 with com-pa-ra-ble qual-ity re-sults; GQA, MoE,
+ []
+
+
+Underfull \hbox (badness 6526) in paragraph at lines 1852--1859
+\T1/cmr/m/n/10.95 sys-tem that ex-tends LM-Cache's exact-prefix
+ []
+
+
+Underfull \hbox (badness 1226) in paragraph at lines 1852--1859
+\T1/cmr/m/n/10.95 CA-GRA search for cross-instance dis-cov-ery at
+ []
+
+[16]
+Underfull \hbox (badness 1024) in paragraph at lines 1871--1910
+\T1/cmr/m/n/10.95 Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ on
+ []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+Overfull \hbox (3.93265pt too wide) in paragraph at lines 1930--1938
  [][] 
  []
 
 
-Underfull \hbox (badness 2799) in paragraph at lines 2106--2110
-[]\T1/cmr/m/n/8 S. Wang \T1/cmr/m/it/8 et al.\T1/cmr/m/n/8 , ``ProphetKV: Dual-
-Stage KV Cache
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+[17]
+Underfull \hbox (badness 1102) in paragraph at lines 1984--1988
+\T1/cmr/m/n/10.95 Cache Shar-ing for Large Lan-guage Model
  []
 
 
-Underfull \hbox (badness 3525) in paragraph at lines 2106--2110
-\T1/cmr/m/n/8 Op-ti-miza-tion for RAG with User Query Rel-e-vance,''
+Underfull \hbox (badness 1275) in paragraph at lines 2008--2011
+[]\T1/cmr/m/n/10.95 R. Wag-ner and M. Fis-cher, ``The String-
  []
 
-[17] (./semblend.aux)
+
+Underfull \hbox (badness 4048) in paragraph at lines 2008--2011
+\T1/cmr/m/n/10.95 to-String Cor-rec-tion Prob-lem,'' \T1/cmr/m/it/10.95 J. ACM\
+T1/cmr/m/n/10.95 ,
+ []
+
+
+Underfull \hbox (badness 1668) in paragraph at lines 2018--2021
+[]\T1/cmr/m/n/10.95 Bitext, ``Cus-tomer Sup-port LLM Chat-bot
+ []
+
+
+Underfull \hbox (badness 1895) in paragraph at lines 2023--2026
+[]\T1/cmr/m/n/10.95 Z. Bang \T1/cmr/m/it/10.95 et al.\T1/cmr/m/n/10.95 , ``GPT-
+Cache: An Open-
+ []
+
+
+Underfull \hbox (badness 1057) in paragraph at lines 2023--2026
+\T1/cmr/m/n/10.95 Source Se-man-tic Cache for LLM Ap-pli-ca-
+ []
+
+
+Underfull \hbox (badness 1571) in paragraph at lines 2050--2053
+\T1/cmr/m/n/10.95 former with Ro-tary Po-si-tion Em-bed-ding,''
+ []
+
+
+Underfull \hbox (badness 2050) in paragraph at lines 2066--2070
+\T1/cmr/m/n/10.95 Ab-strac-tive Hi-er-ar-chi-cal Model,'' in \T1/cmr/m/it/10.95
+ Proc.
+ []
+
+[18] [19] [20] [21
+
+] (./semblend.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
  ***********
 Package rerunfilecheck Info: File `semblend.out' has not changed.
-(rerunfilecheck)             Checksum: AEE2F2C90D2C1A308AD61D60D4C1A6B0;8226.
+(rerunfilecheck)             Checksum: 0B22FA3C779C88CFA24F5E843D7EBD0D;6318.
  ) 
 Here is how much of TeX's memory you used:
- 38185 strings out of 467525
- 879931 string characters out of 5418983
- 1433071 words of memory out of 5000000
- 66295 multiletter control sequences out of 15000+600000
- 655185 words of font info for 105 fonts, out of 8000000 for 9000
+ 37881 strings out of 467525
+ 869657 string characters out of 5418983
+ 1456077 words of memory out of 5000000
+ 66007 multiletter control sequences out of 15000+600000
+ 654844 words of font info for 108 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 84i,19n,94p,729b,2261s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 84i,15n,94p,748b,812s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
 ></usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx8.pfb><
 /usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx9.pfb></u
 sr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></us
-r/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cmextra/cmex8.pfb><
-/usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></
-usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></us
-r/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/
-local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></usr/lo
-cal/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/loca
-l/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/local/t
-exlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texl
-ive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></usr/local/texlive
-/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/
-2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></usr/local/texlive/20
-26/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2026
-/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy9.pfb></usr/local/texlive/2026/t
-exmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></usr/local/texlive/20
-26/texmf-dist/fonts/type1/public/cm-super/sfbx0800.pfb></usr/local/texlive/2026
-/texmf-dist/fonts/type1/public/cm-super/sfbx0900.pfb></usr/local/texlive/2026/t
-exmf-dist/fonts/type1/public/cm-super/sfbx1095.pfb></usr/local/texlive/2026/tex
-mf-dist/fonts/type1/public/cm-super/sfbx1200.pfb></usr/local/texlive/2026/texmf
--dist/fonts/type1/public/cm-super/sfbx1440.pfb></usr/local/texlive/2026/texmf-d
-ist/fonts/type1/public/cm-super/sfbx1728.pfb></usr/local/texlive/2026/texmf-dis
-t/fonts/type1/public/cm-super/sfcc0800.pfb></usr/local/texlive/2026/texmf-dist/
-fonts/type1/public/cm-super/sfcc0900.pfb></usr/local/texlive/2026/texmf-dist/fo
-nts/type1/public/cm-super/sfcc1095.pfb></usr/local/texlive/2026/texmf-dist/font
-s/type1/public/cm-super/sfrm0600.pfb></usr/local/texlive/2026/texmf-dist/fonts/
-type1/public/cm-super/sfrm0800.pfb></usr/local/texlive/2026/texmf-dist/fonts/ty
-pe1/public/cm-super/sfrm0900.pfb></usr/local/texlive/2026/texmf-dist/fonts/type
-1/public/cm-super/sfrm1095.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/
-public/cm-super/sfrm1200.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/pu
-blic/cm-super/sfsc0800.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/publ
-ic/cm-super/sfti0800.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public
-/cm-super/sfti0900.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/c
-m-super/sfti1095.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/cm-
-super/sftt0800.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/cm-su
-per/sftt0900.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/cm-supe
-r/sftt1095.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/cm-super/
-sftt1200.pfb>
-Output written on semblend.pdf (17 pages, 835639 bytes).
+r/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr
+/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></usr/l
+ocal/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/loc
+al/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></usr/local
+/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cmextra/cmmib8.pfb></usr/l
+ocal/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/loc
+al/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/local/
+texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/tex
+live/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></usr/local/texliv
+e/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive
+/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></usr/local/texlive/2
+026/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/202
+6/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy9.pfb></usr/local/texlive/2026/
+texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb></usr/local/texlive/2
+026/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></usr/local/texli
+ve/2026/texmf-dist/fonts/type1/public/cm-super/sfbx0800.pfb></usr/local/texlive
+/2026/texmf-dist/fonts/type1/public/cm-super/sfbx0900.pfb></usr/local/texlive/2
+026/texmf-dist/fonts/type1/public/cm-super/sfbx1095.pfb></usr/local/texlive/202
+6/texmf-dist/fonts/type1/public/cm-super/sfbx1200.pfb></usr/local/texlive/2026/
+texmf-dist/fonts/type1/public/cm-super/sfbx1440.pfb></usr/local/texlive/2026/te
+xmf-dist/fonts/type1/public/cm-super/sfbx1728.pfb></usr/local/texlive/2026/texm
+f-dist/fonts/type1/public/cm-super/sfcc0800.pfb></usr/local/texlive/2026/texmf-
+dist/fonts/type1/public/cm-super/sfcc0900.pfb></usr/local/texlive/2026/texmf-di
+st/fonts/type1/public/cm-super/sfcc1095.pfb></usr/local/texlive/2026/texmf-dist
+/fonts/type1/public/cm-super/sfrm0600.pfb></usr/local/texlive/2026/texmf-dist/f
+onts/type1/public/cm-super/sfrm0800.pfb></usr/local/texlive/2026/texmf-dist/fon
+ts/type1/public/cm-super/sfrm0900.pfb></usr/local/texlive/2026/texmf-dist/fonts
+/type1/public/cm-super/sfrm1095.pfb></usr/local/texlive/2026/texmf-dist/fonts/t
+ype1/public/cm-super/sfrm1200.pfb></usr/local/texlive/2026/texmf-dist/fonts/typ
+e1/public/cm-super/sfti0900.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1
+/public/cm-super/sfti1095.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/p
+ublic/cm-super/sftt0800.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/pub
+lic/cm-super/sftt0900.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/publi
+c/cm-super/sftt1095.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/
+cm-super/sftt1200.pfb>
+Output written on semblend.pdf (21 pages, 781190 bytes).
 PDF statistics:
- 722 PDF objects out of 1000 (max. 8388607)
- 613 compressed objects within 7 object streams
- 199 named destinations out of 1000 (max. 500000)
- 341 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 672 PDF objects out of 1000 (max. 8388607)
+ 561 compressed objects within 6 object streams
+ 174 named destinations out of 1000 (max. 500000)
+ 261 words of extra memory for PDF output out of 10000 (max. 10000000)
 
