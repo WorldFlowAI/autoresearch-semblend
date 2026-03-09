@@ -1748,8 +1748,12 @@ deeper architecture amplifying the constant-overhead advantage;
 (3)~exact RoPE delta correction solves position encoding at negligible
 cost (${\sim}7\,\mu$s per layer for 8K tokens), enabling non-contiguous
 KV reuse that prior systems could not achieve;
-(4)~embedding-based donor discovery supersedes Jaccard for identifying
-semantically similar prompts (cosine 0.80 vs.\ Jaccard 0.38);
+(4)~token-set Jaccard achieves 99--100\% donor match rate on cluster
+variations while MiniLM embedding achieves 7\% on the same 8K-token
+prompts (due to its 512-token context window); \semblend uses
+embedding as the primary signal for $O(1)$ lookup and true paraphrase
+coverage, relying on LMCache 256-token chunk hashing for the final
+exact-match KV reuse decision;
 (5)~throughput under concurrent load (1--32 clients) scales linearly
 to 9+ QPS with zero errors on both models, confirming SemBlend's
 $<$12\,ms pipeline overhead does not limit serving capacity; at 8K
