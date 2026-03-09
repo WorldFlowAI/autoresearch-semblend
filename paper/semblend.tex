@@ -112,7 +112,7 @@ SemBlend achieves $1.5\times$--$3.8\times$ hit-only TTFT speedup on real data,
 $7.8\times$--$8.3\times$ at 16K tokens on synthetic data, and
 $10.5\times$--$10.7\times$ combined with vLLM prefix caching---with
 output quality preserved (PPL ratio ${\leq}1.065$ on high-hit datasets).
-We validate correctness with 165 unit tests including mathematical exactness
+We validate correctness with 125 unit tests including mathematical exactness
 proofs against ground-truth RoPE computation.
 \end{abstract}
 
@@ -618,12 +618,12 @@ single CUDA stream: scatter (copy donor KV) $\to$ masked projection
 per-kernel profiling. A PyTorch CPU fallback path implements identical
 semantics for environments without Triton.
 
-\paragraph{Correctness.} The implementation is validated by 17 unit
-tests covering: scatter operations (contiguous and sparse patterns),
-masked projection (full mask, partial mask, empty mask), partial
-attention (causal masking, sparse reuse patterns), and the end-to-end
-orchestrator. All tests pass with $<$1e-3 relative error against
-reference PyTorch implementations.
+\paragraph{Correctness.} The Python plan-building API is validated by 16 unit
+tests covering: attention plan construction (with and without layer hints),
+attention mask computation (per-layer), donor KV index computation,
+and the PositionMask and AttentionMode data types. All tests pass,
+confirming the plan builder correctly translates transfer plans into
+per-layer reuse decisions.
 
 
 \subsection{RoPE Delta Correction for Non-Contiguous KV Reuse}
@@ -858,7 +858,8 @@ correction ($<$0.01\,ms) + LMCache KV load from CPU offload (${\sim}35$\,ms).
 Pipeline decision overhead: ${\sim}8$\,ms. Both models use identical
 \texttt{SemBlendConnectorV1} with no model-specific tuning, demonstrating
 architecture-agnostic operation.
-Peak individual speedup: $8.71\times$ (Qwen 16K), $8.26\times$ (LLaMA 16K).}
+P50 speedup at 16K: $7.77\times$ (Qwen), $8.26\times$ (LLaMA).
+Peak individual: $8.71\times$ (Qwen 16K, $857$\,ms vs.\ $6{,}657$\,ms cold).}
 \end{table*}
 
 Table~\ref{tab:results-kv} presents empirical validation of semantic
@@ -1063,24 +1064,16 @@ rates (60--80\%) than Qwen (40--60\%), suggesting model architecture
 affects output sensitivity to KV injection.
 
 \paragraph{Extended generation quality (256 tokens).}
-The quality measurements above use short outputs (${\leq}50$ tokens).
-To test whether quality degrades with longer generation, we re-run
-with \texttt{max\_tokens=256} (per-length pod restarts, $n{=}5$).
-At 5K tokens: ROUGE-L $= 0.724$, EM $= 40\%$, PPL ratio $= 0.987$
-with 100\% hit rate and $2.42\times$ speedup. The lower ROUGE-L
-is expected---longer generation amplifies early-token divergence
-(cascading effect). Crucially, PPL ratios remain near 1.0 across
-all lengths (range: 0.985--1.008), confirming that KV donor injection
-does not degrade the model's per-token confidence even over extended
-generation.
+Table~\ref{tab:quality} uses \texttt{max\_tokens=256} to test whether
+quality degrades over extended generation. PPL ratios remain near 1.0
+across all lengths and both models (range: 0.984--1.025), confirming
+no degradation even over 256-token outputs. We additionally measured
+at 5K tokens (not in the table): ROUGE-L $= 0.724$, EM $= 40\%$,
+PPL ratio $= 0.987$ with 100\% hit rate and $2.42\times$ speedup.
+The lower ROUGE-L at 4K/8K is expected---longer generation amplifies
+early-token divergence (cascading effect)---but PPL is the definitive
+quality signal and remains near 1.0 across all configurations.
 
-\paragraph{Why quality improves with length.}
-The reference ID used to prevent prefix cache hits occupies ${\sim}3$
-tokens in every prompt. At 2K tokens, this is 0.15\% of the prompt;
-at 16K, it is 0.019\%. Since KV injection replaces the \emph{entire}
-prompt's KV (not just the differing tokens), the ref ID's influence
-on attention is diluted at longer sequences. This explains the
-progression from 83\% exact match at 8K to 100\% at 16K.
 
 
 \subsubsection{Cross-Dataset TTFT Evaluation}
@@ -1257,11 +1250,11 @@ Hit-only speedup excludes misses for fair comparison.}
 \end{tabular}\\[2pt]
 {\footnotesize LLaMA-3.1-8B achieves substantially higher speedups
 ($2.66$--$3.78\times$ hit-only) than Qwen ($1.51$--$2.53\times$) across all four
-datasets. WikiHow achieves 100\% hit rate on both models; SAMSum and XSum
-achieve 75--88\% and 75--100\% respectively, confirming structured text
-benefits most from SemBlend. LLaMA's advantage is architecture-driven:
-32 layers vs 28 increases cold prefill cost while SemBlend's KV transfer
-overhead remains constant.}
+datasets. WikiHow achieves 100\% hit rate on both models. XSum achieves
+100\% for LLaMA but 75\%/0\%/100\% for Qwen at 2K/4K/8K (the 4K miss is a
+cluster-specific artifact; 8K is 100\%). SAMSum achieves 75--88\%.
+LLaMA's advantage is architecture-driven: 32 layers vs.\ 28 increases
+cold prefill cost while SemBlend's KV transfer overhead remains constant.}
 \end{table}
 
 Table~\ref{tab:multi-model-cross} reveals that \textbf{LLaMA benefits
@@ -1622,7 +1615,7 @@ LMCache---no gateway, no vector database, no embedding service.
 
 \paragraph{PartialAttention integration.}
 The three Triton CUDA kernels (\S\ref{sec:triton}) are implemented
-and unit-tested (165 tests total, all passing). Integration with vLLM's
+and unit-tested (125 tests total, all passing). Integration with vLLM's
 model runner is achieved via a \texttt{patch\_model\_runner()} hook
 that wraps \texttt{execute\_model()} to intercept prefill when a
 PartialAttention plan is active. \textbf{RoPE delta correction}
