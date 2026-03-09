@@ -190,10 +190,12 @@ We make five contributions:
   $O(N^2 d)$ attention it replaces.
 
 \item \textbf{Empirical evaluation} on two model architectures
-  (Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ) demonstrating
-  $2.4\times$--$8.3\times$ TTFT speedup at 2K--16K tokens with
-  quality preserved (PPL ratio $0.984$--$1.025$), plus architectural
-  analysis of the prefix cache coverage gap (\S\ref{sec:eval}).
+  (Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ) across five real-world NLP
+  datasets, demonstrating $2.4\times$--$8.3\times$ TTFT speedup at
+  2K--16K tokens with quality preserved (PPL ratio ${\leq}1.025$ on
+  high-hit datasets; mean elevated on lower-hit datasets by
+  miss-run outliers, not KV injection), plus architectural analysis
+  of the prefix cache coverage gap (\S\ref{sec:eval}).
 \end{enumerate}
 
 
@@ -1604,8 +1606,9 @@ position encoding exactly, the complementary \textbf{attention pattern
 drift} from context differences is addressed heuristically by the
 bathtub curve---a more principled per-request calibration could
 further improve quality. The bathtub-curve layer sensitivity is
-calibrated for Qwen2.5-7B; GQA, MoE, and very deep models
-($>$80 layers) may require recalibration.
+calibrated for Qwen2.5-7B and validated on LLaMA-3.1-8B with comparable
+quality results; GQA, MoE, and very deep models ($>$80 layers) may require
+recalibration.
 Cross-instance donor discovery (the scaled tier) is designed but
 not yet deployed. Short prompts ($<$500 tokens) may not benefit,
 as the ${\sim}8$\,ms pipeline overhead can exceed the cold prefill
@@ -1639,13 +1642,14 @@ Six findings stand out: (1)~semantic KV donor injection achieves
 $\mathbf{7.8\times}$--$\mathbf{8.3\times}$ P50 TTFT speedup at 16K tokens (peak individual:
 $8.71\times$) across Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ on
 A10G---exceeding SemShareKV's $6.25\times$ at 5K on costlier A100
-hardware---with quality preserved (PPL ratio $0.984$--$1.025$) and
-model-agnostic operation (no per-model tuning);
+hardware---with quality preserved (PPL ratio ${\leq}1.025$ on high-hit
+datasets; elevated on lower-hit datasets by miss-run outliers, not KV
+injection) and model-agnostic operation (no per-model tuning);
 (2)~on five real-world NLP datasets (CNN/DailyMail, XSum, MultiNews,
-WikiHow, SAMSum), SemBlend achieves $1.5\times$--$3.3\times$ TTFT
-speedup with 75--100\% hit rates at 8K tokens, and LLaMA-3.1-8B
-consistently achieves higher hit-only speedups ($2.7\times$--$3.3\times$)
-than Qwen ($1.5\times$--$2.4\times$) due to its deeper architecture
+WikiHow, SAMSum), SemBlend achieves $1.5\times$--$3.8\times$ hit-only
+TTFT speedup with 75--100\% hit rates at 8K tokens, and LLaMA-3.1-8B
+consistently achieves higher hit-only speedups ($2.7\times$--$3.8\times$)
+than Qwen ($1.5\times$--$2.5\times$) due to its deeper architecture
 amplifying the constant-overhead advantage;
 (3)~exact RoPE delta correction solves position encoding at negligible
 cost (${\sim}7\,\mu$s per layer for 8K tokens), enabling non-contiguous
