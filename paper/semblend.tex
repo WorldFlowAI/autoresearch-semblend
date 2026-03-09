@@ -1712,7 +1712,7 @@ share cosine similarity $\geq 0.60$ (\semblend's production threshold),
 with a median consecutive similarity of \textbf{0.549}
 versus \textbf{0.072} for random cross-user pairs---a lift of
 $\boldsymbol{+0.476}$ ($7.6\times$ higher). At the cluster level,
-23.1\% of pairs exceed $\tau{=}0.80$ and 7.7\% exceed $\tau{=}0.95$
+23.1\% of pairs exceed $\tau{=}0.80$ and 7.3\% exceed $\tau{=}0.95$
 (near-exact repeats). The distribution is broadly bimodal: many users
 either return to closely related topics (0.60--0.95) or ask
 near-identical questions across sessions (0.95--1.00).
@@ -1721,7 +1721,7 @@ These results confirm that real-world chatbot workloads exhibit
 substantial intra-user semantic correlation: nearly half of all
 same-user consecutive conversation pairs would benefit from
 \semblend's semantic KV reuse at the production threshold,
-with 7.7\% eligible for exact-prefix LMCache reuse as well.
+with 7.3\% eligible for exact-prefix LMCache reuse as well.
 The $7.6\times$ lift over random cross-user pairs validates the
 per-tenant deployment model: semantic donor caches should be
 partitioned by user, not shared globally.
@@ -2059,11 +2059,6 @@ R.~Wagner and M.~Fischer,
 W.~Kwon \textit{et al.},
 ``vLLM: Efficient Memory Management for Large Language Model Serving,''
 GitHub, 2023.
-
-\bibitem{bitext}
-Bitext,
-``Customer Support LLM Chatbot Training Dataset,''
-HuggingFace, 2024.
 
 \bibitem{gptcache}
 Z.~Bang \textit{et al.},

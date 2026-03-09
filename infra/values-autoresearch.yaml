@@ -79,15 +79,15 @@ providers:
       usePartialAttn: true
     resources:
       requests:
-        cpu: "2"
-        memory: "8Gi"
+        cpu: "4"
+        memory: "16Gi"
         nvidia.com/gpu: "1"
       limits:
-        cpu: "4"
-        memory: "14Gi"
+        cpu: "8"
+        memory: "28Gi"
         nvidia.com/gpu: "1"
     nodeSelector:
-      gpu-type: a10g
+      eks.amazonaws.com/nodegroup: gpu-nodes-g5-2xl
     tolerations:
       - key: "nvidia.com/gpu"
         operator: "Exists"

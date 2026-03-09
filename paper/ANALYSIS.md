@@ -121,7 +121,7 @@ SemBlend's memory story differs from SemShareKV's 42% GPU KV reduction:
 ### Tier 2: Nice-to-Have / Future Work
 
 #### I-10a. WildChat-1M Per-User Semantic Overlap ✅ DONE
-**Result**: 44.9% of 33,160 consecutive same-user pairs share cosine ≥ 0.60; median sim 0.549 vs 0.072 random (lift +0.476, 7.6×); 7.7% exceed 0.95 (LMCache territory). Paper section added (§Real-World Conversational Workload Validation). Per-tenant deployment validated.
+**Result**: 44.9% of 33,160 consecutive same-user pairs share cosine ≥ 0.60; median sim 0.549 vs 0.072 random (lift +0.476, 7.6×); 7.3% exceed 0.95 (LMCache territory). Paper section added (§Real-World Conversational Workload Validation). Per-tenant deployment validated.
 
 #### I-10. Similarity Sensitivity Study
 Match SemShareKV's Figure 9: vary elimination/replacement ratio from 10% to 90% and show quality degradation curve.
