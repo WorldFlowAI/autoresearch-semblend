@@ -1943,10 +1943,10 @@ characterizes architecture-specific KV layer importance: LLaMA-family
 transformers exhibit an ``inverted funnel'' pattern (early layers
 consolidate information; middle/late layers are more redundant),
 while Qwen-family exhibits a ``funnel'' pattern (late layers consolidate;
-early layers more redundant)~\cite{prophetkv}. Our current bathtub
+early layers more redundant)~\cite{kvphysics}. Our current bathtub
 preset recomputes layers $[0,1,31]$ (9.4\%) for LLaMA and $[0,1,2,27]$
 (14.3\%) for Qwen---close to the 11\% critical layer estimate from
-selective recomputation studies. Architecture-specific calibration
+selective recomputation studies~\cite{droidspeak}. Architecture-specific calibration
 (shifting Qwen recomputation toward late layers, LLaMA toward early layers)
 is a tractable future improvement. Our measured PPL ratios (1.001--1.065
 across five datasets and two models) indicate the current uniform calibration
@@ -2212,6 +2212,18 @@ in \textit{Proc.\ EMNLP Workshop}, 2019.
 W.~Zhao \textit{et al.},
 ``WildChat: 1M ChatGPT Interaction Logs in the Wild,''
 in \textit{Proc.\ ICLR}, 2024.
+
+\bibitem{droidspeak}
+Y.~Liu \textit{et al.},
+``DroidSpeak: KV Cache Sharing for Cross-LLM Communication and
+Multi-LLM Serving,''
+arXiv:2411.02820, Nov.\ 2024.
+
+\bibitem{kvphysics}
+S.~Ananthanarayanan, A.~Sengupta, and T.~Chakraborty,
+``Understanding the Physics of Key-Value Cache Compression for LLMs
+through Attention Dynamics,''
+arXiv:2603.01426, Mar.\ 2026.
 
 \end{thebibliography}
 

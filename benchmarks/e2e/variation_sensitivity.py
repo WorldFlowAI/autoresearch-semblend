@@ -5,10 +5,15 @@ Measures PPL ratio per variation type to create a quality vs semantic overlap cu
 matching SemShareKV Figure 9. Uses 8K CNN/DM cluster data.
 
 Methodology per cluster:
-  1. SEED: Run inference on seed text → registers as donor (SemBlend adds automatically)
-  2. VARIATION: Run inference on each variation type → SemBlend tries to match seed
-  3. COLD: Run same variation with unique suffix to disable donor reuse → cold baseline
+  1. COLD: Run cold inference on each variation type FIRST (no donor registered)
+     → truly cold baseline, unaffected by vLLM prefix cache contamination
+  2. SEED: Register seed as donor via inference
+  3. SEMBLEND: Run inference on each variation type again → SemBlend tries to match seed
   4. PPL ratio = SEMBLEND_PPL / COLD_PPL
+
+  Important: Cold runs happen BEFORE seed registration and BEFORE SemBlend runs.
+  This prevents vLLM's own prefix cache from contaminating cold baselines with KV
+  from a prior SemBlend run (which would make cold_ttft unrealistically fast ~600ms).
 
 The variation types form a similarity gradient:
   exact (overlap=1.0) → reorder (0.90) → partial_80 (0.80) → paraphrase (0.77)
@@ -182,29 +187,42 @@ def main():
             if vtype not in var_by_type:
                 var_by_type[vtype] = v
 
+        # METHODOLOGY FIX: Run cold baselines FIRST (before donor is registered),
+        # then run SemBlend. This prevents vLLM's own prefix cache from contaminating
+        # cold baselines with KV from the SemBlend run. With cold-first ordering:
+        #   - Cold run: var_text, NO donor registered → truly cold prefill
+        #   - SemBlend run: var_text, WITH donor registered → donor KV injection
+        # After SemBlend run, vLLM caches var_text, but we don't use cold again.
+        cold_results: dict[str, tuple[float, float]] = {}
         for vtype in variation_types:
             if vtype not in var_by_type:
                 continue
             variation = var_by_type[vtype]
             var_text = variation["text"]
+            try:
+                cold_ppl, cold_ttft = run_inference(
+                    args.endpoint, args.model, var_text, args.max_tokens, seed=200+ci)
+                cold_results[vtype] = (cold_ppl, cold_ttft)
+                print(f"  cold {vtype:<12} {cold_ttft:.0f}ms PPL={cold_ppl:.3f}")
+            except Exception as e:
+                print(f"  ERROR cold {vtype}: {e}")
+
+        for vtype in variation_types:
+            if vtype not in var_by_type:
+                continue
+            if vtype not in cold_results:
+                continue
+            variation = var_by_type[vtype]
+            var_text = variation["text"]
             cos_est = OVERLAP_TYPE_COSINE.get(vtype, 0.0)
             exp_overlap = variation.get("expected_token_overlap", cos_est)
+            cold_ppl, cold_ttft = cold_results[vtype]
 
-            # SemBlend run (donor registered)
+            # SemBlend run (donor registered, after cold was already measured)
             try:
                 sb_ppl, sb_ttft = run_inference(args.endpoint, args.model, var_text, args.max_tokens, seed=100+ci)
             except Exception as e:
                 print(f"  ERROR semblend {vtype}: {e}")
-                continue
-
-            # Cold baseline: append unique suffix to defeat SemBlend matching
-            import hashlib
-            unique_suffix = f"\n\n[UNIQUE_ID_{hashlib.md5(f'{cluster_id}_{vtype}'.encode()).hexdigest()[:8]}]"
-            cold_text = var_text + unique_suffix
-            try:
-                cold_ppl, cold_ttft = run_inference(args.endpoint, args.model, cold_text, args.max_tokens, seed=200+ci)
-            except Exception as e:
-                print(f"  ERROR cold {vtype}: {e}")
                 continue
 
             ppl_ratio = sb_ppl / cold_ppl if cold_ppl > 0 else 1.0
