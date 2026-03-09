@@ -1696,6 +1696,35 @@ inference with identical system prompts), LMCache is strictly preferred.
 semantically related but lexically different, where LMCache provides
 no cache benefit.
 
+\subsubsection{Real-World Conversational Workload Validation}
+\label{sec:analysis:wildchat}
+
+To validate that the semantic similarity assumption holds beyond
+synthetic benchmarks, we analyze WildChat-1M~\cite{zhao2024wildchat},
+a large-scale dataset of 1 million real ChatGPT conversations. We
+sample 100K rows, extract 33,160 consecutive conversation pairs from
+5,000 users with $\geq$2 conversations each, and compute MiniLM-L6-v2
+cosine similarity between each consecutive donor--query pair
+(using the same model \semblend deploys at inference time).
+
+\textbf{44.9\%} of consecutive conversation pairs from the same user
+share cosine similarity $\geq 0.60$ (\semblend's production threshold),
+with a median consecutive similarity of \textbf{0.549}
+versus \textbf{0.072} for random cross-user pairs---a lift of
+$\boldsymbol{+0.476}$ ($7.6\times$ higher). At the cluster level,
+23.1\% of pairs exceed $\tau{=}0.80$ and 7.7\% exceed $\tau{=}0.95$
+(near-exact repeats). The distribution is broadly bimodal: many users
+either return to closely related topics (0.60--0.95) or ask
+near-identical questions across sessions (0.95--1.00).
+
+These results confirm that real-world chatbot workloads exhibit
+substantial intra-user semantic correlation: nearly half of all
+same-user consecutive conversation pairs would benefit from
+\semblend's semantic KV reuse at the production threshold,
+with 7.7\% eligible for exact-prefix LMCache reuse as well.
+The $7.6\times$ lift over random cross-user pairs validates the
+per-tenant deployment model: semantic donor caches should be
+partitioned by user, not shared globally.
 
 \subsection{Inference-Engine Comparison}
 \label{sec:inference-comparison}
@@ -2095,6 +2124,11 @@ B.~Gliwa \textit{et al.},
 ``SAMSum Corpus: A Human-annotated Dialogue Dataset for
 Abstractive Summarization,''
 in \textit{Proc.\ EMNLP Workshop}, 2019.
+
+\bibitem{zhao2024wildchat}
+W.~Zhao \textit{et al.},
+``WildChat: 1M ChatGPT Interaction Logs in the Wild,''
+in \textit{Proc.\ ICLR}, 2024.
 
 \end{thebibliography}
 
