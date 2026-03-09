@@ -1729,6 +1729,17 @@ The $7.6\times$ lift over random cross-user pairs validates the
 per-tenant deployment model: semantic donor caches should be
 partitioned by user, not shared globally.
 
+To validate end-to-end TTFT gains on real user traffic, we select
+long-context WildChat pairs ($\geq$6,000 characters; average 3,315
+donor / 2,659 query tokens) and run live inference against
+Qwen2.5-7B-AWQ. Of 30 pairs, 33.3\% receive a SemBlend hit
+(cosine$\geq$0.60). Hit-only TTFT is \textbf{1.74$\times$ (p50)}
+with a peak of $2.22\times$, compared to a cold baseline of 1,596\,ms.
+These speedups are consistent with our controlled-dataset results
+at the 2K--4K token range (Table~\ref{tab:results-kv}), confirming
+that real-user conversation pairs activate SemBlend with equivalent
+efficiency to purpose-built benchmark prompts.
+
 \subsection{Inference-Engine Comparison}
 \label{sec:inference-comparison}
 
