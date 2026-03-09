@@ -1332,8 +1332,8 @@ To verify SemBlend does not degrade serving throughput, we measure
 queries per second (QPS) across concurrency levels 1--32 on both models
 (short prompts, \texttt{max\_tokens=32}). Both models achieve identical
 throughput scaling: 0.4 QPS at $c{=}1$ to 9.0--9.1 QPS at $c{=}32$,
-with zero errors at all levels. P50 TTFT at $c{=}1$ is ${\sim}340$\,ms; P99 at $c{=}32$
-reaches ${\sim}950$--$1037$\,ms, matching expected vLLM behavior
+with zero errors at all levels. P50 TTFT at $c{=}1$ is $340$--$342$\,ms; P99 at $c{=}32$
+reaches $946$--$1037$\,ms, matching expected vLLM behavior
 without SemBlend. This confirms SemBlend's pipeline overhead
 ($<$12\,ms) is negligible relative to inference latency and does not
 limit serving capacity.
@@ -1571,8 +1571,10 @@ KVShare warm path & 21 & DHD semantic \\
 KV transfer (CPU$\to$GPU) & ${\sim}$35 & 8K tok, 28 layers, FP16 \\
 \midrule
 \multicolumn{3}{@{}l}{\textit{Cold TTFT baselines (tokenizer-verified):}} \\
-7B-AWQ @ 8K tokens (A10G) & 4{,}048 & $n{=}10$, per-length restart \\
-7B-AWQ @ 16K tokens (A10G) & 6{,}781 & $n{=}10$, per-length restart \\
+Qwen2.5-7B @ 8K tokens (A10G) & 3{,}495 & $n{=}5$, per-length restart \\
+Qwen2.5-7B @ 16K tokens (A10G) & 6{,}657 & $n{=}5$, per-length restart \\
+LLaMA-3.1-8B @ 8K tokens (A10G) & 3{,}425 & $n{=}5$, per-length restart \\
+LLaMA-3.1-8B @ 16K tokens (A10G) & 7{,}286 & $n{=}5$, per-length restart \\
 \bottomrule
 \end{tabular}\\[2pt]
 {\footnotesize \semblend Local's 8\,ms pipeline is faster than both
