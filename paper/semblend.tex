@@ -1321,6 +1321,18 @@ without SemBlend. This confirms SemBlend's pipeline overhead
 ($<$12\,ms) is negligible relative to inference latency and does not
 limit serving capacity.
 
+\paragraph{Long-context throughput with donor reuse.}
+To verify throughput benefits at long context, we measure QPS with
+8K XSum prompts using 8 active donors ($n{=}16$ queries per level,
+Qwen2.5-7B-AWQ). With SemBlend donor reuse, throughput scales from
+1.51 QPS ($c{=}1$) to 8.37 QPS ($c{=}4$) to \textbf{14.44 QPS} ($c{=}8$),
+with zero errors at all levels and TTFT P50 of 534--631\,ms. This
+represents a $\mathbf{5}$--$\mathbf{6}\times$ throughput improvement over
+cold 8K prefill (${\sim}2.3$ QPS at $c{=}8$ cold). The P50 TTFT of
+${\sim}534$\,ms at $c{=}8$ confirms the constant-TTFT property holds
+under concurrent load, enabling high-throughput serving of semantically
+similar long-context requests.
+
 
 \subsubsection{SemBlend Local: Component Latency Decomposition}
 \label{sec:local-breakdown}
@@ -1597,7 +1609,9 @@ so it is enabled by default as forward-compatible insurance.
 \paragraph{Threats to validity.}
 (1)~KV-tensor speedups are measured with streaming TTFT on a
 single-request workload; throughput measurements at $c{=}1$--$32$
-confirm zero degradation (9+ QPS, zero errors) but use short prompts.
+confirm zero degradation (9+ QPS, zero errors) on short prompts,
+and long-context throughput (8K XSum, $c{=}1$--$8$) achieves
+14+ QPS with zero errors, confirming donor reuse at scale.
 (2)~The quality model parameters are fit against published aggregate
 metrics rather than per-token quality measurements. Empirical output
 quality verification (Table~\ref{tab:quality}) addresses this for
