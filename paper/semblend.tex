@@ -772,7 +772,7 @@ embedding.
 \paragraph{Dataset.} We construct controlled RAG
 scenarios using 4 independent context chunks drawn from established
 NLP benchmarks used by prior work~\cite{semsharekv}: CNN/DailyMail,
-XSum, MultiNews, and WikiHow. Chunks
+XSum, MultiNews, WikiHow, and SAMSum. Chunks
 can be reordered, removed, or replaced to produce REORDER, PARTIAL,
 and COLD test cases with known overlap characteristics.
 
@@ -1566,11 +1566,11 @@ $8.71\times$) across Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ on
 A10G---exceeding SemShareKV's $6.25\times$ at 5K on costlier A100
 hardware---with quality preserved (PPL ratio $0.984$--$1.025$) and
 model-agnostic operation (no per-model tuning);
-(2)~on real-world NLP datasets (CNN/DailyMail, XSum, MultiNews),
-SemBlend achieves $1.5\times$--$3.3\times$ TTFT speedup with
-100\% hit rates on XSum at 8K tokens, and LLaMA-3.1-8B consistently
-achieves higher hit-only speedups ($2.7\times$--$3.3\times$) than
-Qwen ($1.5\times$--$2.3\times$) due to its deeper architecture
+(2)~on five real-world NLP datasets (CNN/DailyMail, XSum, MultiNews,
+WikiHow, SAMSum), SemBlend achieves $1.5\times$--$3.3\times$ TTFT
+speedup with 75--100\% hit rates at 8K tokens, and LLaMA-3.1-8B
+consistently achieves higher hit-only speedups ($2.7\times$--$3.3\times$)
+than Qwen ($1.5\times$--$2.4\times$) due to its deeper architecture
 amplifying the constant-overhead advantage;
 (3)~exact RoPE delta correction solves position encoding at negligible
 cost (${\sim}7\,\mu$s per layer for 8K tokens), enabling non-contiguous
