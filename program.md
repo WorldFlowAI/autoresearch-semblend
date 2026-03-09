@@ -396,13 +396,13 @@ Paper work can happen while waiting for Tier 3 benchmarks to complete — it's "
 
 ## Running Benchmarks
 
-Common benchmark commands:
+### Core Benchmarks
 
 ```bash
 # TTFT scaling (primary metric)
 uv run run_experiment.py --tier 3 --bench ttft
 
-# Long-context TTFT (16K/24K/32K)
+# Long-context TTFT (16K/24K/32K) — LLaMA on g5.2xlarge with 15GB buffer
 uv run python benchmarks/e2e/semblend_ttft_scaling.py \
   --endpoint http://localhost:8100 \
   --model "hugging-quants/Meta-Llama-3.1-8B-Instruct-AWQ-INT4" \
@@ -415,19 +415,132 @@ uv run run_experiment.py --tier 3 --bench quality
 # Ablation studies
 uv run run_experiment.py --tier 3 --bench ablation
 
-# Memory measurement
-uv run run_experiment.py --tier 3 --bench memory
-
 # Donor store scaling
 uv run run_experiment.py --tier 3 --bench scale
 
-# CAGRA search latency benchmark
-uv run python benchmarks/e2e/cagra_search_benchmark.py \
-  --donor-counts 10,100,1000,10000,100000 \
-  --dim 384 --query-count 1000
-
 # All benchmarks
 uv run run_experiment.py --tier 3 --bench all
+```
+
+### WildChat-1M User-Level Reuse Benchmark
+
+```bash
+# Download 100K rows and run benchmark (requires HF_TOKEN)
+HF_TOKEN=<token> PYTHONUNBUFFERED=1 .venv/bin/python -u \
+  benchmarks/e2e/wildchat_semblend_bench.py \
+  --download \
+  --download-rows 100000 \
+  --data-path benchmarks/data/wildchat/wildchat_100k.jsonl \
+  --endpoint http://localhost:8100 \
+  --model "hugging-quants/Meta-Llama-3.1-8B-Instruct-AWQ-INT4" \
+  --target-tokens 4096 \
+  --n-pairs 60 \
+  --settle-time 5.0 \
+  --output benchmarks/data/wildchat/results_llama_4k.json
+
+# Run-only (data already downloaded)
+PYTHONUNBUFFERED=1 .venv/bin/python -u \
+  benchmarks/e2e/wildchat_semblend_bench.py \
+  --data-path benchmarks/data/wildchat/wildchat_100k.jsonl \
+  --endpoint http://localhost:8100 \
+  --model "hugging-quants/Meta-Llama-3.1-8B-Instruct-AWQ-INT4" \
+  --target-tokens 8192 \
+  --n-pairs 60
+```
+
+**Expected metrics to report**:
+- `hit_rate`: % of consecutive user conversation pairs with cosine sim ≥ 0.60
+- `hit_speedup_p50`: TTFT speedup on hit pairs (expect 3-8x at 4K)
+- `cold_p50_ms`: baseline cold TTFT for this token length
+- `n_unique_users`: number of distinct hashed_ip values in test
+
+**Paper narrative**: "In a sample of {N} consecutive conversation pairs from WildChat-1M,
+{hit_rate*100:.0f}% share sufficient semantic overlap for KV reuse (sim ≥ 0.60),
+achieving {hit_speedup_p50:.1f}× TTFT speedup on matched pairs vs. cold baseline."
+
+### CAGRA/cuVS GPU Search Benchmark
+
+Measures ANN search latency at scale: numpy cosine scan vs CAGRA on GPU.
+
+```bash
+# First install cuVS in the Docker image (add to Dockerfile):
+# RUN pip install cuvs-cu12 --extra-index-url https://pypi.nvidia.com
+
+# Run CAGRA latency benchmark (after installing cuvs):
+PYTHONUNBUFFERED=1 .venv/bin/python -u \
+  benchmarks/e2e/cagra_search_benchmark.py \
+  --donor-counts "10,100,1000,10000,100000" \
+  --dim 384 \
+  --query-count 1000 \
+  --compare-numpy
+
+# Create the benchmark script (benchmarks/e2e/cagra_search_benchmark.py):
+# - Build CAGRA index with N random 384-dim float32 vectors
+# - Run 1000 cosine queries, measure p50/p99 latency
+# - Compare: numpy scan vs cuVS brute_force vs cuVS CAGRA
+# - Report: latency table + throughput (queries/sec)
+# - Verify: top-1 recall@10 ≥ 0.99 for CAGRA vs exact
+```
+
+**Expected results** (from NVIDIA benchmarks):
+| N donors | numpy scan | cuVS CAGRA | Speedup |
+|----------|-----------|------------|---------|
+| 100      | 0.01ms    | 0.5ms*     | 0.02x   |
+| 1,000    | 0.1ms     | 0.5ms*     | 0.2x    |
+| 10,000   | 1ms       | 0.5ms*     | 2x      |
+| 100,000  | 10ms      | 0.5ms*     | 20x     |
+| 1,000,000| 100ms     | 0.5ms*     | 200x    |
+
+*CAGRA GPU latency is roughly constant due to parallel GPU execution. Numpy degrades linearly. Crossover ~10K donors. At 100K+, CAGRA is 20-200x faster.
+
+**Paper impact**: Demonstrates production scalability. Current numpy scan works for lab N<1000; production needs CAGRA at N=100K+ cached conversations.
+
+### Multi-GPU SemBlend Benchmark (g5.12xlarge — 4× A10G)
+
+Tests tensor parallel (TP=2/4) to show horizontal scalability of KV injection.
+
+```bash
+# Scale up to g5.12xlarge (4× A10G, 96GB VRAM)
+eksctl create nodegroup --cluster synapse-staging --name gpu-nodes-g5-12xl \
+  --node-type g5.12xlarge --nodes 1 --nodes-min 0 --nodes-max 2 \
+  --node-labels gpu-type=a10g,gpu-count=4 \
+  --node-taints nvidia.com/gpu=present:NoSchedule \
+  --region us-east-1
+
+# Deploy with TP=2 (2 GPUs, model sharded across them)
+# Update values-autoresearch.yaml:
+#   providers.vllm.tensorParallelSize: 2
+#   resources.limits.nvidia.com/gpu: 2
+#   nodeSelector: eks.amazonaws.com/nodegroup: gpu-nodes-g5-12xl
+helm upgrade autoresearch ... -f infra/values-autoresearch.yaml
+
+# Then run standard TTFT benchmark to compare TP=1 vs TP=2 vs TP=4
+# Expected: cold TTFT improves (more VRAM = larger model fits + better compute)
+# SemBlend TTFT should remain ~constant (KV transfer is the bottleneck, not GPU)
+# → Speedup ratio increases with TP because cold gets faster but SemBlend stays constant
+```
+
+**Metrics to collect**:
+- `cold_ttft_tp{1,2,4}`: cold TTFT baseline at each TP level
+- `semblend_ttft_tp{1,2,4}`: SemBlend TTFT at each TP level
+- `speedup_tp{1,2,4}`: speedup at each TP level
+- `hit_rate_tp{1,2,4}`: verify hit rate doesn't degrade with TP
+
+**Expected insight**: With TP=2, cold prefill gets faster (2 GPUs compute in parallel), but SemBlend TTFT stays ~constant → speedup ratio DECREASES vs TP=1 because cold is now faster. But at very long contexts (32K+), cold is SO slow that SemBlend still wins even at TP=2.
+
+**Alternative TP insight**: With TP=2 and 48GB total VRAM per model shard, we can run larger models (LLaMA-70B) or longer contexts (64K+), where SemBlend's constant TTFT becomes even more dominant.
+
+### Cross-Replica Donor Sharing Benchmark (2× replicas)
+
+```bash
+# Deploy 2 vLLM replicas with shared Milvus donor store
+helm upgrade autoresearch ... \
+  --set providers.vllm.replicaCount=2 \
+  --set providers.vllm.kvConnector.sharedDonorStore=true
+
+# Register donor via replica 1, query via replica 2
+# Verify: hit rate with shared store ≈ single-replica hit rate
+# Without shared store: hit rate drops to ~1/N (random routing)
 ```
 
 ---
