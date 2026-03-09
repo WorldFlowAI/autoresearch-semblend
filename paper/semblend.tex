@@ -854,11 +854,12 @@ matched document variations.}
 & 24K tokens & 11,144 & 1,243$^*$ & $8.97\times^*$  &  75\% & 8 \\
 & 32K tokens & 15,418 & 1,288$^*$ & $\mathbf{11.97\times^*}$ & 88\% & 8 \\
 \midrule
-\multirow{4}{*}{LLaMA-3.1-8B-AWQ (32L)}
+\multirow{5}{*}{LLaMA-3.1-8B-AWQ (32L)}
 & 2K tokens  & 1,233 &  515 & $2.39\times$          & 100\% & 5 \\
 & 4K tokens  & 1,628 &  561 & $2.90\times$          & 100\% & 5 \\
 & 8K tokens  & 3,416 &  627 & $5.45\times$          & 100\% & 5 \\
-& 16K tokens & 6,377 &  824 & $7.74\times^\dagger$  &  60\% & 5 \\
+& 16K tokens & 7,396 &  992$^{*\dagger}$ & $7.73\times^{*\dagger}$ & 88\% & 8 \\
+& 32K tokens & 17,109 & 1,574$^{*\dagger}$ & $\mathbf{11.06\times^{*\dagger}}$ & 75\% & 8 \\
 \bottomrule
 \end{tabular}\\[2pt]
 {\footnotesize Pipeline: MiniLM-L6-v2 ONNX GPU embedding (384-dim, ${\sim}3$\,ms;
@@ -868,11 +869,12 @@ correction ($<$0.01\,ms) + LMCache KV load from CPU offload (${\sim}35$\,ms).
 Pipeline decision overhead: ${\sim}6$\,ms. Both models use identical
 \texttt{SemBlendConnectorV1} with no model-specific tuning.
 $^*$Hit-only speedup; 24K/32K rows use 8 runs with interleaved donor registration.
-$^\dagger$Hit-only speedup; LLaMA 16K hit rate limited by LMCache CPU buffer
-capacity (8 KV heads $\times$ 32 layers = $2\times$ memory vs Qwen's
-4 KV heads $\times$ 28 layers). On real NLP datasets at 8K tokens,
-speedup ranges 1.5--3.8$\times$ (Table~\ref{tab:cross-dataset}).
-Peak individual: $11.97\times$ (Qwen 32K).}
+$^\dagger$LLaMA 16K/32K rows measured on g5.2xlarge with 15\,GB LMCache buffer
+(vs.\ 10\,GB on g5.xlarge), enabling 88\% hit rate at 16K and 75\% at 32K.
+LLaMA's larger KV footprint (8 KV heads $\times$ 32 layers $= 2\times$ vs.\ Qwen's
+4 KV heads $\times$ 28 layers) fills the CPU buffer faster. On real NLP datasets
+at 8K tokens, speedup ranges 1.5--3.8$\times$ (Table~\ref{tab:cross-dataset}).
+Peak individual: $12.92\times$ (LLaMA 32K); $11.97\times$ (Qwen 32K).}
 \end{table*}
 
 Table~\ref{tab:results-kv} presents empirical validation of semantic
@@ -896,9 +898,12 @@ GQA with 4 KV heads) and LLaMA-3.1-8B (32 layers, GQA with 8 KV heads)
 \emph{without any model-specific tuning}. The identical
 \texttt{SemBlendConnectorV1} pipeline handles both architectures:
 embedding-based donor discovery, rapidfuzz alignment, RoPE delta correction,
-and LMCache chunk-swap injection. LLaMA-3.1-8B achieves
-$\mathbf{8.26\times}$ at 16K tokens, slightly exceeding Qwen's
-$7.77\times$ due to LLaMA's higher cold prefill cost with 32 layers.
+and LMCache chunk-swap injection. At 32K tokens, LLaMA achieves
+$\mathbf{11.06\times}$ hit-only speedup (peak individual $12.92\times$),
+comparable to Qwen's $11.97\times$, confirming architectural portability.
+With the larger 15\,GB CPU buffer on g5.2xlarge, LLaMA achieves 88\% hit rate
+at 16K ($7.73\times$) and 75\% hit rate at 32K ($11.06\times$);
+hit-run speedups remain consistent with Qwen across all lengths.
 
 \paragraph{Comparison with SemShareKV.}
 SemShareKV~\cite{semsharekv} reports up to $6.25\times$ speedup at
@@ -915,9 +920,9 @@ Cold prefill cost scales with sequence length,
 while SemBlend's KV-loaded TTFT remains bounded by CPU$\to$GPU
 transfer bandwidth---roughly constant at 700\,ms--1.3\,s for 8K--32K
 tokens. This divergence drives the increasing speedup curve:
-at 16K, cold prefill takes 6.6\,s while SemBlend completes in 0.79\,s;
-at 32K, cold prefill reaches 15.4\,s while SemBlend completes in 1.3\,s
-($12\times$ speedup). SemShareKV tested only at 5K tokens and does not
+at 16K, cold prefill takes 7.4\,s (LLaMA) while SemBlend completes in 0.99\,s ($7.7\times$);
+at 32K, cold prefill reaches 15.4--17.1\,s while SemBlend completes in 1.3--1.6\,s
+($11$--$12\times$ speedup across both models). SemShareKV tested only at 5K tokens and does not
 report per-length scaling; we demonstrate that semantic KV reuse becomes
 \emph{dramatically} more valuable at longer contexts.
 
@@ -1881,8 +1886,8 @@ non-contiguous KV reuse (REORDER, PARTIAL, paraphrase) on all
 RoPE-based models.
 
 Seven findings stand out: (1)~semantic KV donor injection achieves
-$\mathbf{8.3\times}$ at 16K and $\mathbf{11.97\times}$ at 32K tokens
-(peak individual) across Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ on
+$\mathbf{7.7\times}$--$\mathbf{8.3\times}$ at 16K and $\mathbf{11.06\times}$--$\mathbf{11.97\times}$ at 32K tokens
+across Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ on
 A10G---exceeding SemShareKV's $6.25\times$ at 5K on costlier A100
 hardware---with quality preserved (PPL ratio ${\leq}1.065$ on high-hit
 datasets; elevated on lower-hit datasets by miss-run outliers, not KV
