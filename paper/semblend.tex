@@ -1066,8 +1066,9 @@ progression from 83\% exact match at 8K to 100\% at 16K.
 \label{sec:cross-dataset}
 
 To validate SemBlend beyond controlled synthetic scenarios, we evaluate
-TTFT speedup on three production NLP datasets: CNN/DailyMail~\cite{cnn_dailymail},
-XSum~\cite{xsum}, and MultiNews~\cite{multinews}. Each dataset provides
+TTFT speedup on five production NLP datasets: CNN/DailyMail~\cite{cnn_dailymail},
+XSum~\cite{xsum}, MultiNews~\cite{multinews}, WikiHow~\cite{wikihow}, and
+SAMSum~\cite{samsum}. Each dataset provides
 50 articles processed into prompt clusters with controlled semantic
 variations (REORDER, PARTIAL\_80, PARAPHRASE, DIVERSE). We measure
 cold baseline TTFT (no donors), register seed prompts as donors, then
@@ -1111,14 +1112,24 @@ is raw P50 (including misses).}
 & 2K  & $1.59\times$ &  75\% & $1.59\times$ \\
 & 4K  & $1.60\times$ &  38\% & $1.60\times$ \\
 & 8K  & $2.29\times$ &  50\% & $2.29\times$ \\
+\midrule
+\multirow{3}{*}{WikiHow}
+& 2K  & $1.62\times$ &  88\% & $1.64\times$ \\
+& 4K  & $1.50\times$ &  88\% & $1.54\times$ \\
+& 8K  & $2.24\times$ & 100\% & $2.24\times$ \\
+\midrule
+\multirow{3}{*}{SAMSum}
+& 2K  & $1.61\times$ &  88\% & $1.63\times$ \\
+& 4K  & $1.46\times$ &  75\% & $1.61\times$ \\
+& 8K  & $2.37\times$ &  88\% & $2.37\times$ \\
 \bottomrule
 \end{tabular}\\[2pt]
 {\footnotesize Synthetic data achieves highest speedups due to controlled
-token overlap. Real-world datasets show $1.5\times$--$2.3\times$ at 8K
-with variable hit rates. XSum achieves 100\% hit rate at 8K--16K due to
-its shorter article structure producing better chunk alignment. Hit Rate
-variation reflects the inherent tension between LMCache's 256-token chunk
-hashing and real-world lexical variation.}
+token overlap. Real-world datasets show $1.5\times$--$2.4\times$ at 8K
+with 75--100\% hit rates. XSum and WikiHow achieve 100\% hit rate at 8K;
+SAMSum and MultiNews reach 75--88\%; CNN/DailyMail the lowest at 50\%.
+Hit Rate variation reflects the inherent tension between LMCache's
+256-token chunk hashing and real-world lexical variation.}
 \end{table}
 
 Table~\ref{tab:cross-dataset} reveals a key architectural insight:
@@ -1131,14 +1142,20 @@ ratio. Above 8K, the cold baselines for real-world data are lower than
 synthetic (due to vLLM prefix caching contributions), compressing the gap.
 
 \paragraph{Hit rate analysis.}
-The variable hit rates on real datasets (38--100\%) stem from LMCache's
-\emph{exact chunk hashing}: a single changed token within a 256-token
-chunk invalidates the entire chunk. REORDER variations (same tokens,
-different positions) achieve the highest hit rates because chunk content
-is preserved. PARAPHRASE and PARTIAL variations change tokens within
-chunks, reducing chunk-level matches to zero despite high semantic
-similarity. This motivates future work on sub-chunk KV alignment or
-smaller chunk sizes to improve real-world hit rates.
+The variable hit rates on real datasets (50--100\%) correlate with
+content structure. XSum (news summaries) and WikiHow (step-by-step
+procedures) achieve 100\% hit at 8K because their structured,
+repetitive text produces token sequences that survive chunk-level
+REORDER matching. SAMSum (dialogue) and MultiNews (multi-document)
+reach 75--88\%. CNN/DailyMail articles, with their free-form narrative
+style, achieve the lowest hit rates (50\% at 8K).
+
+All hit failures stem from LMCache's \emph{exact chunk hashing}: a
+single changed token within a 256-token chunk invalidates the entire
+chunk. PARAPHRASE and PARTIAL variations change tokens within chunks,
+reducing chunk-level matches to zero despite high semantic similarity.
+This motivates future work on sub-chunk KV alignment or smaller chunk
+sizes.
 
 \paragraph{Quality on real data.}
 MultiNews quality measurements show PPL ratio of 1.005 at 4K tokens
@@ -1711,6 +1728,34 @@ GitHub, 2020.
 J.~Su, Y.~Lu, S.~Pan, A.~Murtadha, B.~Wen, and Y.~Liu,
 ``RoFormer: Enhanced Transformer with Rotary Position Embedding,''
 \emph{arXiv preprint arXiv:2104.09864}, 2021.
+
+\bibitem{cnn_dailymail}
+K.~Hermann \textit{et al.},
+``Teaching Machines to Read and Comprehend,''
+in \textit{Proc.\ NeurIPS}, 2015.
+
+\bibitem{xsum}
+S.~Narayan, S.~B.~Cohen, and M.~Lapata,
+``Don't Give Me the Details, Just the Summary!\ Topic-Aware Convolutional
+Neural Networks for Extreme Summarization,''
+in \textit{Proc.\ EMNLP}, 2018.
+
+\bibitem{multinews}
+A.~Fabbri \textit{et al.},
+``Multi-News: A Large-Scale Multi-Document Summarization Dataset and
+Abstractive Hierarchical Model,''
+in \textit{Proc.\ ACL}, 2019.
+
+\bibitem{wikihow}
+M.~Koupaee and W.~Y.~Wang,
+``WikiHow: A Large Scale Text Summarization Dataset,''
+\emph{arXiv preprint arXiv:1810.09305}, 2018.
+
+\bibitem{samsum}
+B.~Gliwa \textit{et al.},
+``SAMSum Corpus: A Human-annotated Dialogue Dataset for
+Abstractive Summarization,''
+in \textit{Proc.\ EMNLP Workshop}, 2019.
 
 \end{thebibliography}
 

@@ -26,3 +26,5 @@ ef90c3d	3	ttft_synthetic_full	ttft_speedup_8k	5.66	speedup_2k=2.35,speedup_4k=2.
 8a69985	3	throughput_qwen	qps_c8	2.6	qps_c1=0.4,qps_c4=1.3,qps_c16=5.0,qps_c32=9.1,p50_c1=340,p99_c32=946,errors=0	keep	Qwen throughput: 0 errors, QPS scales 0.4-9.1, nearly identical to LLaMA
 ba8888f	3	ablation_no_partial_attn	ttft_speedup_8k	5.51	speedup_2k=2.29,speedup_4k=3.35,ppl_4k=1.018,ppl_8k=0.964,hit_8k=1.0	keep	No bathtub recomp ablation: speedup nearly identical (5.51 vs 5.66), quality acceptable
 c593eda	3	ablation_no_rope	ppl_ratio_8k	0.997	ppl_2k=0.994,ppl_4k=1.000,rouge_l_2k=0.926,rouge_l_4k=1.000,rouge_l_8k=0.734	keep	No RoPE correction: quality unchanged because chunk hashing reuses at matching positions
+08ebfd1	3	ttft_wikihow	ttft_speedup_8k	2.24	speedup_2k=1.62,speedup_4k=1.50,hit_2k=0.88,hit_4k=0.88,hit_8k=1.0	keep	WikiHow: 2.24x@8K (100% hit), procedural text has good chunk alignment
+08ebfd1	3	ttft_samsum	ttft_speedup_8k	2.37	speedup_2k=1.61,speedup_4k=1.46,hit_2k=0.88,hit_4k=0.75,hit_8k=0.88	keep	SAMSum: 2.37x@8K (88% hit), dialogue text, peak individual 5.75x
