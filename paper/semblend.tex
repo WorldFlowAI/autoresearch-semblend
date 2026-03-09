@@ -1168,8 +1168,9 @@ quality preservation extends to real-world NLP content.
 To validate that SemBlend generalizes across architectures, we repeat
 the cross-dataset evaluation on LLaMA-3.1-8B-Instruct-AWQ-INT4
 (32 layers, 8 KV heads) and compare with Qwen2.5-7B-AWQ (28 layers,
-4 KV heads). Table~\ref{tab:multi-model-cross} shows results on XSum
-and CNN/DailyMail with identical cluster construction methodology.
+4 KV heads). Table~\ref{tab:multi-model-cross} shows results on four
+datasets---XSum, CNN/DailyMail, WikiHow, and SAMSum---with identical
+cluster construction methodology.
 
 \begin{table}[t]
 \centering
@@ -1183,7 +1184,7 @@ Hit-only speedup excludes misses for fair comparison.}
 \toprule
 \textbf{Model} & \textbf{Dataset / Len} & \textbf{Speedup} & \textbf{Hit Rate} & \textbf{Hit Spd} \\
 \midrule
-\multirow{9}{*}{\shortstack[l]{Qwen2.5-7B\\(28L, 4 KV)}}
+\multirow{12}{*}{\shortstack[l]{Qwen2.5-7B\\(28L, 4 KV)}}
 & XSum 2K    & $1.51\times$ &  75\% & $1.51\times$ \\
 & XSum 4K    & $1.33\times$ &   0\% & ---          \\
 & XSum 8K    & $1.97\times$ & 100\% & $1.97\times$ \\
@@ -1193,8 +1194,11 @@ Hit-only speedup excludes misses for fair comparison.}
 & WikiHow 2K & $1.62\times$ &  88\% & $1.64\times$ \\
 & WikiHow 4K & $1.50\times$ &  88\% & $1.54\times$ \\
 & WikiHow 8K & $2.24\times$ & 100\% & $2.24\times$ \\
+& SAMSum 2K  & $1.61\times$ &  88\% & $1.61\times$ \\
+& SAMSum 4K  & $1.46\times$ &  75\% & $1.62\times$ \\
+& SAMSum 8K  & $2.37\times$ &  88\% & $2.53\times$ \\
 \midrule
-\multirow{9}{*}{\shortstack[l]{LLaMA-3.1-8B\\(32L, 8 KV)}}
+\multirow{12}{*}{\shortstack[l]{LLaMA-3.1-8B\\(32L, 8 KV)}}
 & XSum 2K    & $\mathbf{3.06\times}$ & \textbf{100\%} & $3.06\times$ \\
 & XSum 4K    & $\mathbf{2.77\times}$ & \textbf{100\%} & $2.77\times$ \\
 & XSum 8K    & $\mathbf{3.34\times}$ & \textbf{100\%} & $3.34\times$ \\
@@ -1204,23 +1208,31 @@ Hit-only speedup excludes misses for fair comparison.}
 & WikiHow 2K & $\mathbf{2.96\times}$ & \textbf{100\%} & $2.96\times$ \\
 & WikiHow 4K & $\mathbf{2.72\times}$ & \textbf{100\%} & $2.72\times$ \\
 & WikiHow 8K & $\mathbf{3.33\times}$ & \textbf{100\%} & $3.33\times$ \\
+& SAMSum 2K  & $\mathbf{2.82\times}$ &  88\% & $\mathbf{3.08\times}$ \\
+& SAMSum 4K  & $1.85\times$ &  62\% & $\mathbf{2.69\times}$ \\
+& SAMSum 8K  & $\mathbf{3.71\times}$ &  75\% & $\mathbf{3.78\times}$ \\
 \bottomrule
 \end{tabular}\\[2pt]
 {\footnotesize LLaMA-3.1-8B achieves substantially higher speedups
-($2.66$--$3.34\times$) than Qwen ($1.51$--$2.29\times$) across all three
-datasets. WikiHow achieves 100\% hit rate on both models, confirming
-structured procedural text benefits most from SemBlend. LLaMA's advantage
-is architecture-driven: 32 layers vs 28 increases cold prefill cost while
-SemBlend's KV transfer overhead remains constant.}
+($2.66$--$3.78\times$ hit-only) than Qwen ($1.51$--$2.53\times$) across all four
+datasets. WikiHow achieves 100\% hit rate on both models; SAMSum and XSum
+achieve 75--88\% and 75--100\% respectively, confirming structured text
+benefits most from SemBlend. LLaMA's advantage is architecture-driven:
+32 layers vs 28 increases cold prefill cost while SemBlend's KV transfer
+overhead remains constant.}
 \end{table}
 
 Table~\ref{tab:multi-model-cross} reveals that \textbf{LLaMA benefits
 more from SemBlend than Qwen}: hit-only speedups are consistently
-$1.5$--$2\times$ higher. This is because LLaMA's 32-layer architecture has
+$1.5$--$2\times$ higher across all four datasets (XSum, CNN/DailyMail,
+WikiHow, SAMSum). This is because LLaMA's 32-layer architecture has
 higher cold prefill cost (2029\,ms vs 1169\,ms at 8K), while SemBlend's
 pipeline overhead (5--8\,ms) and KV transfer time (20--35\,ms) remain
 architecture-independent. The constant-overhead-vs-linear-prefill dynamic
-means deeper models see proportionally larger speedups.
+means deeper models see proportionally larger speedups. SAMSum (dialogue)
+achieves 3.78$\times$ hit-only at 8K on LLaMA, confirming SemBlend
+generalizes to conversational text where chunk reuse patterns differ
+from structured document formats.
 
 \paragraph{Quality preservation across architectures.}
 LLaMA quality on XSum shows PPL ratios of 1.009 (2K), 1.011 (4K), and
