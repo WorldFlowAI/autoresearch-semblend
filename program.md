@@ -44,10 +44,16 @@ Work on these roughly in order of impact. The first two tiers are already substa
 - PartialAttention + RoPE correction E2E validation
 
 ### Tier 2 — NEXT ARCHITECTURE (High Impact)
-These are the major research directions for the next phase. The other Claude process implementing the TRT-LLM dual-backend is **read-only for you** — once it lands in `~/dev/worldflowai/ONECONTEXT/synapse/`, sync via `prepare.py` and then build on it here.
+The TRT-LLM dual-backend is **COMPLETE** in `~/dev/worldflowai/ONECONTEXT/synapse/`. The new structure:
+- `services/shared/semblend_core/` — shared backend-agnostic core (pipeline, alignment, donor_store, embedder, bathtub, rope_correction, triton_kernels, simhash)
+- `services/trtllm/semblend_kv_cache_manager.py` — TRT-LLM KVCacheManager subclass
+- `services/trtllm/trtllm_backend.py` — SemBlendBackend impl for TRT-LLM
+- `synapse_kv_connector/*.py` — now thin re-export stubs for backward compat (all 34 existing tests still pass)
+
+Sync via `prepare.py --sync` to pull the new files into this repo. Then build on them:
 
 1. **CAGRA/cuVS GPU-Accelerated Donor Search** — replace numpy cosine scan with GPU ANN index
-2. **TRT-LLM Backend Benchmarks** — once dual-backend lands, measure TRT-LLM vs vLLM speedups
+2. **TRT-LLM Backend Benchmarks** — dual-backend is ready; sync, build image, compare vLLM vs TRT-LLM TTFT
 3. **NVIDIA Dynamo Integration** — SemBlend in disaggregated prefill/decode architecture
 4. **Multi-GPU SemBlend** — tensor parallel KV injection, cross-replica donor sharing
 
@@ -149,14 +155,19 @@ class CAGRADonorStore:
 
 ---
 
-## TRT-LLM Backend (Once Dual-Backend Lands)
+## TRT-LLM Backend (Implementation Complete — Ready to Benchmark)
 
-Another Claude process is implementing `semblend_core/` (shared backend-agnostic SemBlend logic) and `SemBlendKVCacheManager` (TRT-LLM integration) in `~/dev/worldflowai/ONECONTEXT/synapse/`. **Do not modify that repo.** Once it lands:
+The TRT-LLM dual-backend implementation is complete in `~/dev/worldflowai/ONECONTEXT/synapse/`. **Do not modify that repo.** Sync and benchmark:
 
 ### Sync & Build
-1. Run `uv run prepare.py --sync` to copy updated `synapse_kv_connector/` and new `semblend_core/` into this repo
-2. Run Tier 1 tests to verify backward compat
+1. Run `uv run prepare.py --sync` to copy:
+   - Updated `synapse_kv_connector/` (now re-export stubs) → `synapse_kv_connector/`
+   - New `services/shared/semblend_core/` → `semblend_core/`
+   - New `services/trtllm/` → `trtllm/`
+2. Run Tier 1 tests to verify backward compat (98 tests should pass)
 3. Build a new Docker image (`semblend-autoresearch-<commit>`) with both backends
+
+**Important**: The `semblend_core` package uses `chunk_size` as a constructor arg (default 256 for vLLM, 128 for TRT-LLM). The vLLM `synapse_kv_connector` stubs re-export everything; `LMCACHE_CHUNK_SIZE` alias is preserved.
 
 ### TRT-LLM Benchmark Flow
 TRT-LLM requires an engine build step (not just deploy):
