@@ -1910,13 +1910,17 @@ on XSum 8K synthetic clusters reveals that approximately 25\% of
 exact-match hits trigger an \textit{EOS-collapse} artifact---the
 model generates near-zero output before emitting \texttt{</s>}
 because the injected donor KV places the attention state at a
-natural sentence boundary. Non-collapsing hits achieve ROUGE-L
-${\approx}0.85$--$1.0$ with PPL ratio 1.048 (vs.\ 1.025 at
-\texttt{max\_tokens=256}), indicating the PPL metric remains
-stable; the EOS-collapse issue is visible only through
-output-length monitoring. A minimum-output-length constraint or
-instruction-based prompting (``Continue writing:'') eliminates
-this artifact and is recommended for production deployments.
+natural sentence boundary. Non-collapsing hits (75\% of runs)
+achieve ROUGE-L ${\approx}0.85$--$1.0$ with PPL ratio 1.048
+(vs.\ 1.025 at \texttt{max\_tokens=256}), indicating the quality
+metric remains stable for genuine hits; EOS-collapse is detectable
+only through output-length monitoring. A \texttt{min\_tokens}
+constraint prevents empty output in production deployments
+(implemented in our benchmark harness via the vLLM API), though
+it inflates PPL for the forced tokens---quality should be
+reported on non-collapsed hits only. Instruction-based prompting
+(``Continue writing:'') is an alternative mitigation that avoids
+forced-generation artifacts.
 
 
 % ============================================================================
