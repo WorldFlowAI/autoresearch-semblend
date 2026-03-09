@@ -1284,7 +1284,10 @@ preservation on both architectures. LLaMA on XSum shows PPL ratios
 1.009/1.011/1.065 (2K/4K/8K), comparable to Qwen XSum. On CNN/DailyMail,
 LLaMA shows slightly higher PPL (1.039--1.077) than Qwen (0.960--1.060),
 which tracks the lower hit rates: LLaMA achieves 25--62\% hit on CNN vs
-Qwen's 38--75\%, so more miss-runs inflate the mean PPL.
+Qwen's 38--75\%, so more miss-runs inflate the mean PPL. On MultiNews,
+Qwen achieves PPL 1.005 at 4K with 75\% hit; the 8K mean of 1.119 is
+driven by a single miss run (1/8)---hit-only PPL at 8K is 1.007,
+confirming near-perfect quality when donor reuse succeeds.
 
 \begin{table}[ht]
 \centering
