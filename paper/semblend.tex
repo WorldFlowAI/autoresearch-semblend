@@ -1138,10 +1138,13 @@ is raw P50 (including misses).}
 & 8K  & $2.37\times$ &  88\% & $2.37\times$ \\
 \bottomrule
 \end{tabular}\\[2pt]
-{\footnotesize Synthetic data achieves highest speedups due to controlled
-token overlap. Real-world datasets show $1.5\times$--$2.4\times$ at 8K
-with 50--100\% hit rates. XSum and WikiHow achieve 100\% hit rate at 8K;
-SAMSum and MultiNews reach 75--88\%; CNN/DailyMail the lowest at 50\%.
+{\footnotesize Synthetic and XSum tested at 5 lengths (2K--16K);
+other datasets measured at 3 lengths (2K/4K/8K) focused on the
+1.5×–2.4× operating range. Synthetic data achieves highest speedups
+due to controlled token overlap. Real-world datasets show
+$1.5\times$--$2.4\times$ at 8K with 50--100\% hit rates. XSum and
+WikiHow achieve 100\% hit rate at 8K; SAMSum and MultiNews reach
+75--88\%; CNN/DailyMail the lowest at 50\%.
 Hit Rate variation reflects the inherent tension between LMCache's
 256-token chunk hashing and real-world lexical variation.}
 \end{table}
@@ -1522,8 +1525,8 @@ models), the wide middle-layer trough lowers it to $s{\geq}0.89$.
 
 \subsubsection{PartialAttention Computation Savings}
 
-For the recommended operating point ($s{\geq}0.90$, $r{=}20\%$) with a
-typical match having 80\% reuse positions:
+For illustration at $s{\geq}0.90$ (high-quality regime, $r{=}20\%$
+recomputation) with a typical match having 80\% reuse positions:
 \begin{equation}
   C_\text{ratio} = \frac{26 \times 0.2T + 6 \times T}{32 \times T} = \frac{5.2T + 6T}{32T} \approx 0.35
   \label{eq:savings}
@@ -1537,10 +1540,12 @@ deployable on all RoPE-based models.
 
 \subsubsection{When Competitors Are Better}
 
-\semblend is not universally optimal. SemShareKV can
-exceed 100\% quality due to beneficial KV eviction. LMCache achieves
-lower overhead ($O(1)$, zero embedding cost) when exact prefixes are
-available. For workloads dominated by exact prefix sharing (e.g., batch
+\semblend is not universally optimal. Some configurations yield
+PPL ratio $<$1.0 (beneficial KV injection, observed in our data:
+Qwen CNN/DM@2K=0.960, LLaMA WikiHow@2K=0.992), indicating that semantically related context occasionally
+improves output quality---consistent with findings in prior semantic
+KV work. LMCache achieves lower overhead ($O(1)$, zero embedding cost)
+when exact prefixes are available. For workloads dominated by exact prefix sharing (e.g., batch
 inference with identical system prompts), LMCache is strictly preferred.
 \semblend's advantage is in the \emph{semantic gap}: queries that are
 semantically related but lexically different, where LMCache provides
