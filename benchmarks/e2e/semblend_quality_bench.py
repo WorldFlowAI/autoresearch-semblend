@@ -429,12 +429,17 @@ def run_quality_for_length(
         )
         samples.append(sample)
 
+        # EOS-collapse detection: SemBlend output is abnormally short
+        # Threshold: < max_tokens/8 words (e.g., <64 words for max_tokens=512)
+        collapse_word_threshold = max(10, max_tokens // 8)
+        is_collapse = len(sb_text.split()) < collapse_word_threshold
+        collapse_tag = " [COLLAPSE]" if is_collapse else ""
         em_tag = " EXACT" if exact else ""
         ppl_str = f"ppl_r={ppl_ratio:.3f}" if ppl_ratio else "ppl_r=N/A"
         print(
             f"ctrl_RL={ctrl_rl:.3f} sem_RL={sem_rl:.3f} "
             f"{ppl_str} "
-            f"cold={cold_ttft:.0f}ms sb={sb_ttft:.0f}ms{em_tag}"
+            f"cold={cold_ttft:.0f}ms sb={sb_ttft:.0f}ms{em_tag}{collapse_tag}"
         )
 
     # Aggregate
@@ -449,6 +454,23 @@ def run_quality_for_length(
             semblend_perplexity_mean=None, cold_ttft_p50_ms=None,
             semblend_ttft_p50_ms=None, speedup_mean=None,
             quality_preserved=False,
+        )
+
+    # Separate collapse vs non-collapse runs for accurate quality reporting
+    collapse_word_threshold = max(10, max_tokens // 8)
+    non_collapse = [
+        s for s in samples if len(s.semblend_text.split()) >= collapse_word_threshold
+    ]
+    collapse_count = n - len(non_collapse)
+    if collapse_count > 0:
+        nc_ppls = [s.perplexity_ratio for s in non_collapse if s.perplexity_ratio]
+        nc_rouges = [s.semblend_rouge_l for s in non_collapse]
+        nc_ppl_str = f"{statistics.mean(nc_ppls):.4f}" if nc_ppls else "N/A"
+        nc_rl_str = f"{statistics.mean(nc_rouges):.4f}" if nc_rouges else "N/A"
+        print(
+            f"  [EOS-collapse: {collapse_count}/{n} runs collapsed "
+            f"(<{collapse_word_threshold} words). "
+            f"Non-collapse only: PPL={nc_ppl_str} ROUGE-L={nc_rl_str}]"
         )
 
     sem_rouges = [s.semblend_rouge_l for s in samples]
@@ -639,12 +661,15 @@ def run_quality_for_length_clusters(
         )
         samples.append(sample)
 
+        collapse_word_threshold = max(10, max_tokens // 8)
+        is_collapse = len(sb_text.split()) < collapse_word_threshold
+        collapse_tag = " [COLLAPSE]" if is_collapse else ""
         em_tag = " EXACT" if exact else ""
         ppl_str = f"ppl_r={ppl_ratio:.3f}" if ppl_ratio else "ppl_r=N/A"
         print(
             f"ctrl_RL={ctrl_rl:.3f} sem_RL={sem_rl:.3f} "
             f"{ppl_str} "
-            f"cold={cold_ttft:.0f}ms sb={sb_ttft:.0f}ms{em_tag}"
+            f"cold={cold_ttft:.0f}ms sb={sb_ttft:.0f}ms{em_tag}{collapse_tag}"
         )
 
     # Aggregate (same logic as run_quality_for_length)
@@ -659,6 +684,22 @@ def run_quality_for_length_clusters(
             semblend_perplexity_mean=None, cold_ttft_p50_ms=None,
             semblend_ttft_p50_ms=None, speedup_mean=None,
             quality_preserved=False,
+        )
+
+    collapse_word_threshold = max(10, max_tokens // 8)
+    non_collapse = [
+        s for s in samples if len(s.semblend_text.split()) >= collapse_word_threshold
+    ]
+    collapse_count = n - len(non_collapse)
+    if collapse_count > 0:
+        nc_ppls = [s.perplexity_ratio for s in non_collapse if s.perplexity_ratio]
+        nc_rouges = [s.semblend_rouge_l for s in non_collapse]
+        nc_ppl_str = f"{statistics.mean(nc_ppls):.4f}" if nc_ppls else "N/A"
+        nc_rl_str = f"{statistics.mean(nc_rouges):.4f}" if nc_rouges else "N/A"
+        print(
+            f"  [EOS-collapse: {collapse_count}/{n} runs collapsed "
+            f"(<{collapse_word_threshold} words). "
+            f"Non-collapse only: PPL={nc_ppl_str} ROUGE-L={nc_rl_str}]"
         )
 
     sem_rouges = [s.semblend_rouge_l for s in samples]
