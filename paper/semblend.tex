@@ -200,7 +200,7 @@ We make five contributions:
 
 \item \textbf{Empirical evaluation} on two model architectures
   (Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ) across five real-world NLP
-  datasets, demonstrating $2.4\times$--$\mathbf{12.0\times}$ TTFT speedup at
+  datasets, demonstrating $2.2\times$--$\mathbf{12.0\times}$ TTFT speedup at
   2K--32K tokens with quality preserved (PPL ratio ${\leq}1.065$ on
   high-hit datasets; mean elevated on lower-hit datasets by
   miss-run outliers, not KV injection), plus architectural analysis
@@ -1101,8 +1101,8 @@ ROUGE-L varies across lengths (0.577--0.979) because SemBlend
 produces identical output to cold only when donor overlap is
 strong; with 256-token generation, early-token divergence cascades
 into lower lexical overlap. However, the definitive quality metric
-is the PPL ratio: \textbf{all PPL ratios are within 3\% of 1.0}
-(range: 0.984--1.025), confirming that the model's per-token confidence
+is the PPL ratio: \textbf{11 of 12 PPL ratios are within 3\% of 1.0}
+(range: 0.984--1.041; 11/12 within 3\%), confirming that the model's per-token confidence
 is not degraded by KV donor injection. LLaMA shows higher exact match
 rates (60--80\%) than Qwen (40--60\%), suggesting model architecture
 affects output sensitivity to KV injection.
@@ -1110,7 +1110,7 @@ affects output sensitivity to KV injection.
 \paragraph{Extended generation quality (256 tokens).}
 Table~\ref{tab:quality} uses \texttt{max\_tokens=256} to test whether
 quality degrades over extended generation. PPL ratios remain near 1.0
-across all lengths and both models (range: 0.984--1.025), confirming
+across all lengths and both models (range: 0.984--1.041; 11/12 within 3\%), confirming
 no degradation even over 256-token outputs. We additionally measured
 at 5K tokens (not in the table): ROUGE-L $= 0.724$, EM $= 40\%$,
 PPL ratio $= 0.987$ with 100\% hit rate and $2.42\times$ speedup.
