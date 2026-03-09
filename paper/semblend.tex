@@ -1938,6 +1938,19 @@ further improve quality. The bathtub-curve layer sensitivity is
 calibrated for Qwen2.5-7B and validated on LLaMA-3.1-8B with comparable
 quality results; GQA, MoE, and very deep models ($>$80 layers) may require
 recalibration.
+\textbf{Architecture-specific layer criticality}: Recent work
+characterizes architecture-specific KV layer importance: LLaMA-family
+transformers exhibit an ``inverted funnel'' pattern (early layers
+consolidate information; middle/late layers are more redundant),
+while Qwen-family exhibits a ``funnel'' pattern (late layers consolidate;
+early layers more redundant)~\cite{prophetkv}. Our current bathtub
+preset recomputes layers $[0,1,31]$ (9.4\%) for LLaMA and $[0,1,2,27]$
+(14.3\%) for Qwen---close to the 11\% critical layer estimate from
+selective recomputation studies. Architecture-specific calibration
+(shifting Qwen recomputation toward late layers, LLaMA toward early layers)
+is a tractable future improvement. Our measured PPL ratios (1.001--1.065
+across five datasets and two models) indicate the current uniform calibration
+is already near-optimal in practice.
 Cross-instance donor discovery (the scaled tier) is designed but
 not yet deployed. Short prompts ($<$500 tokens) may not benefit,
 as the ${\sim}8$\,ms pipeline overhead can exceed the cold prefill
