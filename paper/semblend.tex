@@ -106,9 +106,14 @@ exact position correction}. Our key contributions are:
 The combined system---exact position correction on reused layers plus
 selective recomputation on high-drift layers---enables non-contiguous
 KV reuse (REORDER, PARTIAL overlap, paraphrase) that was previously
-impossible with RoPE-based models. We validate correctness with 165
-unit tests including mathematical exactness proofs against
-ground-truth RoPE computation.
+impossible with RoPE-based models. Evaluated on two model architectures
+(Qwen2.5-7B-AWQ, LLaMA-3.1-8B-AWQ) and five real-world NLP datasets on A10G,
+SemBlend achieves $1.5\times$--$3.8\times$ hit-only TTFT speedup on real data,
+$7.8\times$--$8.3\times$ at 16K tokens on synthetic data, and
+$10.5\times$--$10.7\times$ combined with vLLM prefix caching---with
+output quality preserved (PPL ratio ${\leq}1.065$ on high-hit datasets).
+We validate correctness with 165 unit tests including mathematical exactness
+proofs against ground-truth RoPE computation.
 \end{abstract}
 
 \noindent\textbf{Keywords:} KV cache, semantic caching, LLM inference,
@@ -1444,15 +1449,36 @@ recomputation threshold is conservative---a quality-preserving
 configuration could skip recomputation entirely when RoPE correction
 is active.
 
-\paragraph{External cache hit rates.}
+\emph{Note on model vs.\ empirical parameters:} The theoretical
+bathtub model (\S\ref{sec:recomp}) was calibrated with
+$\sigma_\text{base}{=}0.12$ against published data from systems
+\emph{without} RoPE correction (CacheBlend, KVShare, SemShareKV).
+The empirically-observed $\sigma_\text{base} \approx 0.0002$ for
+SemBlend (with RoPE correction) is $600\times$ lower, explaining why
+recomputation is rarely triggered. The analytical model correctly
+identifies the high-drift regimes (early/late layers); RoPE correction
+eliminates most of that drift, collapsing the bathtub to a nearly flat
+line. This demonstrates the practical impact of exact position correction:
+systems using approximate correction (first-layer recompute) operate
+at $\sigma_\text{base} \approx 0.12$; our exact correction achieves
+$\sigma_\text{base} \approx 0.0002$.
+
+\paragraph{Prefill computation savings.}
 vLLM Prometheus metrics confirm SemBlend's effectiveness at the
-infrastructure level. On Qwen2.5-7B-AWQ, the external prefix cache
-(LMCache/SemBlend) achieves a \textbf{74.3\%} token hit rate
-(766K of 1.03M queried tokens), while vLLM's internal prefix cache
-contributes only 0.02\% (208 tokens). On LLaMA-3.1-8B-AWQ, external
-hits reach \textbf{52.1\%} (724K of 1.39M tokens) with internal
-prefix cache at 13.8\% (192K tokens). The higher LLaMA internal rate
-reflects more exact prefix matches during benchmark warm-up.
+infrastructure level. The external prefix cache (LMCache/SemBlend)
+\textbf{eliminates prefill computation for cached tokens}, as vLLM
+skips attention over tokens whose KV blocks are already populated.
+On Qwen2.5-7B-AWQ, the external prefix cache achieves a \textbf{74.3\%}
+token hit rate (766K of 1.03M queried tokens)---meaning 74.3\% of
+attention computation is avoided across the benchmark. vLLM's internal
+prefix cache contributes only 0.02\% (208 tokens). On LLaMA-3.1-8B-AWQ,
+external hits reach \textbf{52.1\%} (724K of 1.39M tokens) with
+internal prefix cache at 13.8\% (192K tokens). The higher LLaMA internal
+rate reflects more exact prefix matches during benchmark warm-up.
+The $>$50\% token-level computation saving across both models corresponds
+directly to the observed TTFT speedups: every cached token avoids its
+share of the $O(N^2 d)$ attention computation that would otherwise
+dominate cold prefill.
 
 
 \subsection{Analysis}
@@ -1679,7 +1705,7 @@ orthogonal problem of attention pattern drift, \semblend enables fully
 non-contiguous KV reuse (REORDER, PARTIAL, paraphrase) on all
 RoPE-based models.
 
-Six findings stand out: (1)~semantic KV donor injection achieves
+Seven findings stand out: (1)~semantic KV donor injection achieves
 $\mathbf{7.8\times}$--$\mathbf{8.3\times}$ P50 TTFT speedup at 16K tokens (peak individual:
 $8.71\times$) across Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ on
 A10G---exceeding SemShareKV's $6.25\times$ at 5K on costlier A100
@@ -1699,12 +1725,20 @@ KV reuse that prior systems could not achieve;
 semantically similar prompts (cosine 0.80 vs.\ Jaccard 0.38);
 (5)~throughput under concurrent load (1--32 clients) scales linearly
 to 9+ QPS with zero errors on both models, confirming SemBlend's
-$<$12\,ms pipeline overhead does not limit serving capacity;
+$<$12\,ms pipeline overhead does not limit serving capacity; at 8K
+tokens, donor reuse enables $\mathbf{14.4}$~QPS ($c{=}8$)---a
+$\mathbf{5}$--$\mathbf{6}\times$ improvement over cold long-context
+serving;
 (6)~SemBlend TTFT is approximately constant (${\sim}650$--$910$\,ms)
 regardless of prompt length, bounded by CPU$\to$GPU KV transfer,
 while cold prefill scales linearly---producing increasing speedup
 from $2.4\times$ at 2K to $7.8\times$--$8.3\times$ at 16K tokens
-across two model architectures (Qwen2.5-7B and LLaMA-3.1-8B).
+across two model architectures (Qwen2.5-7B and LLaMA-3.1-8B);
+(7)~combining vLLM prefix caching with SemBlend donor reuse achieves
+$\mathbf{10.5}$--$\mathbf{10.7}\times$ P50 TTFT speedup at 8K tokens
+across pool sizes 1--16 (100\% hit), with the two mechanisms
+providing complementary coverage: prefix caching for exact repeats,
+SemBlend for semantic variants.
 
 \semblend is, to our knowledge, the first system combining exact RoPE
 correction with calibrated layer-level recomputation to enable fully
