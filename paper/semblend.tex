@@ -21,6 +21,7 @@
 \pgfplotsset{compat=1.18}
 \usepackage{xspace}
 \usepackage{listings}
+\usepackage{microtype}
 
 % Neutral color palette
 \definecolor{accentblue}{RGB}{31,78,200}
@@ -413,6 +414,7 @@ triggered by semantic similarity rather than exact token match.
 \label{tab:local-vs-remote}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{@{}lrrl@{}}
 \toprule
 \textbf{Component} & \textbf{Local} & \textbf{Remote} & \textbf{Notes} \\
@@ -424,7 +426,7 @@ Network        & 0\,ms   & 10\,ms  & HTTP round-trip \\
 \midrule
 \textbf{Total} & \textbf{${\sim}$8\,ms} & \textbf{164\,ms} & $20\times$ faster \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}
 
 Table~\ref{tab:local-vs-remote} quantifies the advantage: the local
@@ -733,6 +735,7 @@ KV tensors are duplicated.
 \label{tab:donor-tiers}
 \footnotesize
 \setlength{\tabcolsep}{2.5pt}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{@{}lcccc@{}}
 \toprule
 \textbf{Tier} & \textbf{Location} & \textbf{Search} & \textbf{Cap.} & \textbf{Scope} \\
@@ -740,7 +743,7 @@ KV tensors are duplicated.
 1 (Local)  & In-process & Numpy cosine & ${\leq}$10K & Single instance \\
 2 (Scaled) & Gateway GPU & CAGRA & ${>}$100K & Cross-instance \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}
 
 Per-donor metadata: embedding vector (384 or 1024 floats), token IDs,
@@ -1155,6 +1158,7 @@ is raw P50 (including misses).}
 \label{tab:cross-dataset}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{@{}llrrrr@{}}
 \toprule
 \textbf{Dataset} & \textbf{Length} & \textbf{Speedup} & \textbf{Hit Rate} & \textbf{Hit Speedup} \\
@@ -1193,7 +1197,7 @@ is raw P50 (including misses).}
 & 4K  & $1.46\times$ &  75\% & $1.61\times$ \\
 & 8K  & $2.37\times$ &  88\% & $2.37\times$ \\
 \bottomrule
-\end{tabular}\\[2pt]
+\end{tabular}}\\[2pt]
 {\footnotesize Synthetic and XSum tested at 5 lengths (2K--16K);
 other datasets measured at 3 lengths (2K/4K/8K) focused on the
 1.5×–2.4× operating range. Synthetic data achieves highest speedups
@@ -1274,6 +1278,7 @@ Hit-only speedup excludes misses for fair comparison.}
 \label{tab:multi-model-cross}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{@{}llrrrr@{}}
 \toprule
 \textbf{Model} & \textbf{Dataset / Len} & \textbf{Speedup} & \textbf{Hit Rate} & \textbf{Hit Spd} \\
@@ -1306,7 +1311,7 @@ Hit-only speedup excludes misses for fair comparison.}
 & SAMSum 4K  & $1.85\times$ &  62\% & $\mathbf{2.69\times}$ \\
 & SAMSum 8K  & $\mathbf{3.71\times}$ &  75\% & $\mathbf{3.78\times}$ \\
 \bottomrule
-\end{tabular}\\[2pt]
+\end{tabular}}\\[2pt]
 {\footnotesize LLaMA-3.1-8B achieves substantially higher speedups
 ($2.66$--$3.78\times$ hit-only) than Qwen ($1.51$--$2.53\times$) across all four
 datasets. WikiHow achieves 100\% hit rate on both models. XSum achieves
@@ -1341,7 +1346,7 @@ Qwen achieves PPL 1.005 at 4K with 75\% hit; the 8K mean of 1.119 is
 driven by a single miss run (1/8)---hit-only PPL at 8K is 1.007,
 confirming near-perfect quality when donor reuse succeeds.
 
-\begin{table}[ht]
+\begin{table}[t]
 \centering
 \caption{\textbf{Quality across datasets and models.}
 PPL ratio $\approx 1.0$ means no degradation; elevated values on
@@ -1350,6 +1355,7 @@ not by KV injection quality. Both models tested on 5 datasets. $n{=}8$ per lengt
 \label{tab:cross-quality}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{@{}llrrrr@{}}
 \toprule
 \textbf{Model} & \textbf{Dataset} & \textbf{PPL@2K} & \textbf{PPL@4K} & \textbf{PPL@8K} \\
@@ -1368,7 +1374,7 @@ not by KV injection quality. Both models tested on 5 datasets. $n{=}8$ per lengt
 & CNN/DailyMail   & 1.039 & 1.059 & 1.077 \\
 & SAMSum          & 1.110 & 1.081 & 1.171 \\
 \bottomrule
-\end{tabular}\\[2pt]
+\end{tabular}}\\[2pt]
 {\footnotesize WikiHow (100\% hit, both models) achieves PPL $\leq 1.042$
 on both architectures. Elevated PPL on SAMSum and CNN/DM-LLaMA reflects
 miss-run outliers (62--75\% effective hit in quality benchmark), not KV injection
@@ -1420,7 +1426,7 @@ similar long-context requests.
 \subsubsection{SemBlend Local: Component Latency Decomposition}
 \label{sec:local-breakdown}
 
-\begin{table}[t]
+\begin{table*}[t]
 \centering
 \caption{\textbf{SemBlend Local} component latency decomposition.
 In-process pipeline with zero network hops. All stages execute
@@ -1449,7 +1455,7 @@ KV transfer   & --- & 20--35\,ms & LMCache chunk-swap (2K--16K tok) \\
 on low-overlap prompts (critical at 16K tokens where Levenshtein takes ${\sim}3$\,s).
 KV transfer amortized against cold prefill savings of $700$--$5{,}900$\,ms.
 Total overhead (pipeline + KV load): ${\sim}26$--$41$\,ms.}
-\end{table}
+\end{table*}
 
 Table~\ref{tab:component-breakdown} decomposes the SemBlend Local
 pipeline into its constituent stages. The total pipeline overhead of
@@ -1670,7 +1676,7 @@ paraphrasing styles.
 \subsubsection{RoPE Correction: Position-Shift Validation}
 \label{sec:analysis:rope}
 
-\begin{table}[ht]
+\begin{table}[t]
 \centering
 \caption{\textbf{RoPE correction position-shift experiment.}
 Donor registered at $N$ tokens; variation query is
@@ -1681,14 +1687,14 @@ $<$ 50\% of cold TTFT.}
 \label{tab:rope-validation}
 \scriptsize
 \setlength{\tabcolsep}{3pt}
-\begin{tabular}{@{}lrrrl@{}}
+\begin{tabular}{@{}lrrr@{}}
 \toprule
-\textbf{Mode} & \textbf{Hit Rate} & \textbf{PPL Ratio} & \textbf{ROUGE-L} & \textbf{Interpretation} \\
+\textbf{Mode} & \textbf{Hit Rate} & \textbf{PPL Ratio} & \textbf{ROUGE-L} \\
 \midrule
-Position-shift & 0\% (0/8) & 1.0000 & 1.000 & No false-positive injection; cold baseline preserved \\
+Position-shift & 0\% (0/8) & 1.0000 & 1.000 \\
 \bottomrule
 \end{tabular}\\[2pt]
-{\footnotesize The filler-prepend design causes prefix divergence at chunk 0:
+{\footnotesize Position-shift result: zero injections (correct specificity) and cold baseline preserved (PPL ratio $=1.000$). The filler-prepend design causes prefix divergence at chunk 0:
 LMCache's 256-token block hashing requires a matching prefix start, so the
 [FILLER][ARTICLE] variation does not match the [ARTICLE] donor sequence even
 though content chunks are identical. Result: 0/8 injections (correct
@@ -1755,7 +1761,7 @@ efficiency to purpose-built benchmark prompts.
 \subsection{Inference-Engine Comparison}
 \label{sec:inference-comparison}
 
-\begin{table}[t]
+\begin{table*}[t]
 \centering
 \caption{Inference-engine warm-path latency. KV-tensor SemBlend on A10G with
 Qwen2.5-7B-AWQ.}
@@ -1785,7 +1791,7 @@ LLaMA-3.1-8B @ 16K tokens (A10G) & 6{,}377 & per-length pod restart \\
 {\footnotesize \semblend Local's 6\,ms pipeline is $3.8\times$ faster than both
 CacheBlend (23\,ms) and KVShare (21\,ms) warm paths, while providing
 broader coverage (semantic matches beyond exact prefix).}
-\end{table}
+\end{table*}
 
 Table~\ref{tab:microbench} contextualizes \semblend's warm-path
 latency against published systems. SemBlend Local's ${\sim}6$\,ms
@@ -2009,16 +2015,18 @@ they unlock the full design space for semantic KV caching.
 
 
 % ============================================================================
+\clearpage
 \appendix
 \section{PartialAttention Kernel Specifications}
 \label{app:kernels}
 
 The three Triton kernels use the following grid and block configurations:
 
-\begin{table}[h]
+\begin{table}[t]
 \centering
 \caption{Triton kernel configurations for PartialAttention.}
 \footnotesize
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{@{}llll@{}}
 \toprule
 \textbf{Kernel} & \textbf{Grid} & \textbf{Block} & \textbf{Complexity} \\
@@ -2027,7 +2035,7 @@ scatter\_donor\_kv & $(P, 2LH)$ & $D$ & $O(P \cdot L \cdot H \cdot D)$ \\
 masked\_qkv\_proj & $(T, 1)$ & M$\times$K & $O(T \cdot 3HD \cdot D_m)$ \\
 partial\_prefill & $(C, H)$ & K & $O(C \cdot T \cdot D)$ \\
 \bottomrule
-\end{tabular}\\[2pt]
+\end{tabular}}\\[2pt]
 {\footnotesize $P$ = copy pairs, $L$ = layers, $H$ = heads,
 $D$ = head dim, $T$ = seq len, $C$ = compute positions,
 $D_m$ = model dim.}
@@ -2046,6 +2054,7 @@ Bootstrap confidence intervals use 10,000 resamples with the
 
 
 % ============================================================================
+\clearpage
 \begin{thebibliography}{17}
 
 \bibitem{cacheblend}
