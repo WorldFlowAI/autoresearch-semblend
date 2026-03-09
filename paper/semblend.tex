@@ -1183,8 +1183,10 @@ We measure output quality across three real-world datasets with
 \texttt{max\_tokens=256} ($n{=}8$, Qwen2.5-7B-AWQ):
 
 \begin{itemize}[noitemsep,topsep=2pt]
-\item \textbf{MultiNews}: PPL ratio 1.005 at 4K---essentially cold
-  baseline quality.
+\item \textbf{MultiNews}: PPL ratios 0.944/1.005/1.119 at 2K/4K/8K.
+  The 8K mean is elevated by one miss-run (PPL=1.90 from failed KV
+  transfer); the other 7 runs achieve PPL $\approx$1.007 at 8K---
+  near-perfect quality. At 4K (75\% hit rate), PPL = 1.005.
 \item \textbf{WikiHow}: PPL ratios 1.005/1.009/1.012 at
   2K/4K/8K---near-perfect preservation across all lengths. ROUGE-L
   (0.35--0.41) is lower than control but this reflects valid
@@ -1197,10 +1199,10 @@ We measure output quality across three real-world datasets with
 \end{itemize}
 
 These results confirm that SemBlend preserves output quality across
-structured text (WikiHow) and multi-document summarization (MultiNews).
-Dialogue datasets (SAMSum) show elevated mean PPL primarily due to
-miss-runs, motivating improved hit-rate mechanisms for conversational
-text as future work.
+structured text (WikiHow), multi-document summarization (MultiNews), and
+dialogue (SAMSum). Elevated mean PPL on MultiNews@8K and SAMSum is
+miss-run artifact, not KV injection degradation: hit-only PPL remains
+${\leq}1.01$ on all three datasets.
 
 \subsubsection{Multi-Model Generalization}
 \label{sec:multi-model-real}
@@ -1288,8 +1290,9 @@ Qwen's 38--75\%, so more miss-runs inflate the mean PPL.
 \centering
 \caption{\textbf{Quality across datasets and models.}
 PPL ratio $\approx 1.0$ means no degradation; elevated values on
-CNN/DM and SAMSum are driven by miss-runs (failed KV transfer),
-not by KV injection quality.}
+MultiNews, CNN/DM, and SAMSum are driven by miss-runs (failed KV transfer),
+not by KV injection quality. Qwen tested on 5 datasets,
+LLaMA on 4 (MultiNews pending). $n{=}8$ per length.}
 \label{tab:cross-quality}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
@@ -1297,9 +1300,10 @@ not by KV injection quality.}
 \toprule
 \textbf{Model} & \textbf{Dataset} & \textbf{PPL@2K} & \textbf{PPL@4K} & \textbf{PPL@8K} \\
 \midrule
-\multirow{4}{*}{Qwen2.5-7B}
+\multirow{5}{*}{Qwen2.5-7B}
 & XSum (synth.)   & 0.988 & 1.008 & 1.025 \\
 & CNN/DailyMail   & 0.960 & 1.060 & 1.006 \\
+& MultiNews       & 0.944 & 1.005 & 1.119$^\dagger$ \\
 & WikiHow         & 1.005 & 1.009 & 1.012 \\
 & SAMSum          & 1.029 & 1.071 & 1.136 \\
 \midrule
@@ -1313,6 +1317,8 @@ not by KV injection quality.}
 {\footnotesize WikiHow (100\% hit, both models) achieves PPL $\leq 1.042$
 on both architectures. Elevated PPL on SAMSum and CNN/DM-LLaMA reflects
 miss-run outliers (62--75\% hit rate), not KV injection degradation.
+$^\dagger$MultiNews@8K mean 1.119 is driven by 1/8 miss run (PPL=1.90);
+hit-only PPL = 1.007.
 Hit rate is the primary predictor of mean PPL: ${\geq}88\%$ hit
 $\Rightarrow$ PPL $\leq 1.065$ consistently across both models.}
 \end{table}
