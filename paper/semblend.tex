@@ -1367,7 +1367,10 @@ hit-only PPL = 1.007.
 $^\ddagger$LLaMA MultiNews@8K mean 1.063 is driven by 1/8 miss run (PPL=1.559);
 hit-only PPL = 0.992.
 Quality benchmark hit rate is the primary predictor of mean PPL:
-100\% effective hit $\Rightarrow$ PPL $\leq 1.065$ on both models.}
+100\% effective hit $\Rightarrow$ PPL $\leq 1.065$ on both models.
+XSum (synth.) PPL measured during TTFT benchmark (max\_tokens=32);
+dedicated extended-generation quality (Table~\ref{tab:quality}, max\_tokens=256)
+shows lower variance.}
 \end{table}
 
 This confirms SemBlend's RoPE correction and partial attention mechanisms
