@@ -837,7 +837,7 @@ Per-length pod restarts eliminate cross-length contamination.
 Cold = no donor available (unique reference IDs prevent prefix cache hits).
 SemBlend TTFT is near-constant (${\sim}500$--$830$\,ms) as prompt length
 grows, since KV load from CPU offload dominates.
-$n{=}5$ per length per model. In controlled single-donor scenarios with
+$n{=}5$ per length (short/mid-range); $n{=}8$ for 24K/32K (see $n$ column). In controlled single-donor scenarios with
 matched document variations.}
 \label{tab:results-kv}
 \scriptsize
@@ -885,7 +885,7 @@ The key finding: SemBlend TTFT is approximately \textbf{constant}
 dominant cost is LMCache's CPU$\to$GPU KV transfer plus
 residual prefill for the unmatched suffix (${\sim}200$ tokens).
 Meanwhile, cold prefill scales with sequence length.
-This produces increasing speedup: $2.4\times$ at 2K tokens,
+This produces increasing speedup: $2.2\times$ at 2K tokens,
 $5.8\times$ at 8K, $8.3\times$ at 16K, $9.0\times$ at 24K, and
 $\mathbf{12.0\times}$ at 32K tokens on Qwen2.5-7B-AWQ.
 At 32K tokens, cold prefill takes 15.4\,s while SemBlend completes
@@ -947,7 +947,7 @@ tensors are cached on CPU, retrieval cost is bounded by the
 CPU$\to$GPU transfer bandwidth, not the sequence length.
 Cold prefill scales with sequence length.
 This divergence drives the increasing speedup curve:
-$2.4\times$ at 2K, $5.8\times$ at 8K, $8.3\times$ at 16K,
+$2.2\times$ at 2K, $5.8\times$ at 8K, $8.3\times$ at 16K,
 $9.0\times$ at 24K, and $\mathbf{12.0\times}$ at 32K tokens
 on Qwen2.5-7B-AWQ. The trend is monotonically increasing---longer
 context prompts benefit most from semantic KV reuse.
@@ -1946,7 +1946,7 @@ serving;
 (6)~SemBlend TTFT is approximately constant (${\sim}700$\,ms--$1.3$\,s)
 regardless of prompt length, bounded by CPU$\to$GPU KV transfer,
 while cold prefill scales with sequence length---producing increasing speedup
-from $2.4\times$ at 2K to $8.3\times$ at 16K to $\mathbf{12.0\times}$ at 32K
+from $2.2\times$ at 2K to $8.3\times$ at 16K to $\mathbf{12.0\times}$ at 32K
 tokens (cold prefill 15.4\,s vs SemBlend 1.3\,s at 32K);
 (7)~combining vLLM prefix caching with SemBlend donor reuse achieves
 $\mathbf{10.5}$--$\mathbf{10.7}\times$ P50 TTFT speedup at 8K tokens
