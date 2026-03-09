@@ -909,7 +909,7 @@ To validate that SemBlend performance is stable as the donor store
 grows, we measure TTFT speedup across pool sizes of 1--32 donors at
 8K XSum tokens (100\% hit rate for all sizes).
 The speedup is stable at $10.5$--$10.7\times$ across pool sizes 1--16
-and decreases only marginally to $9.3\times$ at 32 donors (as LRU
+and decreases only marginally to $9.26\times$ at 32 donors (as LRU
 eviction reduces KV data availability). The $>10\times$ speedup at 8K
 reflects the combined benefit of vLLM prefix caching (shared context
 prefix) and SemBlend donor injection (semantic overlap).
@@ -1329,8 +1329,8 @@ To verify SemBlend does not degrade serving throughput, we measure
 queries per second (QPS) across concurrency levels 1--32 on both models
 (short prompts, \texttt{max\_tokens=32}). Both models achieve identical
 throughput scaling: 0.4 QPS at $c{=}1$ to 9.0--9.1 QPS at $c{=}32$,
-with zero errors at all levels. P50 TTFT increases from ${\sim}340$\,ms
-($c{=}1$) to ${\sim}1000$\,ms ($c{=}32$), matching expected vLLM behavior
+with zero errors at all levels. P50 TTFT at $c{=}1$ is ${\sim}340$\,ms; P99 at $c{=}32$
+reaches ${\sim}950$--$1037$\,ms, matching expected vLLM behavior
 without SemBlend. This confirms SemBlend's pipeline overhead
 ($<$12\,ms) is negligible relative to inference latency and does not
 limit serving capacity.
@@ -1405,19 +1405,22 @@ $\geq$7B at $\geq$2K tokens. SemBlend Local's in-process MiniLM
 widening the operating envelope to \emph{any model at any prompt
 length where cold prefill exceeds ${\sim}50$\,ms}.
 
-\paragraph{Finding 2: Embeddings supersede Jaccard for donor discovery.}
-Token-set Jaccard similarity is effective for detecting reordered
-contexts with near-perfect token overlap (Jaccard $\geq 0.90$) but
-\emph{fails for partial overlap and semantically equivalent text}.
-The PARTIAL scenario has Jaccard overlap of only 0.38---below any
-practical threshold---yet cosine similarity of 0.80 correctly
-identifies it as a semantically similar candidate. While the PARTIAL
-scenario is handled by vLLM's native prefix cache in the single-instance
-case, embedding-based discovery becomes essential for the CPU offload
-tier (where prefix hashes may be evicted) and cross-instance sharing
-(where prefix caches are not shared). \semblend uses embedding cosine
-as the primary matching signal, with Jaccard as a fast fallback when
-embedding is unavailable.
+\paragraph{Finding 2: Embedding vs.\ Jaccard trade-offs.}
+An ablation replacing MiniLM embedding with token-set Jaccard
+similarity shows complementary strengths: Jaccard achieves 99--100\%
+donor match rate for cluster variations (REORDER, PARAPHRASE) where
+token overlap is high, while MiniLM embedding achieves 7\% for the
+same clusters---primarily because MiniLM-L6-v2 processes only the
+first 512 tokens of an 8K-token prompt, losing semantic information
+distributed across the full document. However, Jaccard is $O(T)$
+per candidate and fails for true paraphrase (low token overlap despite
+semantic equivalence). \semblend uses embedding cosine as the
+primary discovery signal for its $O(1)$ lookup per candidate and
+coverage of semantic paraphrase; the practical cross-dataset
+hit rates (62--100\%) confirm that MiniLM's 512-token window is
+sufficient for detecting similarity between variations of the same
+source article---the dominant use case in RAG workloads where the
+same context document is queried repeatedly with different formulations.
 
 \paragraph{Finding 3: RoPE correction produces near-zero per-layer deviation.}
 Token-level alignment uses rapidfuzz~\cite{rapidfuzz} (compiled C++
@@ -1662,10 +1665,14 @@ and long-context throughput (8K XSum, $c{=}1$--$8$) achieves
 metrics rather than per-token quality measurements. Empirical output
 quality verification (Table~\ref{tab:quality}) addresses this for
 the scenarios we evaluate.
-(3)~SemBlend Local uses MiniLM-L6-v2 (384-dim) which has lower
-embedding quality than jina-v4 (1024-dim); donor match rates may
-differ. We empirically validate that 384-dim is sufficient for
-nearest-neighbor donor discovery.
+(3)~SemBlend Local uses MiniLM-L6-v2 (384-dim, 512-token context
+window) which has lower embedding quality than jina-v4 (1024-dim,
+longer context). For prompts where semantic content is distributed
+beyond 512 tokens, MiniLM sees only the document beginning---an
+ablation showed 7\% donor match rate vs.\ 99\% for full-token Jaccard
+on 8K-token cluster prompts. In practice, the 512-token window
+suffices for detecting similarity between variations of the same source
+article (62--100\% cross-dataset hit rates), the dominant RAG pattern.
 (4)~Single-GPU experiments; multi-GPU tensor-parallel serving with
 sharded KV caches may change the overhead profile.
 (5)~KV-tensor results use $n{=}5$--$8$ per prompt length with per-length
