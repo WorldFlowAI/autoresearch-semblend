@@ -147,11 +147,13 @@ def build_user_pairs(
     user_convos: dict[str, list[str]] = defaultdict(list)
     for row in rows:
         ip = row.get("hashed_ip", "unknown")
-        texts = row.get("user_texts", [])
-        # Join all user messages in this conversation into one text
-        conv_text = " ".join(texts).strip()
-        if conv_text:
-            user_convos[ip].append(conv_text)
+        # Prefer full_text (user + assistant), fall back to user_texts only
+        full_text = row.get("full_text", "")
+        if not full_text:
+            user_texts = row.get("user_texts", [])
+            full_text = " ".join(user_texts).strip()
+        if full_text:
+            user_convos[ip].append(full_text)
 
     # Build consecutive pairs for users with enough conversations
     pairs = []
@@ -418,11 +420,18 @@ with open(output_path, "w") as f:
         if count >= max_rows:
             break
         conv = row.get("conversation", [])
-        user_msgs = [t for t in conv if t.get("role") == "user"]
+        # Include all turns (user + assistant) for longer context
+        full_text = " ".join(
+            t.get("content", "") for t in conv
+            if t.get("role") in ("user", "assistant") and t.get("content")
+        ).strip()
+        user_texts = [t.get("content", "") for t in conv if t.get("role") == "user"]
         record = {{
             "hashed_ip": row.get("hashed_ip", ""),
-            "user_texts": [m.get("content", "") for m in user_msgs],
+            "full_text": full_text,           # user + assistant combined (longer)
+            "user_texts": user_texts,         # user-only for reference
             "model": row.get("model", ""),
+            "n_turns": len(conv),
         }}
         f.write(json.dumps(record) + "\\n")
         count += 1
