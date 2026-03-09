@@ -1904,6 +1904,19 @@ Cross-instance donor discovery (the scaled tier) is designed but
 not yet deployed. Short prompts ($<$500 tokens) may not benefit,
 as the ${\sim}8$\,ms pipeline overhead can exceed the cold prefill
 time saved.
+\textbf{Long-output quality}: Our primary quality metric uses
+\texttt{max\_tokens=256}. Extended evaluation at \texttt{max\_tokens=512}
+on XSum 8K synthetic clusters reveals that approximately 25\% of
+exact-match hits trigger an \textit{EOS-collapse} artifact---the
+model generates near-zero output before emitting \texttt{</s>}
+because the injected donor KV places the attention state at a
+natural sentence boundary. Non-collapsing hits achieve ROUGE-L
+${\approx}0.85$--$1.0$ with PPL ratio 1.048 (vs.\ 1.025 at
+\texttt{max\_tokens=256}), indicating the PPL metric remains
+stable; the EOS-collapse issue is visible only through
+output-length monitoring. A minimum-output-length constraint or
+instruction-based prompting (``Continue writing:'') eliminates
+this artifact and is recommended for production deployments.
 
 
 % ============================================================================
