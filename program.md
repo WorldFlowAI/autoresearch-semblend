@@ -44,6 +44,32 @@ Work on these roughly in order of impact. The first two tiers are already substa
 - Ablation: bathtub fraction sweep
 - PartialAttention + RoPE correction E2E validation
 
+### Tier 1.5 — Primer-Informed Quality Hardening (NEW — High Impact)
+
+A March 2026 research primer on KV tensor reusability identified three failure modes of CacheBlend-style KV cache injection. Analysis of how they apply to SemBlend:
+
+**Failure Mode 1 — RoPE Positional Mismatch**: KV tensors store positional encodings at write time; injecting at a different position breaks attention geometry. **SemBlend ALREADY ADDRESSES THIS** via exact RoPE delta correction (`partial_attn.py`). This is a documented competitive advantage over naive CacheBlend. Continue citing this in the paper.
+
+**Failure Mode 2 — Semantic Staleness (ProphetKV gap)**: Wagner-Fischer edit distance is structurally limited as a token-matching criterion — it measures string edit distance, not attention-weighted relevance. ProphetKV replaces it with query-attention-weighted recomputation selection (recompute only layers where predicted query attention diverges from donor). For SemBlend's LMCache path: the 256-token chunk hashing is already a binary decision gate — ProphetKV-lite would add per-chunk quality estimation before injection.
+
+**Failure Mode 3 — Layer Scope (DroidSpeak/kv-cache-physics gap)**: Only ~11% of layers are actually critical for KV quality (DroidSpeak). Architecture matters: LLaMA = inverted funnel (early layers consolidate, later layers redundant), Qwen = funnel (late layers consolidate, early layers redundant) — **opposite patterns**. The current uniform bathtub sweep may be miscalibrated. Layer criticality can be measured from existing fingerprint data (attention entropy per layer).
+
+**Key empirical question**: Is τ=0.60 safe? The primer suggests the "safety cliff" is at ~90% KV compression (Pearson r=0.86-0.93 between Global Eviction Ratio and hallucination rate). SemBlend's LMCache chunk-level exact matching may already filter appropriately, but we need data.
+
+**Priority experiments for this tier** (in order):
+
+1. **Similarity threshold sweep** — Run quality benchmark at τ=0.50, 0.60, 0.70, 0.80 on XSum+CNN/DM. Measure PPL ratio and hit rate at each threshold. Find the threshold below which quality degrades (safety cliff). This is the most actionable experiment — no code changes, just redeploy with different `SEMBLEND_MIN_SIMILARITY`. **TARGET**: confirm τ=0.60 is safe or raise it if needed. See "Similarity Threshold Sweep" under Running Benchmarks.
+
+2. **Layer fingerprint analysis** — Extract per-layer attention entropy from existing benchmark runs. Plot entropy vs layer index for Qwen and LLaMA. Compare to the "bathtub" (first/last layers) and DroidSpeak's 11% critical layers. Inform bathtub fraction tuning. This can be done analytically with no GPU needed.
+
+3. **ProphetKV-lite chunk scoring** — Add a lightweight per-chunk quality score before injection. The score estimates whether the donor chunk is "semantically compatible" with the query (not just above cosine threshold). Implement as a secondary filter: if chunk score < threshold, recompute that chunk instead of reusing. This reduces false hits without lowering the overall hit rate much.
+
+4. **Architecture-specific bathtub calibration** — If layer analysis (experiment 2) shows LLaMA and Qwen have opposite criticality profiles, tune `bathtub_fraction` separately per architecture. Add `SEMBLEND_BATHTUB_FRACTION_LLAMA` and `SEMBLEND_BATHTUB_FRACTION_QWEN` env vars. Measure quality impact.
+
+**Core goal reminder**: Show semantic KV cache reuse at scale — improving inference speed WITHOUT significant response quality degradation. Every experiment must report both speedup AND quality. The paper's thesis is that 5-10x TTFT speedup with PPL ratio ≤1.08 is achievable in production.
+
+---
+
 ### Tier 2 — NEXT ARCHITECTURE (High Impact)
 The TRT-LLM dual-backend is **COMPLETE** in `~/dev/worldflowai/ONECONTEXT/synapse/`. The new structure:
 - `services/shared/semblend_core/` — shared backend-agnostic core (pipeline, alignment, donor_store, embedder, bathtub, rope_correction, triton_kernels, simhash)
@@ -502,6 +528,61 @@ achieving {hit_speedup_p50:.1f}× TTFT speedup on matched pairs vs. cold baselin
 <commit>	3	quality_longout_1024	ppl_ratio_8k	<val>	ppl_2k=<v>,ppl_4k=<v>,hit_rate=<v>	keep	quality at max_tokens=1024
 <commit>	3	quality_longout_2048	ppl_ratio_8k	<val>	ppl_2k=<v>,ppl_4k=<v>,hit_rate=<v>	keep	quality at max_tokens=2048
 ```
+
+### Similarity Threshold Sweep (Tier 1.5 — Priority)
+
+**Goal**: Find the quality vs hit-rate trade-off curve by varying `SEMBLEND_MIN_SIMILARITY` (τ). Determine the "safety cliff" — the threshold below which PPL ratio spikes. Validate that τ=0.60 is in the safe zone, or calibrate upward if needed.
+
+**Why this matters**: The primer reports a Pearson r=0.86-0.93 between Global Eviction Ratio (= 1 - KV hit fraction) and hallucination rate. If τ is too low, we accept poor-quality donor matches → quality degrades. If τ is too high, hit rate drops → speedup evaporates. The sweet spot is the flat quality region before the cliff.
+
+**Experiment design** — for each τ in [0.50, 0.60, 0.70, 0.80]:
+1. Update `infra/values-autoresearch.yaml`: `kvConnector.minSimilarity: "0.XX"`
+2. Helm upgrade to apply (no Docker rebuild needed — it's an env var):
+   ```bash
+   helm upgrade autoresearch ~/dev/worldflowai/ONECONTEXT/synapse/helm/synapse \
+     -n autoresearch \
+     -f ~/dev/worldflowai/ONECONTEXT/synapse/helm/synapse/values/staging.yaml \
+     -f infra/values-autoresearch.yaml
+   ```
+3. Restart vLLM pod for clean state:
+   ```bash
+   kubectl rollout restart deployment/autoresearch-synapse-vllm -n autoresearch
+   kubectl rollout status deployment/autoresearch-synapse-vllm -n autoresearch
+   ```
+4. Set up port-forward:
+   ```bash
+   POD=$(kubectl get pods -n autoresearch -l app.kubernetes.io/component=vllm --no-headers | awk '{print $1}' | head -1)
+   kubectl port-forward -n autoresearch $POD 8100:8000 &
+   ```
+5. Run quality benchmark (XSum synthetic, Qwen, 8K, max_tokens=256):
+   ```bash
+   PYTHONUNBUFFERED=1 .venv/bin/python -u benchmarks/e2e/semblend_quality_bench.py \
+     --endpoint http://localhost:8100 \
+     --model "Qwen/Qwen2.5-7B-Instruct-AWQ" \
+     --clusters-file benchmarks/data/cnn_dailymail_clusters.json \
+     --target-length 8192 --n-clusters 8 --max-tokens 256 \
+     --output results/quality_qwen_8k_tau${TAU}.json
+   ```
+6. Record hit_rate and ppl_ratio_avg for this τ
+
+**Expected results** — Quality vs hit rate trade-off:
+| τ    | Expected hit rate | Expected PPL ratio |
+|------|------------------|--------------------|
+| 0.50 | ~85%             | ≤1.10 (some poor hits) |
+| 0.60 | ~75% (current)   | ~1.025 (current)       |
+| 0.70 | ~50%             | ~1.010 (higher quality) |
+| 0.80 | ~25%             | ~1.002 (near-perfect)   |
+
+**Paper impact**: Adds threshold sensitivity curve (Figure matching SemShareKV Fig 9). Shows that τ=0.60 is a calibrated choice balancing speed and quality. Directly addresses any reviewer concern about quality safety.
+
+**Results to record**:
+```
+<commit>	3	threshold_tau050	ppl_ratio_8k	<val>	hit_rate=<v>,ttft_speedup=<v>	keep	threshold sweep τ=0.50
+<commit>	3	threshold_tau070	ppl_ratio_8k	<val>	hit_rate=<v>,ttft_speedup=<v>	keep	threshold sweep τ=0.70
+<commit>	3	threshold_tau080	ppl_ratio_8k	<val>	hit_rate=<v>,ttft_speedup=<v>	keep	threshold sweep τ=0.80
+```
+
+---
 
 ### CAGRA/cuVS GPU Search Benchmark
 
