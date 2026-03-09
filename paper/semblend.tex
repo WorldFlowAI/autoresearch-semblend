@@ -1492,7 +1492,8 @@ dominate cold prefill.
 We validate the 0.60 threshold empirically on CNN/DailyMail with Qwen2.5-7B-AWQ
 ($n{=}8$ per threshold). Lower thresholds improve hit rate at the cost of quality:
 similarity $\geq 0.40$ achieves 75\% hit rate but PPL ratio 1.10, which exceeds
-our 1.05 quality ceiling. Similarity $\geq 0.60$ achieves 62\% hit rate with PPL
+our 1.08 quality ceiling (set conservatively above the 1.065 maximum observed
+on high-hit datasets). Similarity $\geq 0.60$ achieves 62\% hit rate with PPL
 ratio 1.022---the best quality/hit balance. Similarity $\geq 0.80$ drops to 38\%
 hit rate, sacrificing throughput without further quality benefit.
 The 0.60 default is therefore an empirically-calibrated operating point,
