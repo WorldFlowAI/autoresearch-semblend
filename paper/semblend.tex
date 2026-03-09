@@ -197,7 +197,7 @@ We make five contributions:
 \item \textbf{Empirical evaluation} on two model architectures
   (Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ) across five real-world NLP
   datasets, demonstrating $2.4\times$--$8.3\times$ TTFT speedup at
-  2K--16K tokens with quality preserved (PPL ratio ${\leq}1.025$ on
+  2K--16K tokens with quality preserved (PPL ratio ${\leq}1.065$ on
   high-hit datasets; mean elevated on lower-hit datasets by
   miss-run outliers, not KV injection), plus architectural analysis
   of the prefix cache coverage gap (\S\ref{sec:eval}).
@@ -777,7 +777,7 @@ embedding.
 \end{itemize}
 
 \paragraph{Dataset.} We construct controlled RAG
-scenarios using 4 independent context chunks drawn from established
+scenarios using context chunks drawn from five established
 NLP benchmarks used by prior work~\cite{semsharekv}: CNN/DailyMail,
 XSum, MultiNews, WikiHow, and SAMSum. Chunks
 can be reordered, removed, or replaced to produce REORDER, PARTIAL,
@@ -794,7 +794,9 @@ Within each length, execution is two-phase:
 (2)~\emph{Test}---send variant prompts with unique reference IDs
 (preventing prefix cache hits), measuring per-query TTFT via SSE
 streaming. Cold baselines are measured with a fresh pod (no donors).
-Each length uses $n{=}10$ unique contexts.
+Synthetic-context experiments use $n{=}5$ unique contexts per length;
+cluster-based cross-dataset experiments use $n{=}8$ per length,
+drawn from independent cluster files (no context reuse across lengths).
 
 \paragraph{Prompt length verification.} All prompt lengths are
 \emph{tokenizer-verified}: we use \texttt{AutoTokenizer} from
@@ -805,12 +807,12 @@ prompts ${\sim}60\%$ shorter than claimed due to Qwen's BPE ratio
 of ${\sim}6.5$ chars/token. All results in this paper use
 tokenizer-verified lengths (within $\pm 4$ tokens of target).
 
-\paragraph{Statistical methodology.} KV-tensor experiments use
-$n{=}10$ unique contexts per prompt length, with per-length pod
-restarts ensuring independence. We report P50 TTFT with the range
-of individual measurements. Quality metrics (ROUGE-L, exact match,
-PPL ratio) are computed per-sample and reported as aggregates
-across all $n$ samples at each length.
+\paragraph{Statistical methodology.} We report P50 TTFT with the
+range of individual measurements, with per-length pod restarts
+ensuring independence across lengths. Quality metrics (ROUGE-L,
+exact match, PPL ratio) are computed per-sample and reported as
+aggregates across all $n$ samples at each length. The number of
+samples per length is specified in each table's caption.
 
 
 \subsection{Empirical Results}
@@ -1318,7 +1320,7 @@ $\Rightarrow$ PPL $\leq 1.065$ consistently across both models.}
 This confirms SemBlend's RoPE correction and partial attention mechanisms
 generalize across GQA configurations (4 vs 8 KV heads). Hit rate is the
 primary predictor of mean PPL: datasets with ${\geq}88\%$ hit rate
-consistently achieve PPL ${\leq}1.025$.
+consistently achieve PPL ${\leq}1.065$.
 
 \paragraph{Throughput under concurrent load.}
 To verify SemBlend does not degrade serving throughput, we measure
@@ -1663,7 +1665,7 @@ differ. We empirically validate that 384-dim is sufficient for
 nearest-neighbor donor discovery.
 (4)~Single-GPU experiments; multi-GPU tensor-parallel serving with
 sharded KV caches may change the overhead profile.
-(5)~KV-tensor results use $n{=}10$ per prompt length with per-length
+(5)~KV-tensor results use $n{=}5$--$8$ per prompt length with per-length
 pod restarts, providing clean measurements but limiting total sample
 size per configuration.
 
@@ -1709,7 +1711,7 @@ Seven findings stand out: (1)~semantic KV donor injection achieves
 $\mathbf{7.8\times}$--$\mathbf{8.3\times}$ P50 TTFT speedup at 16K tokens (peak individual:
 $8.71\times$) across Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ on
 A10G---exceeding SemShareKV's $6.25\times$ at 5K on costlier A100
-hardware---with quality preserved (PPL ratio ${\leq}1.025$ on high-hit
+hardware---with quality preserved (PPL ratio ${\leq}1.065$ on high-hit
 datasets; elevated on lower-hit datasets by miss-run outliers, not KV
 injection) and model-agnostic operation (no per-model tuning);
 (2)~on five real-world NLP datasets (CNN/DailyMail, XSum, MultiNews,
