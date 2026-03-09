@@ -28,3 +28,4 @@ ba8888f	3	ablation_no_partial_attn	ttft_speedup_8k	5.51	speedup_2k=2.29,speedup_
 c593eda	3	ablation_no_rope	ppl_ratio_8k	0.997	ppl_2k=0.994,ppl_4k=1.000,rouge_l_2k=0.926,rouge_l_4k=1.000,rouge_l_8k=0.734	keep	No RoPE correction: quality unchanged because chunk hashing reuses at matching positions
 08ebfd1	3	ttft_wikihow	ttft_speedup_8k	2.24	speedup_2k=1.62,speedup_4k=1.50,hit_2k=0.88,hit_4k=0.88,hit_8k=1.0	keep	WikiHow: 2.24x@8K (100% hit), procedural text has good chunk alignment
 08ebfd1	3	ttft_samsum	ttft_speedup_8k	2.37	speedup_2k=1.61,speedup_4k=1.46,hit_2k=0.88,hit_4k=0.75,hit_8k=0.88	keep	SAMSum: 2.37x@8K (88% hit), dialogue text, peak individual 5.75x
+9b3c27a	3	ttft_llama_wikihow	ttft_speedup_8k	3.33	speedup_2k=2.96,speedup_4k=2.72,hit_2k=1.0,hit_4k=1.0,hit_8k=1.0	keep	LLaMA WikiHow: 3.33x@8K (100% hit all), consistent 2.72-3.33x

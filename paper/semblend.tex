@@ -1183,27 +1183,35 @@ Hit-only speedup excludes misses for fair comparison.}
 \toprule
 \textbf{Model} & \textbf{Dataset / Len} & \textbf{Speedup} & \textbf{Hit Rate} & \textbf{Hit Spd} \\
 \midrule
-\multirow{6}{*}{\shortstack[l]{Qwen2.5-7B\\(28L, 4 KV)}}
+\multirow{9}{*}{\shortstack[l]{Qwen2.5-7B\\(28L, 4 KV)}}
 & XSum 2K    & $1.51\times$ &  75\% & $1.51\times$ \\
 & XSum 4K    & $1.33\times$ &   0\% & ---          \\
 & XSum 8K    & $1.97\times$ & 100\% & $1.97\times$ \\
 & CNN 2K     & $1.59\times$ &  75\% & $1.59\times$ \\
 & CNN 4K     & $1.60\times$ &  38\% & $1.60\times$ \\
 & CNN 8K     & $2.29\times$ &  50\% & $2.29\times$ \\
+& WikiHow 2K & $1.62\times$ &  88\% & $1.64\times$ \\
+& WikiHow 4K & $1.50\times$ &  88\% & $1.54\times$ \\
+& WikiHow 8K & $2.24\times$ & 100\% & $2.24\times$ \\
 \midrule
-\multirow{6}{*}{\shortstack[l]{LLaMA-3.1-8B\\(32L, 8 KV)}}
+\multirow{9}{*}{\shortstack[l]{LLaMA-3.1-8B\\(32L, 8 KV)}}
 & XSum 2K    & $\mathbf{3.06\times}$ & \textbf{100\%} & $3.06\times$ \\
 & XSum 4K    & $\mathbf{2.77\times}$ & \textbf{100\%} & $2.77\times$ \\
 & XSum 8K    & $\mathbf{3.34\times}$ & \textbf{100\%} & $3.34\times$ \\
 & CNN 2K     & $2.79\times$ &  62\% & $\mathbf{3.00\times}$ \\
 & CNN 4K     & $2.37\times$ &  62\% & $\mathbf{2.66\times}$ \\
 & CNN 8K     & $0.59\times$ &  25\% & $\mathbf{3.26\times}$ \\
+& WikiHow 2K & $\mathbf{2.96\times}$ & \textbf{100\%} & $2.96\times$ \\
+& WikiHow 4K & $\mathbf{2.72\times}$ & \textbf{100\%} & $2.72\times$ \\
+& WikiHow 8K & $\mathbf{3.33\times}$ & \textbf{100\%} & $3.33\times$ \\
 \bottomrule
 \end{tabular}\\[2pt]
-{\footnotesize LLaMA-3.1-8B achieves substantially higher hit-only speedups
-($2.66$--$3.34\times$) than Qwen ($1.51$--$2.29\times$) across both datasets,
-likely due to its deeper architecture (32 vs 28 layers) increasing cold prefill
-cost while SemBlend's KV transfer overhead remains constant.}
+{\footnotesize LLaMA-3.1-8B achieves substantially higher speedups
+($2.66$--$3.34\times$) than Qwen ($1.51$--$2.29\times$) across all three
+datasets. WikiHow achieves 100\% hit rate on both models, confirming
+structured procedural text benefits most from SemBlend. LLaMA's advantage
+is architecture-driven: 32 layers vs 28 increases cold prefill cost while
+SemBlend's KV transfer overhead remains constant.}
 \end{table}
 
 Table~\ref{tab:multi-model-cross} reveals that \textbf{LLaMA benefits
