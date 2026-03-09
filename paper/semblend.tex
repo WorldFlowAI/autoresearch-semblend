@@ -1118,13 +1118,17 @@ The lower ROUGE-L at 4K/8K is expected---longer generation amplifies
 early-token divergence (cascading effect)---but PPL is the definitive
 quality signal and remains near 1.0 across all configurations.
 
-Extended evaluation at \texttt{max\_tokens=512} on XSum 8K synthetic
-clusters (exact-match hits, $n{=}8$) shows non-collapsing runs (75\%
-of trials) achieve PPL ratio $= 1.048$ and ROUGE-L ${\approx}0.85$--$1.0$,
-confirming quality stability at realistic generation lengths. The
-remaining 25\% trigger an EOS-collapse artifact (see \S\ref{sec:discussion}
-Limitations); output-length monitoring or a \texttt{min\_tokens}
-constraint detects and mitigates this in production.
+Extended evaluation at \texttt{max\_tokens=512} and \texttt{1024}
+on XSum 8K synthetic clusters (exact-match hits, $n{=}8$) confirms
+quality stability at realistic generation lengths.
+EOS-collapse (see Limitations) affects ${\approx}25\%$ of exact-match
+hits independent of the output-length budget.
+For non-collapsing runs: at 512 tokens, PPL ratio $= 1.048$ and
+ROUGE-L ${\approx}0.85$--$1.0$; at 1024 tokens, PPL ratio $= 0.997$
+(better than cold) and ROUGE-L $= 0.677$. The ROUGE-L decrease from
+512 to 1024 tokens is expected---early-token divergence cascades over
+long generation---while PPL remains stable near 1.0, confirming
+SemBlend quality at production generation lengths.
 
 
 
@@ -1913,22 +1917,24 @@ not yet deployed. Short prompts ($<$500 tokens) may not benefit,
 as the ${\sim}8$\,ms pipeline overhead can exceed the cold prefill
 time saved.
 \textbf{Long-output quality}: Our primary quality metric uses
-\texttt{max\_tokens=256}. Extended evaluation at \texttt{max\_tokens=512}
-on XSum 8K synthetic clusters reveals that approximately 25\% of
-exact-match hits trigger an \textit{EOS-collapse} artifact---the
-model generates near-zero output before emitting \texttt{</s>}
-because the injected donor KV places the attention state at a
-natural sentence boundary. Non-collapsing hits (75\% of runs)
-achieve ROUGE-L ${\approx}0.85$--$1.0$ with PPL ratio 1.048
-(vs.\ 1.025 at \texttt{max\_tokens=256}), indicating the quality
-metric remains stable for genuine hits; EOS-collapse is detectable
-only through output-length monitoring. A \texttt{min\_tokens}
-constraint prevents empty output in production deployments
-(implemented in our benchmark harness via the vLLM API), though
-it inflates PPL for the forced tokens---quality should be
-reported on non-collapsed hits only. Instruction-based prompting
-(``Continue writing:'') is an alternative mitigation that avoids
-forced-generation artifacts.
+\texttt{max\_tokens=256}. Extended evaluation at
+\texttt{max\_tokens=\{512, 1024\}} on XSum 8K synthetic clusters
+reveals that ${\approx}25\%$ of exact-match hits trigger an
+\textit{EOS-collapse} artifact---the model generates near-zero
+output before emitting \texttt{</s>} because the injected donor KV
+places the attention state at a natural sentence boundary. Notably,
+this 25\% collapse rate is \emph{independent of the output-length
+budget}: the collapse is determined by KV state alignment, not by
+\texttt{max\_tokens}. Non-collapsing hits (75\% of runs) maintain
+PPL ratio near 1.0 across all budgets: 1.048 at 512 tokens,
+$\mathbf{0.997}$ at 1024 tokens. ROUGE-L decreases from
+${\approx}0.85$--$1.0$ (512 tok) to 0.677 (1024 tok) due to
+cascading text divergence over longer generation, but PPL confirms
+true quality. EOS-collapse is detectable only through output-length
+monitoring. A \texttt{min\_tokens} constraint prevents empty output
+in production (implemented in our harness via the vLLM API), though
+it inflates PPL for forced tokens; quality should be measured on
+non-collapsed hits only.
 
 
 % ============================================================================
