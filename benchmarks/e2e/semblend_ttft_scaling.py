@@ -176,9 +176,10 @@ def build_prompt(
     full_prompt = prefix + f"Extended context:\n{pad_text}\n" + suffix
     actual_tokens = len(tokenizer.encode(full_prompt))
 
-    if actual_tokens > target_tokens + 10:
+    if actual_tokens > target_tokens:
         full_ids = tokenizer.encode(full_prompt)
-        return tokenizer.decode(full_ids[:target_tokens])
+        # Leave 8 token margin to avoid off-by-one errors from tokenizer encode/decode
+        return tokenizer.decode(full_ids[:target_tokens - 8])
     return full_prompt
 
 
@@ -508,11 +509,17 @@ def run_scaling_bench(
         miss_threshold = cold_p50 * 0.70
 
         print(f"\n--- {target_tokens} tokens (cold_p50={cold_p50:.0f}ms) ---")
+        # Interleaved: register donors then immediately measure per run.
+        # This keeps only recently-registered donors hot in LMCache (LRU),
+        # avoiding buffer overflow at large contexts (24K/32K).
+        print(f"  Interleaved register+measure ({runs_per_length} runs, "
+              f"{donors_per_context} donors each)...")
 
-        # Register donors for THIS length
-        print(f"  Registering {runs_per_length * donors_per_context} donors...")
+        hits = 0
+        total = 0
         for run_idx in range(runs_per_length):
             ctx = CONTEXTS[run_idx % len(CONTEXTS)]
+            # Register donors for this run
             for d in range(donors_per_context):
                 donor_uid = uid
                 uid += 1
@@ -522,16 +529,9 @@ def run_scaling_bench(
                 except Exception as e:
                     print(f"    [{run_idx+1}] donor {d+1} FAILED: {e}")
                 time.sleep(0.3)
-
-        # Wait for all request_finished callbacks
-        print(f"  Settling 3s...")
-        time.sleep(3)
-
-        # Measure SemBlend for THIS length
-        hits = 0
-        total = 0
-        for run_idx in range(runs_per_length):
-            ctx = CONTEXTS[run_idx % len(CONTEXTS)]
+            # Settle so LMCache + Milvus fully index the donor
+            time.sleep(5.0)
+            # Measure query for this run
             sem_uid = uid
             uid += 1
             sem_prompt = build_prompt(ctx, sem_uid, target_toks)

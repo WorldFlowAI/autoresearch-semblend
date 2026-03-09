@@ -63,8 +63,8 @@ providers:
       tag: semblend-local-v11
       pullPolicy: Always
     model: "Qwen/Qwen2.5-7B-Instruct-AWQ"
-    maxModelLen: "16384"
-    gpuMemoryUtilization: "0.85"
+    maxModelLen: "32768"
+    gpuMemoryUtilization: "0.90"
     dtype: "half"
     quantization: "awq"
     prefixCaching:
