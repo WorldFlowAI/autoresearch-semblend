@@ -243,19 +243,28 @@ def register_donor(endpoint: str, model: str, prompt: str) -> None:
 
 def generate_with_logprobs(
     endpoint: str, model: str, prompt: str, max_tokens: int,
+    min_tokens: int = 0,
 ) -> tuple[str, list[float], float]:
     """Generate text and collect per-token log probabilities.
+
+    Args:
+        min_tokens: If >0, forces the model to generate at least this many tokens
+            before emitting EOS. Use to prevent EOS-collapse when KV injection from
+            a near-identical donor places the model at a sentence boundary.
 
     Returns (text, token_logprobs, ttft_ms).
     """
     t0 = time.monotonic()
+    payload: dict = {
+        "model": model, "prompt": prompt,
+        "max_tokens": max_tokens, "temperature": 0.0,
+        "logprobs": 1,
+    }
+    if min_tokens > 0:
+        payload["min_tokens"] = min_tokens
     resp = requests.post(
         f"{endpoint}/v1/completions",
-        json={
-            "model": model, "prompt": prompt,
-            "max_tokens": max_tokens, "temperature": 0.0,
-            "logprobs": 1,
-        },
+        json=payload,
         timeout=300.0,
     )
     ttft_ms = (time.monotonic() - t0) * 1000
@@ -331,8 +340,14 @@ def run_quality_for_length(
     runs: int,
     max_tokens: int,
     donors_per_context: int = 2,
+    min_tokens: int = 0,
 ) -> LengthResult:
-    """Run quality comparison for a single token length."""
+    """Run quality comparison for a single token length.
+
+    Args:
+        min_tokens: Minimum tokens to generate before EOS is allowed. Set to
+            prevent EOS-collapse when KV-injection places model at a sentence boundary.
+    """
     uid = 20000 + target_tokens
     samples: list[RunSample] = []
 
@@ -351,7 +366,7 @@ def run_quality_for_length(
             cold_a_prompt = build_prompt(ctx, uid, target_tokens, model)
             uid += 1
             cold_text, cold_lps, cold_ttft = generate_with_logprobs(
-                endpoint, model, cold_a_prompt, max_tokens,
+                endpoint, model, cold_a_prompt, max_tokens, min_tokens=min_tokens,
             )
             cold_ppl = compute_perplexity(cold_lps)
             time.sleep(0.2)
@@ -360,7 +375,7 @@ def run_quality_for_length(
             ctrl_prompt = build_prompt(ctx, uid, target_tokens, model)
             uid += 1
             ctrl_text, ctrl_lps, _ = generate_with_logprobs(
-                endpoint, model, ctrl_prompt, max_tokens,
+                endpoint, model, ctrl_prompt, max_tokens, min_tokens=min_tokens,
             )
             ctrl_ppl = compute_perplexity(ctrl_lps)
             time.sleep(0.2)
@@ -378,7 +393,7 @@ def run_quality_for_length(
             sb_prompt = build_prompt(ctx, uid, target_tokens, model)
             uid += 1
             sb_text, sb_lps, sb_ttft = generate_with_logprobs(
-                endpoint, model, sb_prompt, max_tokens,
+                endpoint, model, sb_prompt, max_tokens, min_tokens=min_tokens,
             )
             sb_ppl = compute_perplexity(sb_lps)
             time.sleep(0.2)
@@ -529,6 +544,7 @@ def run_quality_for_length_clusters(
     runs: int,
     max_tokens: int,
     donors_per_context: int = 2,
+    min_tokens: int = 0,
 ) -> LengthResult:
     """Run quality comparison for a single token length using cluster data."""
     uid = 30000 + target_tokens
@@ -553,7 +569,7 @@ def run_quality_for_length_clusters(
             ) if "<|im_start|>system\n" in cluster["seed_text"] else cluster["seed_text"]
             uid += 1
             cold_text, cold_lps, cold_ttft = generate_with_logprobs(
-                endpoint, model, cold_a_prompt, max_tokens,
+                endpoint, model, cold_a_prompt, max_tokens, min_tokens=min_tokens,
             )
             cold_ppl = compute_perplexity(cold_lps)
             time.sleep(0.2)
@@ -567,7 +583,7 @@ def run_quality_for_length_clusters(
             ) if "<|im_start|>system\n" in cluster["seed_text"] else cluster["seed_text"]
             uid += 1
             ctrl_text, ctrl_lps, _ = generate_with_logprobs(
-                endpoint, model, ctrl_prompt, max_tokens,
+                endpoint, model, ctrl_prompt, max_tokens, min_tokens=min_tokens,
             )
             ctrl_ppl = compute_perplexity(ctrl_lps)
             time.sleep(0.2)
@@ -587,7 +603,7 @@ def run_quality_for_length_clusters(
             sb_prompt = variation["text"]
             uid += 1
             sb_text, sb_lps, sb_ttft = generate_with_logprobs(
-                endpoint, model, sb_prompt, max_tokens,
+                endpoint, model, sb_prompt, max_tokens, min_tokens=min_tokens,
             )
             sb_ppl = compute_perplexity(sb_lps)
             time.sleep(0.2)
@@ -724,6 +740,12 @@ def main():
     )
     parser.add_argument("--runs", type=int, default=10)
     parser.add_argument("--max-tokens", type=int, default=256)
+    parser.add_argument(
+        "--min-tokens", type=int, default=0,
+        help="Force model to generate at least this many tokens before EOS is allowed. "
+             "Use to prevent EOS-collapse when KV injection places model at a sentence "
+             "boundary (e.g., set to 64 or 128 when max-tokens >= 512).",
+    )
     parser.add_argument("--donors-per-context", type=int, default=2)
     parser.add_argument("--output-dir", default="/tmp/semblend-quality-results")
     parser.add_argument(
@@ -797,6 +819,7 @@ def main():
                 runs=args.runs,
                 max_tokens=args.max_tokens,
                 donors_per_context=args.donors_per_context,
+                min_tokens=args.min_tokens,
             )
         else:
             result = run_quality_for_length(
@@ -806,6 +829,7 @@ def main():
                 runs=args.runs,
                 max_tokens=args.max_tokens,
                 donors_per_context=args.donors_per_context,
+                min_tokens=args.min_tokens,
             )
         all_results[target_tokens] = result
 
