@@ -1290,8 +1290,7 @@ confirming near-perfect quality when donor reuse succeeds.
 \caption{\textbf{Quality across datasets and models.}
 PPL ratio $\approx 1.0$ means no degradation; elevated values on
 MultiNews, CNN/DM, and SAMSum are driven by miss-runs (failed KV transfer),
-not by KV injection quality. Qwen tested on 5 datasets,
-LLaMA on 4 (MultiNews pending). $n{=}8$ per length.}
+not by KV injection quality. Both models tested on 5 datasets. $n{=}8$ per length.}
 \label{tab:cross-quality}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
@@ -1306,8 +1305,9 @@ LLaMA on 4 (MultiNews pending). $n{=}8$ per length.}
 & WikiHow         & 1.005 & 1.009 & 1.012 \\
 & SAMSum          & 1.029 & 1.071 & 1.136 \\
 \midrule
-\multirow{4}{*}{LLaMA-3.1-8B}
+\multirow{5}{*}{LLaMA-3.1-8B}
 & XSum (synth.)   & 1.009 & 1.011 & 1.065 \\
+& MultiNews       & 1.020 & 1.006 & 1.063$^\ddagger$ \\
 & WikiHow         & 0.992 & 1.042 & 1.001 \\
 & CNN/DailyMail   & 1.039 & 1.059 & 1.077 \\
 & SAMSum          & 1.110 & 1.081 & 1.171 \\
@@ -1318,16 +1318,20 @@ on both architectures. Elevated PPL on SAMSum and CNN/DM-LLaMA reflects
 miss-run outliers (62--75\% effective hit in quality benchmark), not KV injection
 degradation. SAMSum 8K Qwen has 88\% TTFT hit but 2/8 quality-benchmark
 runs fail KV transfer, inflating mean PPL to 1.136; hit-only approaches 1.0.
-$^\dagger$MultiNews@8K mean 1.119 is driven by 1/8 miss run (PPL=1.90);
+$^\dagger$Qwen MultiNews@8K mean 1.119 is driven by 1/8 miss run (PPL=1.90);
 hit-only PPL = 1.007.
+$^\ddagger$LLaMA MultiNews@8K mean 1.063 is driven by 1/8 miss run (PPL=1.559);
+hit-only PPL = 0.992.
 Quality benchmark hit rate is the primary predictor of mean PPL:
 100\% effective hit $\Rightarrow$ PPL $\leq 1.065$ on both models.}
 \end{table}
 
 This confirms SemBlend's RoPE correction and partial attention mechanisms
-generalize across GQA configurations (4 vs 8 KV heads). Quality benchmark
-hit rate is the primary predictor of mean PPL: 100\% effective hit
-consistently achieves PPL ${\leq}1.065$; lower hit rates introduce
+generalize across GQA configurations (4 vs 8 KV heads). Both models show
+the same miss-outlier pattern on MultiNews: Qwen mean 1.119 (hit-only 1.007)
+and LLaMA mean 1.063 (hit-only 0.992) at 8K, both driven by a single miss run.
+Quality benchmark hit rate is the primary predictor of mean PPL: 100\% effective
+hit consistently achieves PPL ${\leq}1.065$; lower hit rates introduce
 miss-run outliers (PPL\,$>$\,1.5 on failed KV transfers) that inflate the mean.
 
 \paragraph{Throughput under concurrent load.}
