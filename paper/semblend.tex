@@ -1107,7 +1107,7 @@ is not degraded by KV donor injection. LLaMA shows higher exact match
 rates (60--80\%) than Qwen (40--60\%), suggesting model architecture
 affects output sensitivity to KV injection.
 
-\paragraph{Extended generation quality (256 tokens).}
+\paragraph{Extended generation quality (256--512 tokens).}
 Table~\ref{tab:quality} uses \texttt{max\_tokens=256} to test whether
 quality degrades over extended generation. PPL ratios remain near 1.0
 across all lengths and both models (range: 0.984--1.041; 11/12 within 3\%), confirming
@@ -1117,6 +1117,14 @@ PPL ratio $= 0.987$ with 100\% hit rate and $2.42\times$ speedup.
 The lower ROUGE-L at 4K/8K is expected---longer generation amplifies
 early-token divergence (cascading effect)---but PPL is the definitive
 quality signal and remains near 1.0 across all configurations.
+
+Extended evaluation at \texttt{max\_tokens=512} on XSum 8K synthetic
+clusters (exact-match hits, $n{=}8$) shows non-collapsing runs (75\%
+of trials) achieve PPL ratio $= 1.048$ and ROUGE-L ${\approx}0.85$--$1.0$,
+confirming quality stability at realistic generation lengths. The
+remaining 25\% trigger an EOS-collapse artifact (see \S\ref{sec:discussion}
+Limitations); output-length monitoring or a \texttt{min\_tokens}
+constraint detects and mitigates this in production.
 
 
 
