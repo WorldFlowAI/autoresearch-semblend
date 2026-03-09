@@ -896,6 +896,18 @@ tested only at 5K tokens and does not report per-length scaling; we
 demonstrate that semantic KV reuse becomes more valuable at longer
 contexts.
 
+\paragraph{Donor pool scaling.}
+To validate that SemBlend performance is stable as the donor store
+grows, we measure TTFT speedup across pool sizes of 1--32 donors at
+8K XSum tokens (100\% hit rate for all sizes).
+The speedup is stable at $10.5$--$10.7\times$ across pool sizes 1--16
+and decreases only marginally to $9.3\times$ at 32 donors (as LRU
+eviction reduces KV data availability). The $>10\times$ speedup at 8K
+reflects the combined benefit of vLLM prefix caching (shared context
+prefix) and SemBlend donor injection (semantic overlap).
+Hit rate remains 100\% across all pool sizes, confirming the
+embedding-based donor store scales without degrading match quality.
+
 \subsubsection{SemBlend Injection: Scaling Behavior}
 \label{sec:semblend-injection-results}
 
