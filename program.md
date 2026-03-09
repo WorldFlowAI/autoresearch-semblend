@@ -34,6 +34,25 @@ These come from `paper/ANALYSIS.md`. Work on them roughly in this order:
 6. **Memory savings measurement** — GPU KV cache memory with/without SemBlend
 7. **Paper improvements** — fix inconsistencies, add citations, add new results, improve framing
 
+### Priority Dataset: WildChat-1M
+
+**WildChat-1M** (Allen AI, ODC-BY license) is the highest-value dataset for validating SemBlend's production thesis:
+
+- **1M conversations from ~204K unique users**, with `hashed_ip` field enabling per-user grouping
+- This is the only large public dataset that lets you measure **intra-user semantic overlap** — i.e., "the same tenant asks similar questions over time"
+- Directly models the real deployment scenario SemBlend is built for: KV reuse across a user's session history
+- Cross-validation datasets: LMSYS-Chat-1M, ShareGPT, Bitext (for robustness across conversation styles)
+
+**Why it matters for the paper**: Current benchmarks use XSum/CNN/WikiHow which test document-level reuse. WildChat tests *user-level* reuse — the core commercial value proposition. A result showing X% of consecutive user turns share >0.60 cosine similarity would directly justify the SemBlend deployment architecture.
+
+**Benchmark design**:
+1. Group conversations by `hashed_ip` → get user conversation histories
+2. For each user with ≥4 conversations: use conversation N as donor, conversation N+1/N+2 as queries
+3. Measure hit rate, TTFT speedup, and quality against cold baseline
+4. Report: % of user pairs with similarity ≥τ, speedup on hit pairs, per-user speedup distribution
+
+**HuggingFace**: `allenai/WildChat-1M` (download ~2GB). Priority over additional synthetic benchmarks.
+
 ## What You Can Modify
 
 - `synapse_kv_connector/*.py` — all 16 source files
