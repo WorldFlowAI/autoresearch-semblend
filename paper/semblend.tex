@@ -1296,16 +1296,18 @@ not by KV injection quality.}
 & WikiHow         & 1.005 & 1.009 & 1.012 \\
 & SAMSum          & 1.029 & 1.071 & 1.136 \\
 \midrule
-\multirow{3}{*}{LLaMA-3.1-8B}
+\multirow{4}{*}{LLaMA-3.1-8B}
 & XSum (synth.)   & 1.009 & 1.011 & 1.065 \\
 & WikiHow         & 0.992 & 1.042 & 1.001 \\
 & CNN/DailyMail   & 1.039 & 1.059 & 1.077 \\
+& SAMSum          & 1.110 & 1.081 & 1.171 \\
 \bottomrule
 \end{tabular}\\[2pt]
-{\footnotesize WikiHow (100\% hit, both models) achieves PPL $\leq 1.042$.
-XSum-synthetic and WikiHow confirm PPL $\leq 1.065$ on high-hit datasets.
-SAMSum and CNN/DM-LLaMA show elevated PPL due to miss-run outliers, not
-KV injection degradation. Hit rate is the primary predictor of mean PPL.}
+{\footnotesize WikiHow (100\% hit, both models) achieves PPL $\leq 1.042$
+on both architectures. Elevated PPL on SAMSum and CNN/DM-LLaMA reflects
+miss-run outliers (62--75\% hit rate), not KV injection degradation.
+Hit rate is the primary predictor of mean PPL: ${\geq}88\%$ hit
+$\Rightarrow$ PPL $\leq 1.065$ consistently across both models.}
 \end{table}
 
 This confirms SemBlend's RoPE correction and partial attention mechanisms
