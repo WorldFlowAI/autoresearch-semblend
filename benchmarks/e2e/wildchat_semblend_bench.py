@@ -84,10 +84,24 @@ def register_donor(endpoint: str, model: str, prompt: str) -> None:
 # ---------------------------------------------------------------------------
 
 def get_tokenizer(model: str):
-    """Load tokenizer for the given model."""
+    """Load tokenizer for the given model.
+
+    Returns None if tokenizer would be too slow (e.g., slow Python HF tokenizer
+    when PyTorch is unavailable). Character-based truncation is used as fallback.
+    For 50K rows at ~4K tokens each, a slow tokenizer would take hours.
+    """
+    try:
+        import torch  # noqa: F401 — presence means fast path available
+    except ImportError:
+        # No PyTorch → transformers tokenizers run in slow Python mode.
+        # Character-based truncation (4 chars/token) is much faster and accurate enough.
+        print("  Tokenizer: PyTorch unavailable; using character-based truncation (~4 chars/token)")
+        return None
+
     try:
         from transformers import AutoTokenizer
-        return AutoTokenizer.from_pretrained(model, trust_remote_code=True)
+        tok = AutoTokenizer.from_pretrained(model, trust_remote_code=True, use_fast=True)
+        return tok
     except Exception as e:
         print(f"WARNING: Could not load tokenizer for {model}: {e}")
         return None
@@ -136,12 +150,19 @@ def build_user_pairs(
     min_conversations: int = 2,
     target_tokens: int = 4096,
     tokenizer=None,
+    min_chars: int = 0,
 ) -> list[tuple[str, str, str]]:
     """Build (ip, donor_prompt, query_prompt) pairs for users with >=min_conversations.
 
     Returns list of (hashed_ip, donor_text, query_text) tuples.
     For each consecutive pair of conversations from the same user,
     creates one donor-query pair.
+
+    Args:
+        min_chars: Minimum character length for both donor and query after truncation.
+            Use to filter out short conversations where cold TTFT is already fast
+            and SemBlend speedup would be negligible. Typical: 2000 chars (~500 tokens)
+            for visible speedup, 6000 chars (~1500 tokens) for strong speedup.
     """
     # Group rows by hashed_ip (preserve order = conversation order in dataset)
     user_convos: dict[str, list[str]] = defaultdict(list)
@@ -155,6 +176,8 @@ def build_user_pairs(
         if full_text:
             user_convos[ip].append(full_text)
 
+    effective_min = max(min_chars, 50)
+
     # Build consecutive pairs for users with enough conversations
     pairs = []
     for ip, convos in user_convos.items():
@@ -167,8 +190,9 @@ def build_user_pairs(
             # Truncate to target token length
             donor_prompt = truncate_to_tokens(donor_raw, target_tokens, tokenizer)
             query_prompt = truncate_to_tokens(query_raw, target_tokens, tokenizer)
-            # Only include pairs where both texts are non-trivial
-            if len(donor_prompt.strip()) > 50 and len(query_prompt.strip()) > 50:
+            # Filter by minimum length — short texts show no SemBlend benefit
+            if (len(donor_prompt.strip()) >= effective_min
+                    and len(query_prompt.strip()) >= effective_min):
                 pairs.append((ip, donor_prompt, query_prompt))
 
     return pairs
@@ -212,6 +236,7 @@ def run_wildchat_bench(
     settle_time: float = 3.0,
     cold_samples: int = 8,
     output_path: str | None = None,
+    min_chars: int = 0,
 ) -> dict:
     """Run WildChat SemBlend benchmark.
 
@@ -249,7 +274,8 @@ def run_wildchat_bench(
     # Build user pairs
     pairs = build_user_pairs(rows, min_conversations=2,
                              target_tokens=target_tokens,
-                             tokenizer=tokenizer)
+                             tokenizer=tokenizer,
+                             min_chars=min_chars)
     print(f"  User pairs available: {len(pairs)}")
 
     if len(pairs) < 5:
@@ -473,6 +499,11 @@ def parse_args() -> argparse.Namespace:
                    help="Seconds to wait after donor registration (default: 3.0)")
     p.add_argument("--cold-samples", type=int, default=8,
                    help="Cold baseline measurements (default: 8)")
+    p.add_argument("--min-chars", type=int, default=0,
+                   help="Minimum character length for donor and query texts (default: 0). "
+                        "Use to filter out short conversations where SemBlend speedup is "
+                        "negligible. E.g., 2000 (~500 tokens) for visible speedup, "
+                        "6000 (~1500 tokens) for strong speedup.")
     p.add_argument("--output", default=None,
                    help="Path to save JSON results")
     return p.parse_args()
@@ -494,4 +525,5 @@ if __name__ == "__main__":
         settle_time=args.settle_time,
         cold_samples=args.cold_samples,
         output_path=args.output,
+        min_chars=args.min_chars,
     )
