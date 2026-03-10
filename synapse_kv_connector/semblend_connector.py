@@ -1018,7 +1018,14 @@ class SemBlendConnectorV1(KVConnectorBase_V1):
             # "retrieved tokens < expected" errors and falls back to
             # full recomputation.
             chunk_size = 256
-            max_usable = prompt_len - 1  # Leave at least 1 token
+            # Leave at least one full chunk (256 tokens) for the model to
+            # process fresh. Injecting right up to the prompt boundary causes
+            # EOS-collapse: the model sees the donor's sentence-ending KV as
+            # its context, "thinks" the answer is complete, and emits EOS
+            # immediately (observed 25% collapse rate at 8K). With 256 fresh
+            # tokens the model processes real tail context before generating.
+            min_fresh_tokens = chunk_size
+            max_usable = max(chunk_size, prompt_len - min_fresh_tokens)
             # Align to chunk boundary (floor)
             donor_hit = min(donor_hit, max_usable)
             donor_hit = (donor_hit // chunk_size) * chunk_size
