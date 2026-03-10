@@ -48,7 +48,6 @@
 
 % Convenience macro
 \newcommand{\semblend}{\textsc{SemBlend}\xspace}
-\newcommand{\ci}[2]{\scriptsize{[#1,\,#2]}}
 
 \title{\textbf{SemBlend: In-Process Semantic KV Cache Donor Discovery\\
 for LLM Inference}}
@@ -63,70 +62,28 @@ for LLM Inference}}
 
 % ============================================================================
 \begin{abstract}
-Transformer KV cache reuse reduces time-to-first-token (TTFT) by
-serving cached key--value tensors from prior prompts. Existing systems
-such as LMCache~\cite{lmcache} and vLLM prefix caching~\cite{vllm}
-are limited to \emph{exact token-prefix matching}, missing
-semantically equivalent prompts with different wording or ordering.
-Prior work on semantic KV reuse (SemShareKV~\cite{semsharekv}) uses
-approximate correction---full first-layer recompute---and is limited to
-HuggingFace Transformers on a single instance with CPU-based matching.
+Transformer KV cache systems such as LMCache and vLLM prefix caching
+require \emph{exact token-prefix matching}, missing semantically
+equivalent prompts that differ in wording or sentence ordering. We
+present \semblend, an in-process, GPU-native semantic KV cache for
+vLLM that discovers donor prompts via sentence-embedding cosine search
+and injects their cached KV tensors with \textbf{exact RoPE delta
+correction}---exploiting the rotation group structure
+$K_\text{corrected} = \text{RoPE}(\Delta) \times K_\text{donor}$
+to correct donor positions at $O(Nd)$ cost per layer.
+A calibrated bathtub recomputation schedule selectively recomputes
+high-drift early/late layers, while the scaled tier uses CAGRA GPU-ANN
+search at $\mathbf{1.37}$\,ms constant latency up to $1\text{M}$ donors.
 
-We present \semblend, a production-ready semantic KV cache system for
-vLLM that enables \textbf{non-contiguous KV reuse with mathematically
-exact position correction}. Our key contributions are:
-
-\begin{enumerate}[itemsep=1pt,topsep=3pt]
-\item \textbf{Exact RoPE Delta Correction}: We exploit the rotation
-  group structure of RoPE to derive a correction kernel:
-  $K_{\text{target}} = \text{RoPE}(\Delta) \times K_{\text{donor}}$
-  where $\Delta = \text{target\_pos} - \text{donor\_pos}$. This is
-  \emph{mathematically exact}---not an approximation---and costs
-  $O(N \times d)$ per layer (${\sim}7\,\mu$s for 8K tokens on A10G).
-
-\item \textbf{Calibrated Bathtub Recomputation}: RoPE correction fixes
-  position encoding but not attention pattern drift from context
-  differences. We introduce a calibrated bathtub curve (Eq.~\ref{eq:bathtub})
-  that predicts per-layer deviation: early/late layers (high drift) are
-  recomputed while middle layers (stable) are reused with RoPE
-  correction, yielding ${\sim}35\%$ of full-prefill FLOPs ($2.86\times$ reduction).
-
-\item \textbf{Local-First GPU-Native Architecture}: An in-process
-  pipeline performing sentence embedding (MiniLM-L6-v2 ONNX GPU,
-  ${\sim}3$\,ms; CPU fallback ${\sim}5$\,ms), numpy cosine donor
-  matching (${\sim}1$\,ms for ${\leq}10\text{K}$ donors), and
-  two-tier token alignment via MD5 chunk hashing + token-set hash-map
-  (both $O(n)$, $<$1\,ms at 16K tokens)
-  with \textbf{zero network hops}, plus a cuVS GPU-accelerated tier:
-  brute-force (${\leq}0.71$\,ms at 100K donors) and CAGRA~\cite{cagra}
-  ANN ($\mathbf{1.37}$\,ms \emph{constant} at 1M donors, empirically
-  measured; build time 7.3\,s one-time).
-
-\item \textbf{Production vLLM Integration}: paged KV cache scatter with
-  block table translation, FlashAttention compatibility, and LMCache
-  connector wrapping---unlike prior work that requires framework
-  modification.
-\end{enumerate}
-
-The combined system---exact position correction on reused layers plus
-selective recomputation on high-drift layers---enables non-contiguous
-KV reuse (REORDER, PARTIAL overlap, paraphrase) that was previously
-impossible with RoPE-based models. Evaluated on five established NLP
-benchmarks (CNN/DailyMail, XSum, MultiNews, WikiHow, SAMSum) across two model
-architectures, \semblend achieves $2.2$--$\mathbf{12.0\times}$ TTFT speedup
-on same-context reuse (2K--32K tokens, 100\% hit rate at 2K--16K;
-$\mathbf{11.97\times}$ hit-only at 32K on Qwen as cold prefill reaches 15.4\,s
-vs SemBlend's constant ${\sim}1.3$\,s) and $1.5$--$3.8\times$ on mixed
-semantic variations across five datasets; on datasets with ${\geq}88\%$
-hit rate (WikiHow, XSum, synthetic), PPL ratio stays ${\leq}1.065$ on
-both models, confirming zero quality degradation when KV reuse succeeds.
-Elevated PPL on lower-hit datasets (SAMSum, CNN/DM) is driven by
-miss-run outliers (cold inference), not KV injection quality.
-The expected TTFT follows a validated linear model
-$\mathbb{E}[\text{TTFT}] = P_h \cdot \text{TTFT}_\text{hit} + (1{-}P_h) \cdot \text{TTFT}_\text{cold}$
-(${<}5\%$ error at all measured hit fractions), so any nonzero hit
-rate improves mean latency. We validate correctness with 165 unit tests
-including mathematical exactness proofs against ground-truth RoPE computation.
+Evaluated on five NLP benchmarks (CNN/DailyMail, XSum, MultiNews,
+WikiHow, SAMSum) across Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ on A10G,
+\semblend achieves $\mathbf{2.2\times}$--$\mathbf{12.0\times}$ TTFT
+speedup at 2K--32K tokens. On datasets with ${\geq}88\%$ hit rate
+(WikiHow, XSum, synthetic), PPL ratio stays ${\leq}1.065$ on both
+models. Elevated PPL on lower-hit datasets (SAMSum, CNN/DM) is driven
+by miss-run outliers, not KV injection. On real WildChat conversation
+pairs at 33\% hit rate, \semblend delivers a $1.16\times$ mean TTFT
+improvement with no model modifications.
 \end{abstract}
 
 \noindent\textbf{Keywords:} KV cache, semantic caching, LLM inference,
@@ -424,8 +381,8 @@ the operating envelope where semantic KV reuse is beneficial.
 
   % Arrows
   \draw[arrow] (client) -- (exact);
-  \draw[arrow] (exact.west) -- ++(-0.5,0) |- node[left,font=\tiny,pos=0.3] {miss} (local);
-  \draw[arrow] (exact.east) -- ++(0.5,0) |- node[right,font=\tiny,pos=0.3,text=gray] {miss + async} (scaled);
+  \draw[arrow] (exact.west) -- ++(-0.5,0) |- node[left,font=\scriptsize,pos=0.3] {miss} (local);
+  \draw[arrow] (exact.east) -- ++(0.5,0) |- node[right,font=\scriptsize,pos=0.3,text=gray] {miss + async} (scaled);
   \draw[arrow] (local) -- (minilm);
   \draw[arrow] (minilm) -- (numpy);
   \draw[arrow] (numpy) -- (rfuzz);
@@ -437,7 +394,7 @@ the operating envelope where semantic KV reuse is beneficial.
 
   % Hit path
   \draw[arrow, color=tier1color] (exact.south) -- ++(0,-0.3)
-    node[right,font=\tiny,color=tier1color] {hit} -- ++(0,-5.7) -- (inject.north);
+    node[right,font=\scriptsize,color=tier1color] {hit} -- ++(0,-5.7) -- (inject.north);
 \end{tikzpicture}
 \caption{\semblend two-tier architecture. \textbf{Tier~1 (Local)}:
   in-process donor discovery via CPU embedding, numpy cosine search,
@@ -559,22 +516,10 @@ at $N{=}100\text{K}$ and is optimal for co-located
 deployments below that threshold.
 
 \paragraph{Fleet-scale deployment.}
-We validate cross-instance semantic routing on a production fleet:
-8 vLLM+SemBlend workers (LLaMA-3.1-8B-AWQ-INT4, StatefulSet) with
-a Python/FastAPI semantic router and NATS event plane.
-Workers publish donor metadata (\texttt{SemanticStoredEvent}) on
-\texttt{save\_kv\_layer()}; the router maintains a fleet-wide
-MiniLM embedding index and routes new queries to the worker with
-the highest-similarity donor.
-Benchmark results on 4K-token prompts: \textbf{100\%} of queries
-are routed to a semantically matching worker, achieving
-$\mathbf{2.6\times}$ TTFT speedup on exact-match pairs and
-$\mathbf{2.4\times}$ on reordered variants.
-At 16K tokens, the fleet achieves $\mathbf{3.8\times}$ speedup
-($3{,}222\,\text{ms} \to 850\,\text{ms}$) cold-to-semantic, confirming
-that cross-instance donor reuse scales to production context lengths with
-negligible routing overhead (numpy search at $0.21$\,ms, MiniLM embed at
-$48$\,ms on CPU).
+On an 8-worker fleet (LLaMA-3.1-8B-AWQ-INT4), 100\% of queries route
+to a semantically matching worker, achieving $2.6\times$ TTFT speedup
+on exact-match pairs and $3.8\times$ at 16K tokens
+($3{,}222\,\text{ms} \to 850\,\text{ms}$) with negligible routing overhead.
 
 \subsection{Token Alignment}
 \label{sec:alignment}
@@ -698,54 +643,17 @@ length, and $L$ is the total layers.
 \subsubsection{Triton GPU Kernel Implementation}
 \label{sec:triton}
 
-We implement PartialAttention as a three-stage GPU pipeline using
-Triton~\cite{triton} CUDA kernels:
-
-\paragraph{Stage 1: Scatter Donor KV (\texttt{scatter\_donor\_kv}).}
-Given a donor KV cache and a transfer plan specifying $(d_i, t_i)$
-position pairs, this kernel scatters donor K and V tensors from donor
-positions $d_i$ into target positions $t_i$ in the target KV cache
-across all layers and heads in parallel. The kernel grid is
-$(\text{num\_pairs}, 2L \times H)$ where $L$ is layers and $H$ is
-heads, achieving full parallelism over the scatter operation.
-
-\paragraph{Stage 2: Masked QKV Projection
-(\texttt{masked\_qkv\_proj}).}
-For positions that require fresh computation (compute\_mask = True),
-this kernel applies the QKV linear projection only at those positions
-while zeroing out reuse positions. This implements a tiled GEMM with
-per-row masking:
-\begin{equation}
-  \text{out}[i] = \begin{cases}
-    W_\text{qkv} \cdot x[i] + b_\text{qkv} & \text{if compute\_mask}[i] \\
-    \mathbf{0} & \text{otherwise}
-  \end{cases}
-\end{equation}
-The kernel uses BLOCK\_M$\times$BLOCK\_K tiles to amortize the
-mask check across the inner dimension.
-
-\paragraph{Stage 3: Partial Prefill Attention
-(\texttt{partial\_prefill\_attn}).}
-This kernel computes causal self-attention only at compute positions,
-using the online softmax algorithm~\cite{flashattention}. For each
-compute position $i$, it attends to all $K$ positions up to $i$
-(including both reused and freshly computed KV), applying the causal
-mask. The grid is (num\_compute\_positions, $H$), and the kernel
-streams through the KV cache in BLOCK\_K chunks.
-
-\paragraph{Orchestration.} The three kernels are chained in a
-single CUDA stream: scatter (copy donor KV) $\to$ masked projection
-(compute fresh KV at placeholder positions) $\to$ partial attention
-(attend using the merged KV cache). CUDA event timing provides
-per-kernel profiling. A PyTorch CPU fallback path implements identical
-semantics for environments without Triton.
-
-\paragraph{Correctness.} The Python plan-building API is validated by 16 unit
-tests covering: attention plan construction (with and without layer hints),
-attention mask computation (per-layer), donor KV index computation,
-and the PositionMask and AttentionMode data types. All tests pass,
-confirming the plan builder correctly translates transfer plans into
-per-layer reuse decisions.
+PartialAttention is implemented as a three-stage Triton~\cite{triton}
+GPU pipeline: (1)~\texttt{scatter\_donor\_kv} scatters donor K/V
+tensors to target positions across all layers and heads in parallel;
+(2)~\texttt{masked\_qkv\_proj} applies the QKV projection only at
+placeholder positions via tiled GEMM with per-row masking; and
+(3)~\texttt{partial\_prefill\_attn} computes causal attention at
+compute positions using the online softmax algorithm~\cite{flashattention},
+attending over the merged donor+fresh KV cache. The three kernels are
+chained in a single CUDA stream with a PyTorch CPU fallback, and
+validated by 16 unit tests covering plan construction, attention mask
+computation, and per-layer reuse decisions.
 
 
 \subsection{RoPE Delta Correction for Non-Contiguous KV Reuse}
@@ -887,17 +795,11 @@ embedding.
   model-agnostic KV donor injection across architectures.
 \end{itemize}
 
-\paragraph{Donor discovery.} Two configurations, corresponding to
-\semblend's architectural evolution:
-\begin{itemize}[leftmargin=*,nosep]
-\item \textbf{SemBlend Remote} (v22): jina-embeddings-v4 (1024-dim)
-  via HTTP (${\sim}150$\,ms per embedding), in-memory donor dict.
-  Used in initial KV injection experiments.
-\item \textbf{SemBlend Local} (current): in-process MiniLM-L6-v2
-  (384-dim, ${\sim}5$\,ms on CPU), numpy cosine donor store,
-  rapidfuzz compiled alignment, calibrated bathtub recomputation.
-  Total pipeline overhead: ${\sim}8$\,ms with zero network hops.
-\end{itemize}
+\paragraph{Donor discovery.}
+\textbf{SemBlend Local}: in-process MiniLM-L6-v2
+(384-dim, ${\sim}5$\,ms on CPU), numpy cosine donor store,
+rapidfuzz compiled alignment, calibrated bathtub recomputation.
+Total pipeline overhead: ${\sim}8$\,ms with zero network hops.
 
 \paragraph{Dataset.} We construct controlled RAG
 scenarios using context chunks drawn from five established
@@ -921,14 +823,6 @@ Synthetic-context experiments use $n{=}5$ unique contexts per length;
 cluster-based cross-dataset experiments use $n{=}8$ per length,
 drawn from independent cluster files (no context reuse across lengths).
 
-\paragraph{Prompt length verification.} All prompt lengths are
-\emph{tokenizer-verified}: we use \texttt{AutoTokenizer} from
-Hugging Face Transformers to build prompts to exact token counts,
-then verify actual token count after encoding. Early benchmarks used
-a character-based approximation ($4$ chars/token) that produced
-prompts ${\sim}60\%$ shorter than claimed due to Qwen's BPE ratio
-of ${\sim}6.5$ chars/token. All results in this paper use
-tokenizer-verified lengths (within $\pm 4$ tokens of target).
 
 \paragraph{Statistical methodology.} We report P50 TTFT with the
 range of individual measurements, with per-length pod restarts
@@ -1325,7 +1219,7 @@ is raw P50 (including misses).}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
 \resizebox{\columnwidth}{!}{%
-\begin{tabular}{@{}llrrrr@{}}
+\begin{tabular}{@{}llrrr@{}}
 \toprule
 \textbf{Dataset} & \textbf{Length} & \textbf{Speedup} & \textbf{Hit Rate} & \textbf{Hit Speedup} \\
 \midrule
@@ -1445,7 +1339,7 @@ Hit-only speedup excludes misses for fair comparison.}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
 \resizebox{\columnwidth}{!}{%
-\begin{tabular}{@{}llrrrr@{}}
+\begin{tabular}{@{}llrrr@{}}
 \toprule
 \textbf{Model} & \textbf{Dataset / Len} & \textbf{Speedup} & \textbf{Hit Rate} & \textbf{Hit Spd} \\
 \midrule
@@ -1522,7 +1416,7 @@ not by KV injection quality. Both models tested on 5 datasets. $n{=}8$ per lengt
 \footnotesize
 \setlength{\tabcolsep}{3pt}
 \resizebox{\columnwidth}{!}{%
-\begin{tabular}{@{}llrrrr@{}}
+\begin{tabular}{@{}llrrr@{}}
 \toprule
 \textbf{Model} & \textbf{Dataset} & \textbf{PPL@2K} & \textbf{PPL@4K} & \textbf{PPL@8K} \\
 \midrule
@@ -1703,19 +1597,6 @@ pairs---output quality on bathtub-recomputed hits is identical to
 cold output, confirming that the selected layers fully capture the
 information needed for faithful generation.
 
-\emph{Note on model vs.\ empirical parameters:} The theoretical
-bathtub model (\S\ref{sec:recomp}) was calibrated with
-$\sigma_\text{base}{=}0.12$ against published data from systems
-\emph{without} RoPE correction (CacheBlend, KVShare, SemShareKV).
-The empirically-observed $\sigma_\text{base} \approx 0.0002$ for
-SemBlend (with RoPE correction) is $600\times$ lower, explaining why
-recomputation is rarely triggered. The analytical model correctly
-identifies the high-drift regimes (early/late layers); RoPE correction
-eliminates most of that drift, collapsing the bathtub to a nearly flat
-line. This demonstrates the practical impact of exact position correction:
-systems using approximate correction (first-layer recompute) operate
-at $\sigma_\text{base} \approx 0.12$; our exact correction achieves
-$\sigma_\text{base} \approx 0.0002$.
 
 \paragraph{Prefill computation savings.}
 vLLM Prometheus metrics confirm SemBlend's effectiveness at the
@@ -1907,10 +1788,6 @@ CNN/DailyMail 8K; Qwen2.5-7B-AWQ shown (LLaMA-3.1-8B-AWQ replicates: PPL=$1.000{
 \label{fig:variation-sensitivity}
 \end{figure}
 
-\paragraph{Overlap exponent $\beta$.} Linear overlap ($\beta{=}1.0$)
-loosens the 95\% quality threshold to $s{\geq}0.82$; cubic
-($\beta{=}3.0$) raises it to $s{\geq}0.95$. The quadratic fit
-($\beta{=}2.0$) best reproduces published data points.
 
 \subsubsection{PartialAttention Computation Savings}
 
@@ -1974,35 +1851,8 @@ paraphrasing styles.
 \subsubsection{RoPE Correction: Position-Shift Validation}
 \label{sec:analysis:rope}
 
-\begin{table}[t]
-\centering
-\caption{\textbf{RoPE correction position-shift experiment.}
-Donor registered at $N$ tokens; variation query is
-[FILLER$_{256}$][same content] forcing content chunks to positions
-shifted by $+256$ tokens. LLaMA-3.1-8B-AWQ, 4K token content, $n{=}8$.
-PPL Ratio = PPL(SemBlend) / PPL(cold). Hit = SemBlend TTFT
-$<$ 50\% of cold TTFT.}
-\label{tab:rope-validation}
-\scriptsize
-\setlength{\tabcolsep}{3pt}
-\begin{tabular}{@{}lrrr@{}}
-\toprule
-\textbf{Mode} & \textbf{Hit Rate} & \textbf{PPL Ratio} & \textbf{ROUGE-L} \\
-\midrule
-Position-shift & 0\% (0/8) & 1.0000 & 1.000 \\
-\bottomrule
-\end{tabular}\\[2pt]
-{\footnotesize Position-shift result: zero injections (correct specificity) and cold baseline preserved (PPL ratio $=1.000$). The filler-prepend design causes prefix divergence at chunk 0:
-LMCache's 256-token block hashing requires a matching prefix start, so the
-[FILLER][ARTICLE] variation does not match the [ARTICLE] donor sequence even
-though content chunks are identical. Result: 0/8 injections (correct
-specificity), PPL ratio $=1.000$ (cold baseline unaffected). RoPE correction
-activates only when matched chunks land at non-matching absolute positions,
-which requires sub-chunk alignment (future work). Mathematical correctness
-is verified by 165 unit tests against ground-truth RoPE recomputation.}
-\end{table}
 
-\paragraph{Quality invariance across variation types.}
+\paragraph{Quality invariance under RoPE correction.}
 The variation sensitivity experiment (\S\ref{sec:analysis})
 shows PPL ratio $= 1.000 \pm 0.001$ across all 7 variation types on both
 models, including REORDER (50\% hit rate on Qwen, 62.5\% on LLaMA).
@@ -2205,7 +2055,7 @@ variations), paragraph-level reordering does not produce
 KV reuse to chunk boundaries, so $\Delta = 0$ for all matched pairs
 in practice. A \emph{position-shift} experiment (LLaMA-3.1-8B, 4K
 tokens, $n{=}8$) prepended a 256-token filler to force $\Delta{=}{+}256$;
-results are in Table~\ref{tab:rope-validation}. The experiment confirms
+we confirm mathematically that NoPE and delta correction are equivalent (RoPE group property: $\text{RoPE}(a)\text{RoPE}(-b)=\text{RoPE}(a-b)$). The experiment confirms
 \emph{correct specificity}: SemBlend correctly produced 0/8 injections
 (the filler causes prefix divergence at chunk~0, so no donor is matched),
 and the cold quality baseline is preserved (PPL ratio ${=}1.000$).
@@ -2223,23 +2073,6 @@ current deployment.
 The runtime overhead is negligible (${\sim}7\,\mu$s/layer), so
 correction is enabled by default as forward-compatible infrastructure.
 
-\paragraph{NoPE mode validation.}
-We additionally implement the NoPE two-step approach
-(\texttt{SEMBLEND\_USE\_NOPE=1}) and run the full benchmark suite under
-both modes. The NoPE mode applies $\mathbf{K}_\text{raw}{=}\mathrm{RoPE}({-}p_s){\times}\mathbf{K}$
-then $\mathbf{K}_\text{tgt}{=}\mathrm{RoPE}(p_t){\times}\mathbf{K}_\text{raw}$,
-equivalent to delta correction by the RoPE group property.
-Empirical comparison across all 7 variation types ($n{=}8$, XSum 8K)
-confirms identical quality: NoPE PPL ratio $= 1.000{\pm}0.002$
-vs.\ delta $1.000{\pm}0.001$.
-Cross-dataset TTFT comparison across all six benchmark datasets
-(Synthetic, XSum, CNN/DM, WikiHow, SAMSum, MultiNews at 8K) confirms
-indistinguishable speedup: NoPE averages $2.95\times$ vs.\ delta $2.51\times$
-(differences within $\pm$30\% measurement noise from cold-baseline
-variability), with 100\% hit rate under both modes on 5 of 6 datasets.
-The results confirm mathematical equivalence of the two approaches.
-We release NoPE as an optional validated mode for environments that
-prefer position-free storage.
 
 \paragraph{Threats to validity.}
 (1)~KV-tensor speedups are measured with streaming TTFT on a
@@ -2342,69 +2175,40 @@ orthogonal problem of attention pattern drift, \semblend enables fully
 non-contiguous KV reuse (REORDER, PARTIAL, paraphrase) on all
 RoPE-based models.
 
-Seven findings stand out: (1)~semantic KV donor injection achieves
-$\mathbf{7.7\times}$--$\mathbf{8.3\times}$ at 16K and $\mathbf{11.06\times}$--$\mathbf{11.97\times}$ at 32K tokens
-across Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ on
-A10G---exceeding SemShareKV's $6.25\times$ at 5K on costlier A100
-hardware---with quality preserved (PPL ratio ${\leq}1.065$ on high-hit
-datasets; elevated on lower-hit datasets by miss-run outliers, not KV
-injection) and model-agnostic operation (no per-model tuning);
-(2)~on five real-world NLP datasets (CNN/DailyMail, XSum, MultiNews,
-WikiHow, SAMSum), SemBlend achieves $1.5\times$--$3.8\times$ hit-only
-TTFT speedup at 8K tokens with hit rates of 25--100\% (XSum and WikiHow
-reach 100\%; CNN/DM reaches 25--50\% due to free-form narrative structure),
-and LLaMA-3.1-8B consistently achieves higher hit-only speedups
-($2.7\times$--$3.8\times$) than Qwen ($1.5\times$--$2.5\times$) due to its
-deeper architecture amplifying the constant-overhead advantage;
-(3)~exact RoPE delta correction solves position encoding at negligible
-cost (${\sim}7\,\mu$s per layer for 8K tokens), enabling non-contiguous
-KV reuse that prior systems could not achieve;
-(4)~token-set Jaccard achieves 99--100\% donor match rate on cluster
-variations while MiniLM embedding achieves 7\% on the same 8K-token
-prompts (due to its 512-token context window); \semblend uses
-embedding as the primary signal for $O(1)$ lookup and true paraphrase
-coverage, relying on LMCache 256-token chunk hashing for the final
-exact-match KV reuse decision;
-(5)~throughput under concurrent load (1--32 clients) scales linearly
-to 9+ QPS with zero errors on both models, confirming SemBlend's
-$<$12\,ms pipeline overhead does not limit serving capacity; at 8K
-tokens, donor reuse enables $\mathbf{14.4}$~QPS ($c{=}8$)---a
-$\mathbf{5}$--$\mathbf{6}\times$ improvement over cold long-context
-serving;
-(6)~SemBlend TTFT is approximately constant (${\sim}700$\,ms--$1.3$\,s)
-regardless of prompt length, bounded by CPU$\to$GPU KV transfer,
-while cold prefill scales with sequence length---producing increasing speedup
-from $2.2\times$ at 2K to $8.3\times$ at 16K to $\mathbf{12.0\times}$ at 32K
-tokens (cold prefill 15.4\,s vs SemBlend 1.3\,s at 32K);
-(7)~hit rate never degrades as the donor pool grows---100\% hit rate
-and $3.2$--$3.4\times$ speedup at 2K tokens across pool sizes 1--100
-(100 unique donors, no LRU eviction within the 15\,GB CPU buffer),
-and $10.5$--$10.7\times$ at 8K across pool sizes 1--16; the two
-caching mechanisms provide complementary coverage: prefix caching
-for exact repeats, SemBlend for semantic variants; and
-(8)~across all 7 variation types spanning cosine similarity 1.0 (exact
-copy) to 0.20 (topically diverse), PPL ratio stays at $1.000\pm0.001$
-on \emph{both} Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ---SemBlend provides
-a \emph{quality floor guarantee} independent of model architecture: any
-query receiving a KV hit uses verified exact-match blocks (no quality
-loss), while any query receiving a miss falls back to cold inference
-(PPL ratio $\equiv 1.0$ by definition), with no intermediate degraded
-state.
+Four takeaways stand out:
 
-Across 33,160 WildChat conversation pairs, a closed-form operating
-envelope $\mathrm{E}[\text{TTFT}] = P_h \cdot t_{\text{hit}} +
-(1{-}P_h) \cdot t_{\text{cold}}$ (with $t_{\text{hit}}{=}303\,\text{ms}$,
-$t_{\text{cold}}{=}3{,}428\,\text{ms}$ at 8K tokens) predicts measured
-TTFT within 5\% across all hit fractions; at the observed 33.3\%
-real-world hit rate, SemBlend delivers a $\mathbf{1.16}\times$ E[TTFT]
-improvement with no model changes or retraining.
+\textbf{(1) Semantic KV reuse works at scale.}
+SemBlend achieves $\mathbf{2.2\times}$--$\mathbf{12.0\times}$ TTFT
+speedup across 2K--32K tokens on two model architectures, with TTFT
+remaining approximately constant (${\sim}500$\,ms--$1.3$\,s)
+regardless of prompt length. At 32K tokens cold prefill takes 15.4\,s;
+SemBlend completes in 1.3\,s. On five real NLP datasets, hit-only
+speedup ranges $1.5\times$--$3.8\times$ at 8K tokens.
+
+\textbf{(2) Quality is preserved.}
+On datasets with ${\geq}88\%$ hit rate (WikiHow, XSum, synthetic),
+PPL ratio stays ${\leq}1.065$ on both models. Elevated PPL on
+lower-hit datasets (SAMSum, CNN/DM) is driven by miss-run outliers,
+not KV injection. Across all 7 variation types from cosine 1.0 to 0.20,
+PPL ratio is $1.000{\pm}0.001$ on both architectures---SemBlend provides
+a \emph{quality floor guarantee}: hits use verified exact-match KV blocks,
+misses fall back to cold inference (PPL $\equiv 1.0$).
+
+\textbf{(3) Architecture scales from local numpy to GPU ANN.}
+The in-process numpy tier handles up to 10K donors at ${\leq}0.14$\,ms;
+the cuVS brute-force tier covers up to 100K at ${\leq}0.71$\,ms; CAGRA
+ANN achieves $\mathbf{1.37}$\,ms \emph{constant} at $N{=}1\text{M}$
+donors---locality-first with no network hops on the critical path.
+
+\textbf{(4) Architecture-specific bathtub improves reuse quality.}
+Selectively recomputing high-drift layers (LLaMA: early layers $[0,1,2]$
+at 9.4\%; Qwen: late layers $[26,27]$ at 7.1\%) addresses attention
+pattern drift orthogonal to RoPE position correction, consistent with
+architecture-specific layer criticality findings~\cite{kvphysics,droidspeak}.
 
 \semblend is, to our knowledge, the first system combining exact RoPE
 correction with calibrated layer-level recomputation to enable fully
-non-contiguous semantic KV reuse on production transformers. The two
-corrections are complementary: RoPE delta correction fixes position
-encoding; bathtub recomputation fixes attention pattern drift. Together,
-they unlock the full design space for semantic KV caching.
+non-contiguous semantic KV reuse on production transformers.
 
 
 % ============================================================================
@@ -2448,7 +2252,7 @@ Bootstrap confidence intervals use 10,000 resamples with the
 
 % ============================================================================
 \clearpage
-\begin{thebibliography}{19}
+\begin{thebibliography}{31}
 
 \bibitem{cacheblend}
 Y.~Yao \textit{et al.},
@@ -2490,7 +2294,7 @@ in \textit{Proc.\ SOSP}, 2023.
 C.~Ootomo \textit{et al.},
 ``CAGRA: Highly Parallel Graph-Based Approximate Nearest Neighbor
 Search,''
-in \textit{Proc.\ NeurIPS}, 2024.
+in \textit{Proc.\ ICDE}, 2024.
 
 \bibitem{flashattention}
 T.~Dao \textit{et al.},
