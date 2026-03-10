@@ -2230,7 +2230,8 @@ LMCache's exact-prefix matching to semantic donor discovery via a
 in-process donor discovery in ${\sim}8$\,ms (MiniLM CPU embedding +
 numpy cosine + rapidfuzz alignment + calibrated bathtub) with zero
 network hops. The scaled tier provides GPU-accelerated CAGRA search
-for cross-instance discovery at $100\text{K}{+}$ donors.
+for cross-instance discovery at a measured 1.37\,ms constant from
+$N{=}100$ to $N{=}1\text{M}$ donors (A10G).
 
 At the KV-tensor level, we solve the Rotary Position Embedding (RoPE)
 challenge that has constrained all prior semantic KV reuse systems to
@@ -2290,6 +2291,14 @@ query receiving a KV hit uses verified exact-match blocks (no quality
 loss), while any query receiving a miss falls back to cold inference
 (PPL ratio $\equiv 1.0$ by definition), with no intermediate degraded
 state.
+
+Across 33,160 WildChat conversation pairs, a closed-form operating
+envelope $\mathrm{E}[\text{TTFT}] = P_h \cdot t_{\text{hit}} +
+(1{-}P_h) \cdot t_{\text{cold}}$ (with $t_{\text{hit}}{=}303\,\text{ms}$,
+$t_{\text{cold}}{=}3{,}428\,\text{ms}$ at 8K tokens) predicts measured
+TTFT within 5\% across all hit fractions; at the observed 33.3\%
+real-world hit rate, SemBlend delivers a $\mathbf{1.16}\times$ E[TTFT]
+improvement with no model changes or retraining.
 
 \semblend is, to our knowledge, the first system combining exact RoPE
 correction with calibrated layer-level recomputation to enable fully
