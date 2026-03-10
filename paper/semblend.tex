@@ -1910,16 +1910,24 @@ A workload classifier (measuring semantic diversity of incoming
 queries) can dynamically enable or disable the cache for workloads
 with insufficient semantic overlap.
 
-\paragraph{Relationship to LMCache.}
-\semblend is complementary to LMCache, not a replacement. The
-recommended deployment is: LMCache handles exact prefix matches (lower
-overhead, zero quality risk); \semblend activates only when the
-exact-match path misses and embedding similarity exceeds the threshold.
-Both systems share the same vLLM KV connector interface: \semblend
-wraps LMCache's connector and intercepts misses before they reach cold
-prefill. The local-first architecture makes \semblend
-deployable without any external infrastructure beyond vLLM and
-LMCache---no gateway, no vector database, no embedding service.
+\paragraph{Relationship to exact-match systems.}
+\semblend is complementary to LMCache and KV-aware routing systems
+(e.g., NVIDIA Dynamo~\cite{dynamo}), not a replacement. LMCache handles
+exact prefix matches with $O(1)$ token-hash lookup and zero quality risk;
+\semblend activates only when the exact-match path misses and embedding
+similarity exceeds the threshold. KV-aware routers increase fleet-wide
+cache hit rates by directing requests to instances that already have
+the relevant exact prefix warm---but routing to the ``most similar''
+instance does not produce a cache hit if the tokens differ. \semblend
+provides the last-mile KV reuse for the cases routing cannot solve:
+semantically similar prompts with different wording where no instance
+has an exact prefix match. The three approaches are thus complementary:
+routing for exact-match coverage at scale; LMCache for exact-match KV
+transfer; \semblend for semantic-variation coverage. The CAGRA tier
+(\S\ref{sec:scaled}) fills the routing gap at the fleet level: embedding
+similarity selects the target instance (providing the same benefit as
+semantic routing), while KV injection with RoPE correction enables reuse
+once the request arrives.
 
 \paragraph{PartialAttention integration.}
 The three Triton CUDA kernels (\S\ref{sec:triton}) are implemented
@@ -2162,7 +2170,7 @@ Bootstrap confidence intervals use 10,000 resamples with the
 
 % ============================================================================
 \clearpage
-\begin{thebibliography}{18}
+\begin{thebibliography}{19}
 
 \bibitem{cacheblend}
 Y.~Yao \textit{et al.},
@@ -2286,6 +2294,12 @@ in \textit{Proc.\ EMNLP Workshop}, 2019.
 W.~Zhao \textit{et al.},
 ``WildChat: 1M ChatGPT Interaction Logs in the Wild,''
 in \textit{Proc.\ ICLR}, 2024.
+
+\bibitem{dynamo}
+NVIDIA,
+``NVIDIA Dynamo: A Datacenter-Scale Distributed Inference Serving
+Framework,''
+\url{https://github.com/ai-dynamo/dynamo}, Feb.\ 2026.
 
 \bibitem{kvlink}
 J.~Yang, B.~Hou, W.~Wei, Y.~Bao, and S.~Chang,
