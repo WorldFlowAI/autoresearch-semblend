@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.1)  9 MAR 2026 08:18
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.1)  9 MAR 2026 19:22
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -936,45 +936,74 @@ Package: listings 2025/11/14 1.11b (Carsten Heinz)
     but found:
         2025/11/14 1.11b (Carsten Heinz)
     so I'm assuming it got fixed.
+(/usr/local/texlive/2026/texmf-dist/tex/latex/microtype/microtype.sty
+Package: microtype 2026/03/01 v3.2d Micro-typographical refinements (RS)
+\MT@toks=\toks49
+\MT@tempbox=\box94
+\MT@count=\count367
+LaTeX Info: Redefining \noprotrusionifhmode on input line 1084.
+LaTeX Info: Redefining \leftprotrusion on input line 1085.
+\MT@prot@toks=\toks50
+LaTeX Info: Redefining \rightprotrusion on input line 1104.
+LaTeX Info: Redefining \textls on input line 1449.
+\MT@outer@kern=\dimen322
+LaTeX Info: Redefining \microtypecontext on input line 2053.
+LaTeX Info: Redefining \textmicrotypecontext on input line 2070.
+\MT@listname@count=\count368
+
+(/usr/local/texlive/2026/texmf-dist/tex/latex/microtype/microtype-pdftex.def
+File: microtype-pdftex.def 2026/03/01 v3.2d Definitions specific to pdftex (RS)
+
+LaTeX Info: Redefining \lsstyle on input line 944.
+LaTeX Info: Redefining \lslig on input line 944.
+\MT@outer@space=\skip64
+)
+Package microtype Info: Loading configuration file microtype.cfg.
+
+(/usr/local/texlive/2026/texmf-dist/tex/latex/microtype/microtype.cfg
+File: microtype.cfg 2026/03/01 v3.2d microtype main configuration file (RS)
+)
+LaTeX Info: Redefining \microtypesetup on input line 3065.
+)
 (/usr/local/texlive/2026/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
 File: l3backend-pdftex.def 2025-10-09 L3 backend support: PDF output (pdfTeX)
-\l__color_backend_stack_int=\count367
+\l__color_backend_stack_int=\count369
 )
 (./semblend.aux)
 \openout1 = `semblend.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 60.
-LaTeX Font Info:    ... okay on input line 60.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 60.
-LaTeX Font Info:    ... okay on input line 60.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 60.
-LaTeX Font Info:    ... okay on input line 60.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 60.
-LaTeX Font Info:    ... okay on input line 60.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 60.
-LaTeX Font Info:    ... okay on input line 60.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 60.
-LaTeX Font Info:    ... okay on input line 60.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 60.
-LaTeX Font Info:    ... okay on input line 60.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 60.
-LaTeX Font Info:    ... okay on input line 60.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 60.
-LaTeX Font Info:    ... okay on input line 60.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 61.
+LaTeX Font Info:    ... okay on input line 61.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 61.
+LaTeX Font Info:    ... okay on input line 61.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 61.
+LaTeX Font Info:    ... okay on input line 61.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 61.
+LaTeX Font Info:    ... okay on input line 61.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 61.
+LaTeX Font Info:    ... okay on input line 61.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 61.
+LaTeX Font Info:    ... okay on input line 61.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 61.
+LaTeX Font Info:    ... okay on input line 61.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 61.
+LaTeX Font Info:    ... okay on input line 61.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 61.
+LaTeX Font Info:    ... okay on input line 61.
 
 (/usr/local/texlive/2026/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
-\scratchcounter=\count368
-\scratchdimen=\dimen322
-\scratchbox=\box94
-\nofMPsegments=\count369
-\nofMParguments=\count370
-\everyMPshowfont=\toks49
-\MPscratchCnt=\count371
-\MPscratchDim=\dimen323
-\MPnumerator=\count372
-\makeMPintoPDFobject=\count373
-\everyMPtoPDFconversion=\toks50
+\scratchcounter=\count370
+\scratchdimen=\dimen323
+\scratchbox=\box95
+\nofMPsegments=\count371
+\nofMParguments=\count372
+\everyMPshowfont=\toks51
+\MPscratchCnt=\count373
+\MPscratchDim=\dimen324
+\MPnumerator=\count374
+\makeMPintoPDFobject=\count375
+\everyMPtoPDFconversion=\toks52
 ) (/usr/local/texlive/2026/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
 Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
 Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
@@ -984,7 +1013,7 @@ Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
 File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
 e
 ))
-Package hyperref Info: Link coloring OFF on input line 60.
+Package hyperref Info: Link coloring OFF on input line 61.
 
 (./semblend.out) (./semblend.out)
 \@outlinefile=\write4
@@ -1031,767 +1060,374 @@ Package caption Info: End \AtBeginDocument code.
 Package pgfplots notification 'compat/show suggested version=true': document ha
 s been generated with the most recent feature set (\pgfplotsset{compat=1.18}).
 
-\c@lstlisting=\count374
-LaTeX Font Info:    Trying to load font information for U+msa on input line 62.
+\c@lstlisting=\count376
+LaTeX Info: Redefining \microtypecontext on input line 61.
+Package microtype Info: Applying patch `item' on input line 61.
+Package microtype Info: Applying patch `toc' on input line 61.
+Package microtype Info: Applying patch `eqnum' on input line 61.
+Package microtype Info: Applying patch `footnote' on input line 61.
+Package microtype Info: Applying patch `verbatim' on input line 61.
+LaTeX Info: Redefining \microtypesetup on input line 61.
+Package microtype Info: Generating PDF output.
+Package microtype Info: Character protrusion enabled (level 2).
+Package microtype Info: Using default protrusion set `alltext'.
+Package microtype Info: Automatic font expansion enabled (level 2),
+(microtype)             stretch: 20, shrink: 20, step: 1, non-selected.
+Package microtype Info: Using default expansion set `alltext-nott'.
+Package microtype Info: Patching command `\showhyphens'.
+Package microtype Info: No adjustment of tracking.
+Package microtype Info: No adjustment of interword spacing.
+Package microtype Info: No adjustment of character kerning.
+(/usr/local/texlive/2026/texmf-dist/tex/latex/microtype/mt-cmr.cfg
+File: mt-cmr.cfg 2013/05/19 v2.2 microtype config. file: Computer Modern Roman 
+(RS)
+)
+LaTeX Font Info:    Trying to load font information for U+msa on input line 63.
+
 
 (/usr/local/texlive/2026/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 62.
+(/usr/local/texlive/2026/texmf-dist/tex/latex/microtype/mt-msa.cfg
+File: mt-msa.cfg 2006/02/04 v1.1 microtype config. file: AMS symbols (a) (RS)
+)
+LaTeX Font Info:    Trying to load font information for U+msb on input line 63.
 
 
 (/usr/local/texlive/2026/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-Underfull \hbox (badness 1412) in paragraph at lines 79--85
-\T1/cmr/m/n/10.95 to de-rive a cor-rec-tion ker-nel: $\OML/cmm/m/it/10.95 K[] \
-OT1/cmr/m/n/10.95 =
+(/usr/local/texlive/2026/texmf-dist/tex/latex/microtype/mt-msb.cfg
+File: mt-msb.cfg 2005/06/01 v1.0 microtype config. file: AMS symbols (b) (RS)
+)
+Package microtype Info: Loading generic protrusion settings for font family
+(microtype)             `cmtt' (encoding: T1).
+(microtype)             For optimal results, create family-specific settings.
+(microtype)             See the microtype manual for details.
+
+Underfull \hbox (badness 1107) in paragraph at lines 80--86
+\T1/cmr/m/n/10.95 (+20) to de-rive a cor-rec-tion ker-nel: $\OML/cmm/m/it/10.95
+ K[] \OT1/cmr/m/n/10.95 (+20) =
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 86--92
-[]\T1/cmr/bx/n/10.95 Calibrated Bath-tub Re-com-pu-ta-tion\T1/cmr/m/n/10.95 :
+Underfull \hbox (badness 10000) in paragraph at lines 87--93
+[]\T1/cmr/bx/n/10.95 (+20) Calibrated Bath-tub Re-com-pu-ta-tion\T1/cmr/m/n/10.
+95 (+20) :
  []
 
 
-Underfull \hbox (badness 1571) in paragraph at lines 93--101
-[]\T1/cmr/bx/n/10.95 Local-First GPU-Native Ar-chi-tec-ture\T1/cmr/m/n/10.95 :
+Underfull \hbox (badness 2197) in paragraph at lines 87--93
+\T1/cmr/m/n/10.95 (+20) not at-ten-tion pat-tern drift from con-text
  []
 
 
-Underfull \hbox (badness 7203) in paragraph at lines 93--101
-\T1/cmr/m/n/10.95 em-bed-ding (MiniLM-L6-v2 ONNX GPU,
- []
-
-
-Underfull \vbox (badness 10000) has occurred while \output is active []
+Underfull \vbox (badness 1009) has occurred while \output is active []
 
  [1{/usr/local/texlive/2026/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/usr/
 local/texlive/2026/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc}
 
 
 ]
-Underfull \hbox (badness 10000) in paragraph at lines 143--151
-[]\T1/cmr/m/n/10.95 Production work-loads ex-hibit sub-stan-tial
+Underfull \hbox (badness 1067) in paragraph at lines 188--192
+[]\T1/cmr/bx/n/10.95 (+20) Two-tier scaled ar-chi-tec-ture \T1/cmr/m/n/10.95 (+
+20) (Ÿ[]3.2[]): in-
  []
 
 
-Underfull \hbox (badness 2698) in paragraph at lines 143--151
-\T1/cmr/m/n/10.95 prompt re-dun-dancy: RAG pipelines prepend
+Underfull \hbox (badness 6094) in paragraph at lines 188--192
+\T1/cmr/m/n/10.95 (+20) process numpy for $[]\OT1/cmr/m/n/10.95 (+20) 10[]$ \T1
+/cmr/m/n/10.95 (+20) donors, GPU-
  []
 
 
-Underfull \hbox (badness 1360) in paragraph at lines 143--151
-\T1/cmr/m/n/10.95 this with dis-tributed P2P KV trans-fer across
+Underfull \hbox (badness 1810) in paragraph at lines 193--196
+\T1/cmr/m/n/10.95 (+20) 6 pub-lished data points from CacheBlend,
  []
 
 
-Underfull \hbox (badness 1314) in paragraph at lines 184--188
-[]\T1/cmr/bx/n/10.95 Two-tier scaled ar-chi-tec-ture \T1/cmr/m/n/10.95 (Ÿ[]3.2[
-]): in-
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [2]
+Underfull \hbox (badness 10000) in paragraph at lines 273--279
+[]\T1/cmr/bx/n/10.95 (+20) Token-level se-man-tic KV sys-tems.
  []
 
 
-Underfull \hbox (badness 6725) in paragraph at lines 184--188
-\T1/cmr/m/n/10.95 process numpy for $[]\OT1/cmr/m/n/10.95 10[]$ \T1/cmr/m/n/10.
-95 donors, GPU-
+Underfull \hbox (badness 2503) in paragraph at lines 273--279
+\T1/cmr/m/n/10.95 (+20) achieves 6.25$\OMS/cmsy/m/n/10.95 ^^B$ \T1/cmr/m/n/10.9
+5 (+20) speedup at 5K to-kens us-ing
  []
 
 
-Underfull \hbox (badness 2343) in paragraph at lines 189--192
-\T1/cmr/m/n/10.95 6 pub-lished data points from CacheBlend,
+Underfull \hbox (badness 1215) in paragraph at lines 285--298
+[]\T1/cmr/bx/n/10.95 (+20) Layer crit-i-cal-ity in KV reuse. \T1/cmr/m/n/10.95 
+(+20) Droid-
  []
 
 
-Underfull \hbox (badness 1394) in paragraph at lines 193--199
-\T1/cmr/m/n/10.95 math-e-mat-i-cally ex-act method for cor-rect-ing
- []
+Underfull \vbox (badness 10000) has occurred while \output is active []
 
-[2]
-Underfull \hbox (badness 10000) in paragraph at lines 267--273
-[]\T1/cmr/bx/n/10.95 Token-level se-man-tic KV sys-tems.
- []
+ [3]
+Underfull \vbox (badness 1394) has occurred while \output is active []
 
-
-Underfull \hbox (badness 3260) in paragraph at lines 274--278
-\T1/cmr/m/n/10.95 uses dual-stage user query rel-e-vance scor-ing,
- []
-
-
-Underfull \hbox (badness 1052) in paragraph at lines 351--351
-\T1/cmr/bx/n/10.95 (Lo-cal)\T1/cmr/m/n/10.95 : in-process donor dis-cov-ery via
- CPU
- []
-
-
-Underfull \hbox (badness 2635) in paragraph at lines 351--351
-\T1/cmr/bx/n/10.95 (Scaled)\T1/cmr/m/n/10.95 : op-tional GPU-accelerated CA-GRA
-
- []
-
-
-Underfull \hbox (badness 2027) in paragraph at lines 364--372
- []\T1/cmr/bx/n/10.95 Stage 1: Sen-tence Em-bed-ding ($[]\OT1/cmr/m/n/10.95 5$\
-T1/cmr/bx/n/10.95 ms).[]
- []
-
-[3]
-Underfull \hbox (badness 5954) in paragraph at lines 387--394
- []\T1/cmr/bx/n/10.95 Stage 3: Com-piled To-ken Align-ment
- []
-
-
-Underfull \hbox (badness 6188) in paragraph at lines 387--394
-\T1/cmr/m/n/10.95 com-piled C++ Lev-en-shtein implementation---
- []
-
-
-Underfull \hbox (badness 6961) in paragraph at lines 387--394
-\OML/cmm/m/it/10.95 <$\T1/cmr/m/n/10.95 1ms for 8K-token prompts ver-sus $[]\OT
-1/cmr/m/n/10.95 2[]4$\T1/cmr/m/n/10.95 s
- []
-
-
-Underfull \hbox (badness 4441) in paragraph at lines 387--394
-\T1/cmr/m/n/10.95 for pure Python Wagner-Fischer [[]]. The
- []
-
-
-Underfull \hbox (badness 2828) in paragraph at lines 387--394
-\T1/cmr/m/n/10.95 align-ment pro-duces per-position clas-si-fi-ca-tions:
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 400--406
-\T1/cmr/m/n/10.95 mon-key-patches LM-Cache's in-ter-nal lookup
- []
-
-
-Underfull \hbox (badness 5008) in paragraph at lines 400--406
-\T1/cmr/m/n/10.95 to re-turn the donor's chunk hash, caus-ing
- []
-
-
-Overfull \hbox (22.81616pt too wide) in paragraph at lines 413--425
- [][] 
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 432--432
-[]\T1/cmr/bx/n/12 SemBlend Scaled: GPU-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 432--432
-\T1/cmr/bx/n/12 Accelerated Cross-Instance Dis-
- []
-
-[4]
-Underfull \hbox (badness 1205) in paragraph at lines 465--472
-\T1/cmr/m/n/10.95 The align-ment pro-duces per-position clas-si-fi-ca-
- []
-
+ [4]
 Package hyperref Info: bookmark level for unknown algorithm defaults to 0 on in
-put line 474.
+put line 495.
 
-Underfull \hbox (badness 1158) in paragraph at lines 477--479
-[]\T1/cmr/m/n/10.95 Query em-bed-ding $\OML/cmm/m/it/10.95 e[]$\T1/cmr/m/n/10.9
-5 , lo-cal store $\OMS/cmsy/m/n/10.95 L$\T1/cmr/m/n/10.95 ,
- []
-
-
-Underfull \vbox (badness 3780) has occurred while \output is active []
-
-
-Underfull \hbox (badness 3568) in paragraph at lines 528--532
-\T1/cmr/m/n/10.95 When a se-man-tic donor matches with non-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 528--532
-\T1/cmr/m/n/10.95 contiguous aligned po-si-tions (e.g., po-si-tions
- []
-
-
-Underfull \hbox (badness 1584) in paragraph at lines 528--532
-\T1/cmr/m/n/10.95 prefix-based KV in-jec-tion fails be-cause vLLM
+Underfull \hbox (badness 3189) in paragraph at lines 549--553
+\T1/cmr/m/n/10.95 (+20) When a se-man-tic donor matches with non-
  []
 
 
 Package enumitem Warning: Negative labelwidth. This does not make much
-(enumitem)                sense, on input line 535.
-
-
-Underfull \hbox (badness 3919) in paragraph at lines 538--539
-[]\T1/cmr/m/n/10.95 Compute fresh Q,K,V but cross-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 548--549
-[]\T1/cmr/m/n/10.95 PartialAttentionPlan with per-layer
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 551--552
-[] $[]\OT1/cmr/m/n/10.95 [\OML/cmm/m/it/10.95 a:[]\OT1/cmr/m/n/10.95 ] \OMS/cms
-y/m/n/10.95  
- []
+(enumitem)                sense, on input line 556.
 
 [5]
+Underfull \hbox (badness 10000) in paragraph at lines 569--570
+[]\T1/cmr/m/n/10.95 (+20) PartialAttentionPlan with per-layer
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 572--573
+[] $[]\OT1/cmr/m/n/10.95 (+20) [\OML/cmm/m/it/10.95 a:[]\OT1/cmr/m/n/10.95 (+20
+) ] \OMS/cmsy/m/n/10.95  
+ []
+
 LaTeX Font Info:    Font shape `T1/cmtt/bx/n' in size <10.95> not available
-(Font)              Font shape `T1/cmtt/m/n' tried instead on input line 586.
+(Font)              Font shape `T1/cmtt/m/n' tried instead on input line 607.
 
-Underfull \hbox (badness 10000) in paragraph at lines 586--592
- []\T1/cmr/bx/n/10.95 Stage 1: Scat-ter Donor KV
+Underfull \hbox (badness 10000) in paragraph at lines 607--613
+ []\T1/cmr/bx/n/10.95 (+20) Stage 1: Scat-ter Donor KV
  []
 
 
-Underfull \hbox (badness 1082) in paragraph at lines 586--592
-\T1/cmr/m/n/10.95 and a trans-fer plan spec-i-fy-ing $\OT1/cmr/m/n/10.95 (\OML/
-cmm/m/it/10.95 d[]; t[]\OT1/cmr/m/n/10.95 )$ \T1/cmr/m/n/10.95 po-si-tion
+Underfull \hbox (badness 10000) in paragraph at lines 616--620
+ []\T1/cmr/bx/n/10.95 (+20) Stage 2: Masked QKV Pro-jec-tion
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 595--599
- []\T1/cmr/bx/n/10.95 Stage 2: Masked QKV Pro-jec-tion
+Underfull \hbox (badness 10000) in paragraph at lines 616--620
+\T1/cmr/bx/n/10.95 (+20) (\T1/cmtt/m/n/10.95 masked_qkv_proj\T1/cmr/bx/n/10.95 
+(+20) ).[] \T1/cmr/m/n/10.95 (+20) For po-si-tions that re-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 595--599
-\T1/cmr/bx/n/10.95 (\T1/cmtt/m/n/10.95 masked_qkv_proj\T1/cmr/bx/n/10.95 ).[] \
-T1/cmr/m/n/10.95 For po-si-tions that re-
+Underfull \hbox (badness 10000) in paragraph at lines 631--637
+ []\T1/cmr/bx/n/10.95 (+20) Stage 3: Par-tial Pre-fill At-ten-tion
  []
 
 
-Underfull \hbox (badness 1248) in paragraph at lines 595--599
-\T1/cmr/m/n/10.95 this ker-nel ap-plies the QKV lin-ear pro-jec-tion
+Underfull \hbox (badness 10000) in paragraph at lines 631--637
+\T1/cmr/bx/n/10.95 (+20) (\T1/cmtt/m/n/10.95 partial_prefill_attn\T1/cmr/bx/n/1
+0.95 (+20) ).[] \T1/cmr/m/n/10.95 (+20) This ker-nel com-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 610--616
- []\T1/cmr/bx/n/10.95 Stage 3: Par-tial Pre-fill At-ten-tion
+Underfull \hbox (badness 4144) in paragraph at lines 631--637
+\T1/cmr/m/n/10.95 (+20) putes causal self-attention only at com-pute
  []
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 610--616
-\T1/cmr/bx/n/10.95 (\T1/cmtt/m/n/10.95 partial_prefill_attn\T1/cmr/bx/n/10.95 )
-.[] \T1/cmr/m/n/10.95 This ker-nel com-
- []
-
-
-Underfull \hbox (badness 5817) in paragraph at lines 610--616
-\T1/cmr/m/n/10.95 putes causal self-attention only at com-pute
- []
-
-
-Underfull \hbox (badness 1496) in paragraph at lines 610--616
-\T1/cmr/m/n/10.95 the ker-nel streams through the KV cache in
- []
-
-[6]
-Underfull \hbox (badness 10000) in paragraph at lines 704--707
-[]\T1/cmr/bx/n/10.95 REORDER\T1/cmr/m/n/10.95 : donor to-kens at po-si-tions
- []
-
-
-Overfull \hbox (23.94989pt too wide) in paragraph at lines 733--741
- [][] 
- []
-
-
-Underfull \vbox (badness 5862) has occurred while \output is active []
-
- [7]
-Underfull \hbox (badness 10000) in paragraph at lines 764--768
-[]\T1/cmr/bx/n/10.95 LLaMA-3.1-8B-Instruct-AWQ-INT4 \T1/cmr/m/n/10.95 (32
- []
-
-
-Underfull \hbox (badness 1097) in paragraph at lines 764--768
-\T1/cmr/m/n/10.95 on A10G via vLLM v0.14.1 with the same
- []
-
-
-Underfull \hbox (badness 1286) in paragraph at lines 770--772
- []\T1/cmr/bx/n/10.95 Donor dis-cov-ery.[] \T1/cmr/m/n/10.95 Two con-fig-u-ra-t
-ions, cor-re-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 776--780
-[]\T1/cmr/bx/n/10.95 SemBlend Lo-cal \T1/cmr/m/n/10.95 (cur-rent): in-process
- []
-
-
-Underfull \hbox (badness 5316) in paragraph at lines 776--780
-\T1/cmr/m/n/10.95 MiniLM-L6-v2 (384-dim, $[]\OT1/cmr/m/n/10.95 5$\T1/cmr/m/n/10
-.95 ms on CPU),
- []
-
-
-Underfull \hbox (badness 2875) in paragraph at lines 776--780
-\T1/cmr/m/n/10.95 To-tal pipeline over-head: $[]\OT1/cmr/m/n/10.95 8$\T1/cmr/m/
-n/10.95 ms with zero
- []
-
-
-Underfull \hbox (badness 1331) in paragraph at lines 782--788
-\T1/cmr/m/n/10.95 CNN/DailyMail, XSum, Multi-News, Wik-i-How,
- []
-
-
-Underfull \hbox (badness 5022) in paragraph at lines 789--803
- []\T1/cmr/bx/n/10.95 Protocol.[] \T1/cmr/m/n/10.95 We use a \T1/cmr/m/it/10.95
- per-length pod restart
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 804--812
- []\T1/cmr/bx/n/10.95 Prompt length ver-i-fi-ca-tion.[] \T1/cmr/m/n/10.95 All p
-rompt
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 804--812
-\T1/cmr/m/n/10.95 lengths are \T1/cmr/m/it/10.95 tokenizer-verified\T1/cmr/m/n/
-10.95 : we use
- []
-
-
-Underfull \hbox (badness 1210) in paragraph at lines 804--812
-\T1/cmr/m/n/10.95 ($\OT1/cmr/m/n/10.95 4$ \T1/cmr/m/n/10.95 chars/token) that p
-ro-duced prompts $[]\OT1/cmr/m/n/10.95 60%$
- []
-
-
-Underfull \hbox (badness 1072) in paragraph at lines 804--812
-\T1/cmr/m/n/10.95 tokenizer-verified lengths (within $\OMS/cmsy/m/n/10.95 ^^F\O
-T1/cmr/m/n/10.95 4$ \T1/cmr/m/n/10.95 to-kens of
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 813--819
- []\T1/cmr/bx/n/10.95 Statistical method-ol-ogy.[] \T1/cmr/m/n/10.95 We re-port
- P50
- []
-
-
-Underfull \hbox (badness 3815) in paragraph at lines 872--883
-\T1/cmr/m/n/10.95 Table []4[] presents em-pir-i-cal val-i-da-tion of se-
- []
-
-
-Underfull \hbox (badness 1642) in paragraph at lines 872--883
-\T1/cmr/m/n/10.95 man-tic KV donor in-jec-tion across two model
- []
-
-
-Underfull \hbox (badness 1810) in paragraph at lines 872--883
-\T1/cmr/bx/n/10.95 con-stant \T1/cmr/m/n/10.95 ($[]\OT1/cmr/m/n/10.95 500$\T1/c
-mr/m/n/10.95 --$\OT1/cmr/m/n/10.95 880$\T1/cmr/m/n/10.95 ms) re-gard-less of pr
-ompt
+[6] [7]
+Underfull \hbox (badness 1490) in paragraph at lines 786--790
+\T1/cmr/m/n/10.95 (+20) ers, 8 KV heads, 128 head dim): served
  []
 
 [8{/usr/local/texlive/2026/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc
 }]
-Underfull \hbox (badness 10000) in paragraph at lines 885--893
- []\T1/cmr/bx/n/10.95 Model-agnostic op-er-a-tion.[] \T1/cmr/m/n/10.95 Sem-Blen
-d
+Underfull \hbox (badness 1365) in paragraph at lines 915--926
+\T1/cmr/m/it/10.95 (+20) out any model-specific tun-ing\T1/cmr/m/n/10.95 (+20) 
+. The iden-ti-cal
  []
 
 
-Underfull \hbox (badness 1454) in paragraph at lines 885--893
-\T1/cmr/m/n/10.95 7B (28 lay-ers, GQA with 4 KV heads) and
+Underfull \hbox (badness 10000) in paragraph at lines 928--936
+ []\T1/cmr/bx/n/10.95 (+20) Comparison with SemShareKV.[]
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 885--893
-\T1/cmtt/m/n/10.95 SemBlendConnectorV1 \T1/cmr/m/n/10.95 pipeline han-dles both
-
+Underfull \hbox (badness 3068) in paragraph at lines 928--936
+\T1/cmr/m/n/10.95 (+20) reaches $\OT1/cmr/m/n/10.95 (+20) 5\OML/cmm/m/it/10.95 
+:\OT1/cmr/m/n/10.95 (+20) 5$\T1/cmr/m/n/10.95 (+20) --$\OT1/cmr/m/n/10.95 (+20)
+ 5\OML/cmm/m/it/10.95 :\OT1/cmr/m/n/10.95 (+20) 8\OMS/cmsy/m/n/10.95 ^^B$\T1/cm
+r/m/n/10.95 (+20) , ap-proach-ing SemShareKV's
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 895--903
- []\T1/cmr/bx/n/10.95 Comparison with SemShareKV.[]
+Underfull \hbox (badness 10000) in paragraph at lines 938--947
+ []\T1/cmr/bx/n/10.95 (+20) Why Sem-Blend speedup ex-ceeds
  []
 
 
-Underfull \hbox (badness 1210) in paragraph at lines 895--903
-\T1/cmr/m/n/10.95 at 5K to-kens on A100 hard-ware. Sem-Blend
+Underfull \hbox (badness 10000) in paragraph at lines 938--947
+\T1/cmr/bx/n/10.95 (+20) SemShareKV at long se-quences.[] \T1/cmr/m/n/10.95 (+2
+0) Cold
  []
 
-
-Underfull \hbox (badness 1048) in paragraph at lines 895--903
-\T1/cmr/m/n/10.95 the cheaper A10G (24GiB vs. A100's 80GiB,
- []
-
-
-Underfull \hbox (badness 5431) in paragraph at lines 895--903
-\T1/cmr/m/n/10.95 reaches $\OT1/cmr/m/n/10.95 5\OML/cmm/m/it/10.95 :\OT1/cmr/m/
-n/10.95 5$\T1/cmr/m/n/10.95 --$\OT1/cmr/m/n/10.95 5\OML/cmm/m/it/10.95 :\OT1/cm
-r/m/n/10.95 8\OMS/cmsy/m/n/10.95 ^^B$\T1/cmr/m/n/10.95 , ap-proach-ing SemShare
-KV's
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 905--913
- []\T1/cmr/bx/n/10.95 Why Sem-Blend speedup ex-ceeds
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 905--913
-\T1/cmr/bx/n/10.95 SemShareKV at long se-quences.[] \T1/cmr/m/n/10.95 Cold
- []
-
-
-Underfull \hbox (badness 2426) in paragraph at lines 905--913
-\T1/cmr/m/n/10.95 (ap-prox-i-mately $\OML/cmm/m/it/10.95 O\OT1/cmr/m/n/10.95 (\
-OML/cmm/m/it/10.95 Nd\OT1/cmr/m/n/10.95 )$ \T1/cmr/m/n/10.95 with Flash At-ten-
-tion),
- []
-
-
-Underfull \hbox (badness 5548) in paragraph at lines 905--913
-\T1/cmr/m/n/10.95 while Sem-Blend's KV-loaded TTFT re-mains
- []
-
-
-Underfull \hbox (badness 7081) in paragraph at lines 929--937
-\T1/cmr/m/n/10.95 The near-constant Sem-Blend TTFT ($[]\OT1/cmr/m/n/10.95 500$\
-T1/cmr/m/n/10.95 --
- []
-
-
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [9]
-Underfull \hbox (badness 1014) in paragraph at lines 991--998
-\T1/cmr/m/n/10.95 search ($[]\OT1/cmr/m/n/10.95 2$\T1/cmr/m/n/10.95 ms at $\OML
-/cmm/m/it/10.95 N[]\OT1/cmr/m/n/10.95 1$\T1/cmr/m/n/10.95 K), rapid-fuzz align-
-ment
+[9]
+Underfull \hbox (badness 5924) in paragraph at lines 963--973
+\T1/cmr/m/n/10.95 (+20) The near-constant Sem-Blend TTFT ($[]\OT1/cmr/m/n/10.95
+ (+20) 500$\T1/cmr/m/n/10.95 (+20) --
  []
 
 [10]
-Underfull \hbox (badness 1077) in paragraph at lines 1109--1118
-\T1/cmr/m/n/10.95 sce-nar-ios, we eval-u-ate TTFT speedup on five
- []
-
-
-Underfull \hbox (badness 1365) in paragraph at lines 1109--1118
-\T1/cmr/m/n/10.95 PARA-PHRASE, DI-VERSE). We mea-sure cold
- []
-
-
-Overfull \hbox (23.3694pt too wide) in paragraph at lines 1129--1167
- [][] 
- []
-
-[11]
-Underfull \hbox (badness 1189) in paragraph at lines 1205--1207
- []\T1/cmr/bx/n/10.95 Quality on real data.[] \T1/cmr/m/n/10.95 We mea-sure out
--put
- []
-
-
-Underfull \hbox (badness 3386) in paragraph at lines 1205--1207
-\T1/cmr/m/n/10.95 qual-ity across three real-world datasets with
- []
-
-
-Underfull \hbox (badness 3019) in paragraph at lines 1218--1222
-\T1/cmr/m/n/10.95 by miss-induced out-liers (2/8 runs show
- []
-
-
-Overfull \hbox (30.31923pt too wide) in paragraph at lines 1248--1280
- [][] 
- []
-
-
-Underfull \hbox (badness 1436) in paragraph at lines 1290--1301
-\T1/cmr/m/n/10.95 are con-sis-tently $\OT1/cmr/m/n/10.95 1\OML/cmm/m/it/10.95 :
-\OT1/cmr/m/n/10.95 5$\T1/cmr/m/n/10.95 --$\OT1/cmr/m/n/10.95 2\OMS/cmsy/m/n/10.
-95 ^^B$ \T1/cmr/m/n/10.95 higher across all four
- []
-
-
-Underfull \hbox (badness 1038) in paragraph at lines 1303--1314
- []\T1/cmr/bx/n/10.95 Quality preser-va-tion across ar-chi-tec-tures.[]
- []
-
-
-Overfull \hbox (40.75896pt too wide) in paragraph at lines 1324--1342
- [][] 
- []
-
-
-Underfull \hbox (badness 1990) in paragraph at lines 1356--1363
-\T1/cmr/m/n/10.95 par-tial at-ten-tion mech-a-nisms gen-er-al-ize across
- []
-
-[12]
-Underfull \hbox (badness 1303) in paragraph at lines 1388--1388
-[]\T1/cmr/bx/n/10.95 SemBlend Lo-cal: Com-po-nent La-
- []
-
-
-Overfull \hbox (67.65446pt too wide) in paragraph at lines 1401--1414
- [][] 
- []
-
-
-Underfull \hbox (badness 1484) in paragraph at lines 1444--1459
-\T1/cmr/m/n/10.95 men-tary strengths: Jac-card achieves 99--100%
- []
-
-
-Underfull \hbox (badness 1983) in paragraph at lines 1444--1459
-\T1/cmr/m/n/10.95 donor match rate for clus-ter vari-a-tions (RE-
- []
-
-
-Underfull \hbox (badness 1231) in paragraph at lines 1469--1475
- []\T1/cmr/bx/n/10.95 Bathtub curve cal-i-bra-tion.[] \T1/cmr/m/n/10.95 We em-p
-ir-i-cally
- []
-
-[13]
-Underfull \hbox (badness 2922) in paragraph at lines 1494--1507
-\T1/cmr/m/n/10.95 with $\OML/cmm/m/it/10.95 ^^[[][]\OT1/cmr/m/n/10.95 0\OML/cmm
-/m/it/10.95 :\OT1/cmr/m/n/10.95 12$ \T1/cmr/m/n/10.95 against pub-lished data f
-rom
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 1509--1524
- []\T1/cmr/bx/n/10.95 Prefill com-pu-ta-tion sav-ings.[] \T1/cmr/m/n/10.95 vLLM
-
- []
-
-
-Underfull \hbox (badness 1721) in paragraph at lines 1509--1524
-\T1/cmr/m/n/10.95 vLLM's in-ter-nal pre-fix cache con-tributes only
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 1531--1534
-\T1/cmr/m/n/10.95 Table []11[] shows the full coverage-quality-
- []
-
-
-Underfull \vbox (badness 1789) has occurred while \output is active []
-
-
-Underfull \hbox (badness 3428) in paragraph at lines 1540--1540
-[]\T1/cmr/m/n/10.95 Table 11: |\T1/cmr/bx/n/10.95 Sim-i-lar-ity thresh-old ab-l
-a-tion.
- []
-
-[14]
-Overfull \hbox (147.80176pt too wide) in paragraph at lines 1652--1658
- [][] 
- []
-
-
-Underfull \hbox (badness 1009) in paragraph at lines 1671--1681
-\T1/cmr/m/sc/10.95 SemBlend \T1/cmr/m/n/10.95 is not uni-ver-sally op-ti-mal. S
-ome
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 1671--1681
-\T1/cmr/m/n/10.95 con-fig-u-ra-tions yield PPL ra-tio $\OML/cmm/m/it/10.95 <$\T
-1/cmr/m/n/10.95 1.0 (ben-
- []
-
-
-Underfull \hbox (badness 4739) in paragraph at lines 1671--1681
-\T1/cmr/m/n/10.95 e-fi-cial KV in-jec-tion, ob-served in our data:
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 1671--1681
-\T1/cmr/m/n/10.95 Qwen CNN/DM@2K=0.960, LLaMA Wik-i-
- []
-
-
-Underfull \hbox (badness 3826) in paragraph at lines 1671--1681
-\T1/cmr/m/n/10.95 How@2K=0.992), in-di-cat-ing that se-man-ti-cally
- []
-
-
-Underfull \hbox (badness 5359) in paragraph at lines 1671--1681
-\T1/cmr/m/n/10.95 re-lated con-text oc-ca-sion-ally im-proves out-put
- []
-
-
-Underfull \hbox (badness 1057) in paragraph at lines 1671--1681
-\T1/cmr/m/n/10.95 KV work. LM-Cache achieves lower over-head
- []
-
-
-Underfull \hbox (badness 3219) in paragraph at lines 1671--1681
-\T1/cmr/m/n/10.95 dif-fer-ent, where LM-Cache pro-vides no cache
- []
-
-
-Underfull \hbox (badness 1057) in paragraph at lines 1689--1689
-[]\T1/cmr/m/n/10.95 Table 14: |Inference-engine warm-path la-tency.
- []
-
-
-Overfull \hbox (98.43504pt too wide) in paragraph at lines 1693--1712
- [][] 
- []
-
-
-Underfull \hbox (badness 1028) in paragraph at lines 1724--1732
- []\T1/cmr/bx/n/10.95 Speedup scal-ing.[] \T1/cmr/m/n/10.95 In con-trolled same
--context
- []
-
-
-Underfull \hbox (badness 1226) in paragraph at lines 1724--1732
-\T1/cmr/m/n/10.95 reuse sce-nar-ios, em-pir-i-cal speedup scales from
- []
-
-
-Underfull \hbox (badness 2735) in paragraph at lines 1724--1732
-\T1/cmr/m/n/10.95 16K to-kens. Sem-Blend TTFT re-mains ap-
- []
-
-
-Underfull \hbox (badness 3815) in paragraph at lines 1748--1757
- []\T1/cmr/bx/n/10.95 Relationship to LM-Cache.[] \T1/cmr/m/sc/10.95 Sem-Blend 
-\T1/cmr/m/n/10.95 is
- []
-
-
-Underfull \hbox (badness 1616) in paragraph at lines 1759--1772
-\T1/cmr/m/n/10.95 com-pared to the at-ten-tion com-pu-ta-tion be-ing
- []
-
-
-Underfull \hbox (badness 1755) in paragraph at lines 1777--1785
-\T1/cmr/bx/n/10.95 ta-tion): \T1/cmr/m/n/10.95 Dis-abling se-lec-tive layer re-
-com-pu-ta-
- []
-
-
-Underfull \hbox (badness 5064) in paragraph at lines 1777--1785
-\T1/cmr/m/n/10.95 tion yields $\OT1/cmr/m/n/10.95 5\OML/cmm/m/it/10.95 :\OT1/cm
-r/m/n/10.95 51\OMS/cmsy/m/n/10.95 ^^B$ \T1/cmr/m/n/10.95 speedup (vs. $\OT1/cmr
-/m/n/10.95 5\OML/cmm/m/it/10.95 :\OT1/cmr/m/n/10.95 66\OMS/cmsy/m/n/10.95 ^^B$ 
-\T1/cmr/m/n/10.95 with
- []
-
-
-Underfull \hbox (badness 4686) in paragraph at lines 1777--1785
-\T1/cmr/m/n/10.95 recomputation)---a marginal 2.6% difference---
- []
-
-
-Underfull \hbox (badness 1152) in paragraph at lines 1777--1785
-\T1/cmr/m/n/10.95 The pri-mary speedup de-rives from KV trans-
- []
-
-[15]
-Underfull \hbox (badness 2418) in paragraph at lines 1786--1807
-\T1/cmr/bx/n/10.95 val-i-da-tion: \T1/cmr/m/n/10.95 RoPE cor-rec-tion ac-ti-vat
-es when
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 1834--1846
- []\T1/cmr/bx/n/10.95 Limitations.[] \T1/cmr/m/n/10.95 While RoPE delta cor-rec
--tion
- []
-
-
-Underfull \hbox (badness 5847) in paragraph at lines 1834--1846
-\T1/cmr/m/n/10.95 (Ÿ[]3.6[]) solves po-si-tion en-cod-ing ex-actly, the
- []
-
-
-Underfull \hbox (badness 3989) in paragraph at lines 1834--1846
-\T1/cmr/m/n/10.95 Qwen2.5-7B and val-i-dated on LLaMA-3.1-8B
- []
-
-
-Underfull \hbox (badness 1755) in paragraph at lines 1834--1846
-\T1/cmr/m/n/10.95 with com-pa-ra-ble qual-ity re-sults; GQA, MoE,
- []
-
-
-Underfull \hbox (badness 6526) in paragraph at lines 1852--1859
-\T1/cmr/m/n/10.95 sys-tem that ex-tends LM-Cache's exact-prefix
- []
-
-
-Underfull \hbox (badness 1226) in paragraph at lines 1852--1859
-\T1/cmr/m/n/10.95 CA-GRA search for cross-instance dis-cov-ery at
- []
-
-[16]
-Underfull \hbox (badness 1024) in paragraph at lines 1871--1910
-\T1/cmr/m/n/10.95 Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ on
+Underfull \hbox (badness 1038) in paragraph at lines 1130--1139
+\T1/cmr/bx/n/10.95 (+20) kens).[] \T1/cmr/m/n/10.95 (+20) Ta-ble []6[] uses \T1
+/cmtt/m/n/10.95 max_tokens=256 \T1/cmr/m/n/10.95 (+20) to test
  []
 
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
+ [11]
+Underfull \hbox (badness 2213) in paragraph at lines 1254--1256
+\T1/cmr/m/n/10.95 (+20) qual-ity across three real-world datasets with
+ []
 
-Overfull \hbox (3.93265pt too wide) in paragraph at lines 1930--1938
- [][] 
+[12]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [13]
+[14]
+Underfull \hbox (badness 10000) in paragraph at lines 1563--1578
+ []\T1/cmr/bx/n/10.95 (+20) Prefill com-pu-ta-tion sav-ings.[] \T1/cmr/m/n/10.9
+5 (+20) vLLM
  []
 
 
-LaTeX Warning: `h' float specifier changed to `ht'.
+Underfull \hbox (badness 7576) in paragraph at lines 1563--1578
+\T1/cmr/m/n/10.95 (+20) Prometheus met-rics con-firm Sem-Blend's ef-
+ []
 
-[17]
-Underfull \hbox (badness 1102) in paragraph at lines 1984--1988
-\T1/cmr/m/n/10.95 Cache Shar-ing for Large Lan-guage Model
+[15]
+Underfull \hbox (badness 10000) in paragraph at lines 1586--1589
+\T1/cmr/m/n/10.95 (+20) Table []11[] shows the full coverage-quality-
  []
 
 
-Underfull \hbox (badness 1275) in paragraph at lines 2008--2011
-[]\T1/cmr/m/n/10.95 R. Wag-ner and M. Fis-cher, ``The String-
+Underfull \hbox (badness 4518) in paragraph at lines 1586--1589
+\T1/cmr/m/n/10.95 (+20) speedup trade-off across co-sine thresh-olds $\OML/cmm/
+m/it/10.95 ^^\$
  []
 
 
-Underfull \hbox (badness 4048) in paragraph at lines 2008--2011
-\T1/cmr/m/n/10.95 to-String Cor-rec-tion Prob-lem,'' \T1/cmr/m/it/10.95 J. ACM\
-T1/cmr/m/n/10.95 ,
+Underfull \hbox (badness 10000) in paragraph at lines 1586--1589
+\T1/cmr/m/n/10.95 (+20) on CNN/DailyMail with Qwen2.5-7B-AWQ
  []
 
 
-Underfull \hbox (badness 1668) in paragraph at lines 2018--2021
-[]\T1/cmr/m/n/10.95 Bitext, ``Cus-tomer Sup-port LLM Chat-bot
+Underfull \hbox (badness 3098) in paragraph at lines 1595--1595
+[]\T1/cmr/m/n/10.95 (+20) Table 11: |\T1/cmr/bx/n/10.95 (+20) Sim-i-lar-ity thr
+esh-old ab-la-tion.
+ []
+
+[16]
+<fig_variation_sensitivity.pdf, id=435, 642.59512pt x 245.91486pt>
+File: fig_variation_sensitivity.pdf Graphic file (type pdf)
+<use fig_variation_sensitivity.pdf>
+Package pdftex.def Info: fig_variation_sensitivity.pdf  used on input line 1673
+.
+(pdftex.def)             Requested size: 240.71756pt x 92.12027pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 1782--1792
+\T1/cmr/m/n/10.95 (+20) con-fig-u-ra-tions yield PPL ra-tio $\OML/cmm/m/it/10.9
+5 <$\T1/cmr/m/n/10.95 (+20) 1.0 (ben-
  []
 
 
-Underfull \hbox (badness 1895) in paragraph at lines 2023--2026
-[]\T1/cmr/m/n/10.95 Z. Bang \T1/cmr/m/it/10.95 et al.\T1/cmr/m/n/10.95 , ``GPT-
-Cache: An Open-
+Underfull \hbox (badness 4060) in paragraph at lines 1782--1792
+\T1/cmr/m/n/10.95 (+20) e-fi-cial KV in-jec-tion, ob-served in our data:
  []
 
 
-Underfull \hbox (badness 1057) in paragraph at lines 2023--2026
-\T1/cmr/m/n/10.95 Source Se-man-tic Cache for LLM Ap-pli-ca-
+Underfull \hbox (badness 10000) in paragraph at lines 1782--1792
+\T1/cmr/m/n/10.95 (+20) Qwen CNN/DM@2K=0.960, LLaMA Wik-i-
  []
 
 
-Underfull \hbox (badness 1571) in paragraph at lines 2050--2053
-\T1/cmr/m/n/10.95 former with Ro-tary Po-si-tion Em-bed-ding,''
+Underfull \hbox (badness 2020) in paragraph at lines 1782--1792
+\T1/cmr/m/n/10.95 (+20) How@2K=0.992), in-di-cat-ing that se-man-ti-cally
  []
 
 
-Underfull \hbox (badness 2050) in paragraph at lines 2066--2070
-\T1/cmr/m/n/10.95 Ab-strac-tive Hi-er-ar-chi-cal Model,'' in \T1/cmr/m/it/10.95
- Proc.
+Underfull \hbox (badness 3460) in paragraph at lines 1782--1792
+\T1/cmr/m/n/10.95 (+20) re-lated con-text oc-ca-sion-ally im-proves out-put
  []
 
-[18] [19] [20] [21
+
+Underfull \vbox (badness 6268) has occurred while \output is active []
+
+ [17 <./fig_variation_sensitivity.pdf>]
+Underfull \hbox (badness 1721) in paragraph at lines 1823--1833
+\T1/cmr/m/n/10.95 (+20) query to-kens) and run live in-fer-ence against
+ []
+
+[18]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+Underfull \hbox (badness 1303) in paragraph at lines 1929--1937
+\T1/cmr/bx/n/10.95 (+20) ta-tion): \T1/cmr/m/n/10.95 (+20) Dis-abling se-lec-ti
+ve layer re-com-pu-ta-
+ []
+
+
+Underfull \hbox (badness 3989) in paragraph at lines 1929--1937
+\T1/cmr/m/n/10.95 (+20) tion yields $\OT1/cmr/m/n/10.95 (+20) 5\OML/cmm/m/it/10
+.95 :\OT1/cmr/m/n/10.95 (+20) 51\OMS/cmsy/m/n/10.95 ^^B$ \T1/cmr/m/n/10.95 (+20
+) speedup (vs. $\OT1/cmr/m/n/10.95 (+20) 5\OML/cmm/m/it/10.95 :\OT1/cmr/m/n/10.
+95 (+20) 66\OMS/cmsy/m/n/10.95 ^^B$ \T1/cmr/m/n/10.95 (+20) with
+ []
+
+
+Underfull \vbox (badness 3826) has occurred while \output is active []
+
+ [19]
+[20]
+Underfull \vbox (badness 7168) has occurred while \output is active []
+
+ [21]
+[22
+
+
+]
+Underfull \hbox (badness 1057) in paragraph at lines 2201--2204
+[]\T1/cmr/m/n/10.95 (+20) R. Wag-ner and M. Fis-cher, ``The String-
+ []
+
+
+Underfull \hbox (badness 3168) in paragraph at lines 2201--2204
+\T1/cmr/m/n/10.95 (+20) to-String Cor-rec-tion Prob-lem,'' \T1/cmr/m/it/10.95 (
++20) J. ACM\T1/cmr/m/n/10.95 (+20) ,
+ []
+
+
+Underfull \hbox (badness 1675) in paragraph at lines 2211--2214
+[]\T1/cmr/m/n/10.95 (+20) Z. Bang \T1/cmr/m/it/10.95 (+20) et al.\T1/cmr/m/n/10
+.95 (+20) , ``GPT-Cache: An Open-
+ []
+
+
+Underfull \hbox (badness 1205) in paragraph at lines 2238--2241
+\T1/cmr/m/n/10.95 (+20) former with Ro-tary Po-si-tion Em-bed-ding,''
+ []
+
+
+Underfull \hbox (badness 1888) in paragraph at lines 2282--2286
+[]\T1/cmr/m/n/10.95 (+20) S. Anan-tha-narayanan, A. Sen-gupta, and
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 2282--2286
+\T1/cmr/m/n/10.95 (+20) T. Chakraborty, ``Un-der-stand-ing the
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 2282--2286
+\T1/cmr/m/n/10.95 (+20) Physics of Key-Value Cache Com-pres-
+ []
+
+[23
 
 ] (./semblend.aux)
  ***********
@@ -1799,16 +1435,16 @@ LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
  ***********
 Package rerunfilecheck Info: File `semblend.out' has not changed.
-(rerunfilecheck)             Checksum: 0B22FA3C779C88CFA24F5E843D7EBD0D;6318.
+(rerunfilecheck)             Checksum: CC4F66CEC46102B03FBC9A76BE2BF12F;6620.
  ) 
 Here is how much of TeX's memory you used:
- 37881 strings out of 467525
- 869657 string characters out of 5418983
- 1456077 words of memory out of 5000000
- 66007 multiletter control sequences out of 15000+600000
- 654844 words of font info for 108 fonts, out of 8000000 for 9000
+ 40277 strings out of 467525
+ 909987 string characters out of 5418983
+ 1464094 words of memory out of 5000000
+ 67965 multiletter control sequences out of 15000+600000
+ 669813 words of font info for 315 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 84i,15n,94p,748b,812s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 84i,16n,94p,1005b,812s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
 ></usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx8.pfb><
 /usr/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx9.pfb></u
@@ -1817,6 +1453,7 @@ r/local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr
 /local/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></usr/l
 ocal/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/loc
 al/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></usr/local
+/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmib10.pfb></usr/local
 /texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cmextra/cmmib8.pfb></usr/l
 ocal/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/loc
 al/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/local/
@@ -1848,10 +1485,10 @@ ublic/cm-super/sftt0800.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/pub
 lic/cm-super/sftt0900.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/publi
 c/cm-super/sftt1095.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/
 cm-super/sftt1200.pfb>
-Output written on semblend.pdf (21 pages, 781190 bytes).
+Output written on semblend.pdf (23 pages, 852405 bytes).
 PDF statistics:
- 672 PDF objects out of 1000 (max. 8388607)
- 561 compressed objects within 6 object streams
- 174 named destinations out of 1000 (max. 500000)
- 261 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 813 PDF objects out of 1000 (max. 8388607)
+ 605 compressed objects within 7 object streams
+ 182 named destinations out of 1000 (max. 500000)
+ 65810 words of extra memory for PDF output out of 74296 (max. 10000000)
 

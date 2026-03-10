@@ -1655,15 +1655,17 @@ a controlled experiment on 8 CNN/DailyMail 8K clusters, each with
 0.20 (topically diverse). Cold baselines were measured \emph{before}
 donor registration to prevent vLLM's internal prefix cache from
 contaminating cold TTFT measurements. Across all 56 variation-cluster
-pairs, PPL ratio was $1.000 \pm 0.001$---indistinguishable from cold
+pairs per model, PPL ratio was $1.000 \pm 0.001$ on \textbf{both}
+Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ---indistinguishable from cold
 across all similarity levels (Figure~\ref{fig:variation-sensitivity}).
 This follows directly from SemBlend's block-level quality gate:
 accepted hits use verified exact-match KV blocks (inherently near-zero
 quality loss), while rejected queries fall back to standard cold
 inference (PPL ratio $\equiv 1.0$ by construction). The system
 thus provides a \emph{quality floor guarantee}: no input can experience
-worse quality than the cold baseline. The non-monotonic hit-rate
-pattern in Figure~\ref{fig:variation-sensitivity}(b) confirms that
+worse quality than the cold baseline, regardless of model architecture.
+The non-monotonic hit-rate pattern in
+Figure~\ref{fig:variation-sensitivity}(b) confirms that
 LMCache block-hash matching---not cosine similarity---is the operative
 quality gate: partial-document variations (40\% overlap, cosine
 ${\approx}0.47$) achieve 62\% hit rate by sharing verbatim 256-token
@@ -1680,7 +1682,7 @@ outlier (PPL=1.27) observed in the threshold sweep (\S\ref{sec:analysis:threshol
 no such outlier appears in the variation sensitivity data.
 \textit{Right:} LMCache hit rates are non-monotonic---block-hash matching,
 not cosine similarity, determines hit probability.
-CNN/DailyMail 8K, Qwen2.5-7B-AWQ, $n{=}8$ per type.}
+CNN/DailyMail 8K; Qwen2.5-7B-AWQ shown (LLaMA-3.1-8B-AWQ replicates: PPL=$1.000{\pm}0.001$ across all types), $n{=}8$ per type.}
 \label{fig:variation-sensitivity}
 \end{figure}
 
