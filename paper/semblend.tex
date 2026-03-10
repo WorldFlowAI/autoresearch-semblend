@@ -328,6 +328,12 @@ This architecture-aware selection is independently validated by
 our per-layer K-norm deviation measurements: with RoPE correction,
 all-layer deviation is ${<}0.2\%$ for both models, confirming
 the bathtub-selected layers are the right recomputation targets.
+Poudel~\cite{statefulkv} provides complementary evidence: in
+stateful multi-turn KV eviction, even high-retention strategies
+(${\geq}99\%$ via AttentionTop) cause degenerative output if
+they scramble the positional signal---independently validating
+the importance of exact RoPE position correction for any system
+that perturbs KV cache positions.
 
 \semblend operates at the \emph{embedding level}: a single sentence
 embedding replaces per-token matching. The local tier uses numpy
@@ -2497,6 +2503,12 @@ S.~Ananthanarayanan, A.~Sengupta, and T.~Chakraborty,
 ``Understanding the Physics of Key-Value Cache Compression for LLMs
 through Attention Dynamics,''
 arXiv:2603.01426, Mar.\ 2026.
+
+\bibitem{statefulkv}
+P.~Poudel,
+``Stateful KV Cache Management for LLMs: Balancing Space, Time,
+Accuracy, and Positional Fidelity,''
+arXiv:2511.04686, Nov.\ 2025.
 
 \end{thebibliography}
 
