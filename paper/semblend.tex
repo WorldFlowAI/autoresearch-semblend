@@ -996,9 +996,9 @@ and speedup stability at $N{=}1$--50 donors (in-memory), and
 (2) search latency at $N{=}1$--1M donors (cuVS GPU tier;
 \S\ref{sec:semblend-injection-results}).
 
-\emph{Hit rate stability.} At 2K CNN/DailyMail tokens, hit rate
-remains \textbf{100\%} and TTFT speedup stays $3.6$--$3.7\times$
-for all pool sizes from 1 to 50 donors ($n{=}8$ queries per size):
+\emph{Hit rate stability.} At 2K XSum tokens, hit rate
+remains \textbf{100\%} and TTFT speedup stays $3.2$--$3.4\times$
+for all pool sizes from 1 to 100 donors ($n{=}8$ queries per size):
 
 \begin{center}
 \small
@@ -1006,21 +1006,25 @@ for all pool sizes from 1 to 50 donors ($n{=}8$ queries per size):
 \toprule
 $N$ donors & Hit rate & Speedup & Hit-only \\
 \midrule
-1  & 100\% & $3.63\times$ & $3.63\times$ \\
-8  & 100\% & $3.61\times$ & $3.61\times$ \\
-32 & 100\% & $3.71\times$ & $3.71\times$ \\
-50 & 100\% & $3.71\times$ & $3.71\times$ \\
+1   & 100\% & $3.28\times$ & $3.28\times$ \\
+8   & 100\% & $3.32\times$ & $3.32\times$ \\
+32  & 100\% & $3.32\times$ & $3.32\times$ \\
+50  & 100\% & $3.26\times$ & $3.26\times$ \\
+75  & 100\% & $3.28\times$ & $3.28\times$ \\
+100 & 100\% & $3.26\times$ & $3.26\times$ \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 Hit rate \emph{never degrades} as the pool grows---each additional
 donor adds coverage without harming existing matches.
+At 2K tokens, no LRU eviction occurs (each 2K-token donor requires
+${\sim}112$\,MB, leaving room for 100+ donors in the 15\,GB CPU buffer)
+and speedup is constant across the full $N{=}1$--100 range.
 At 8K XSum tokens, speedup is stable at $10.5$--$10.7\times$
 across $N{=}1$--16 and $9.3\times$ at $N{=}32$ (LRU eviction on
-the 15\,GB CPU buffer reduces KV availability for the largest pools).
-At 2K tokens, no eviction occurs and speedup is strictly non-decreasing
-with pool size.
+the 15\,GB CPU buffer reduces KV availability for the largest pools,
+where each 8K-token donor requires ${\sim}450$\,MB).
 
 \subsubsection{SemBlend Injection: Scaling Behavior}
 \label{sec:semblend-injection-results}
@@ -2295,11 +2299,12 @@ regardless of prompt length, bounded by CPU$\to$GPU KV transfer,
 while cold prefill scales with sequence length---producing increasing speedup
 from $2.2\times$ at 2K to $8.3\times$ at 16K to $\mathbf{12.0\times}$ at 32K
 tokens (cold prefill 15.4\,s vs SemBlend 1.3\,s at 32K);
-(7)~combining vLLM prefix caching with SemBlend donor reuse achieves
-$\mathbf{10.5}$--$\mathbf{10.7}\times$ P50 TTFT speedup at 8K tokens
-across pool sizes 1--16 (100\% hit), with the two mechanisms
-providing complementary coverage: prefix caching for exact repeats,
-SemBlend for semantic variants; and
+(7)~hit rate never degrades as the donor pool grows---100\% hit rate
+and $3.2$--$3.4\times$ speedup at 2K tokens across pool sizes 1--100
+(100 unique donors, no LRU eviction within the 15\,GB CPU buffer),
+and $10.5$--$10.7\times$ at 8K across pool sizes 1--16; the two
+caching mechanisms provide complementary coverage: prefix caching
+for exact repeats, SemBlend for semantic variants; and
 (8)~across all 7 variation types spanning cosine similarity 1.0 (exact
 copy) to 0.20 (topically diverse), PPL ratio stays at $1.000\pm0.001$
 on \emph{both} Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ---SemBlend provides

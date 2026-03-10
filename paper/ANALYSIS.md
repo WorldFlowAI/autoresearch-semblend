@@ -140,10 +140,10 @@ Bootstrap CIs on all P50 values for statistical rigor.
 **Results**: numpy crossover ≈10K, brute_force constant 0.23-0.71ms, CAGRA **constant 1.37ms at any N** (1M donors, build=7.3s). Three search tiers: numpy≤10K, brute_force 10K-1M, CAGRA 1M+ (2.6× faster than brute_force).
 **Paper**: Tab:donor-store-scaling added. Abstract + contributions updated. All CAGRA numbers now empirical.
 
-#### I-15. FM1 RoPE Correction Ablation (NEW — Pending)
-**Status**: `SEMBLEND_USE_ALIGNMENT` env var not exposed as a runtime switch in deployed image (8987f25). Cannot run ablation without redeploying with code change.
-**Workaround evidence**: K-norm deviation <0.2%, 165 unit tests with exactness proofs, variation sensitivity PPL=1.000 on REORDER (most sensitive to position mismatch).
-**Paper impact**: FM1 documented as architecture advantage; empirical ablation remains future work.
+#### I-15. FM1 RoPE Correction Ablation ✅ DONE
+**Status**: COMPLETE. `SEMBLEND_USE_ALIGNMENT=0` deployed via `kubectl set env` (commit 230c250). Runtime ablation confirms Δ=0 for all chunk-boundary matched blocks in current deployment.
+**Results** (n=8, XSum 8K, SEMBLEND_USE_ALIGNMENT=0): PPL ratio=1.000±0.006 across all 7 variation types — identical to alignment=1 baseline. partial_40 hit rate 100%, PPL=0.995. REORDER 0% hit rate (XSum clusters start at different tokens → no shared chunk-boundary blocks in test set).
+**Paper**: Discussion §RoPE scope paragraph updated with runtime ablation. Two regimes documented: (i) chunk-boundary reuse Δ=0 → no-op (confirmed empirically), (ii) sub-chunk injection Δ≠0 → correction essential (validated by 165 unit tests).
 
 #### I-16. FM2 Semantic Staleness Test ✅ DONE
 **Status**: COMPLETE. entity_swap_fm2_qwen8k: PPL=1.000 at 1, 2, 3 entity swaps (n=8).
