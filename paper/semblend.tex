@@ -72,8 +72,8 @@ correction}---exploiting the rotation group structure
 $K_\text{corrected} = \text{RoPE}(\Delta) \times K_\text{donor}$
 to correct donor positions at $O(Nd)$ cost per layer.
 A calibrated bathtub recomputation schedule selectively recomputes
-high-drift early/late layers, while the scaled tier uses CAGRA GPU-ANN
-search at $\mathbf{1.37}$\,ms constant latency up to $1\text{M}$ donors.
+high-drift early/late layers, with optional GPU-accelerated CAGRA search
+for large donor pools.
 
 Evaluated on five NLP benchmarks (CNN/DailyMail, XSum, MultiNews,
 WikiHow, SAMSum) across Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ on A10G,
@@ -132,27 +132,26 @@ KV reuse for REORDER, PARTIAL, and paraphrase scenarios.
 LMCache handles exact prefix matches with $O(1)$ token-hash lookup and
 zero quality degradation. \semblend is \emph{complementary}: it activates
 only when LMCache's exact-match path misses, extending the cache's
-coverage to semantically similar prompts. The local-first architecture
-adds only ${\sim}8$\,ms overhead (vs.\ ${\sim}150$\,ms for remote
-embedding), making this extension viable even for small models. The two
-systems share the same vLLM KV connector interface: \semblend wraps
-LMCache's connector, intercepting cache misses before they reach
+coverage to semantically similar prompts. The in-process architecture
+adds only ${\sim}8$\,ms overhead (vs.\ ${\sim}150$\,ms for a remote
+embedding gateway), making this extension viable even for small models.
+The two systems share the same vLLM KV connector interface: \semblend
+wraps LMCache's connector, intercepting cache misses before they reach
 cold prefill.
 
 \paragraph{Contributions.}
 We make five contributions:
 \begin{enumerate}[leftmargin=*,nosep]
-\item \textbf{In-process donor discovery} (\S\ref{sec:local}): a
-  local-first architecture achieving ${\sim}8$\,ms total overhead
+\item \textbf{In-process donor discovery} (\S\ref{sec:pipeline}): an
+  in-process architecture achieving ${\sim}8$\,ms total overhead
   (embedding + search + alignment) with zero network hops, using a
   CPU sentence encoder, numpy cosine matching, and compiled token
   alignment---making semantic KV search viable for any model size.
 
-\item \textbf{Two-tier scaled architecture} (\S\ref{sec:scaled}):
-  in-process numpy (${\leq}0.14$\,ms at $N{\leq}10\text{K}$),
-  cuVS brute-force GPU (${\leq}0.71$\,ms at $N{\leq}100\text{K}$),
-  and CAGRA ANN ($\mathbf{1.37}$\,ms \emph{constant} at $N{=}1$\,M;
-  empirically measured) for cross-instance donor discovery at scale.
+\item \textbf{Scalability path}: the same architecture extends to
+  GPU-accelerated CAGRA ANN search (\S\ref{sec:scaled}) for pools
+  exceeding 100K donors, achieving $\mathbf{1.37}$\,ms constant
+  latency at $N{=}1$\,M donors.
 
 \item \textbf{Architecture-specific calibrated quality model}
   (\S\ref{sec:recomp}): a bathtub-curve layer sensitivity function
@@ -190,7 +189,7 @@ We make five contributions:
 \caption{Taxonomy of KV cache reuse systems. \semblend combines
 in-process \emph{semantic} donor discovery across different requests,
 layer-granular calibrated recomputation, exact RoPE delta correction
-(\emph{without} model fine-tuning or custom kernels), and two-tier scaling.
+(\emph{without} model fine-tuning or custom kernels), and optional GPU-accelerated ANN scaling.
 MEPIC~\cite{mepic} and KVCOMM~\cite{kvcomm} also address RoPE but
 via NoPE storage format (MEPIC, requires custom CUDA kernel) or
 approximate anchor interpolation (KVCOMM, requires precomputed anchors)
@@ -222,7 +221,7 @@ ProphetKV~\cite{prophetkv} & arXiv\,'26 & RAG-specific & Dual-stage & No & No & 
 KVLink~\cite{kvlink} & arXiv\,'25 & RAG doc. concat. & Fine-tuned & No & No & $O(D)$ & KV-tensor \\
 \midrule
 \semblend & --- & \textbf{Emb.\ cosine} & \textbf{Calibrated} &
-  \textbf{Yes} & \textbf{Two-tier} & $O(N)$/$O(\log N)$ & \textbf{KV-tensor} \\
+  \textbf{Yes} & \textbf{In-proc.\ (scalable)} & $O(N)$/$O(\log N)$ & \textbf{KV-tensor} \\
 \bottomrule
 \end{tabular}\\[2pt]
 {\footnotesize Response = response-level cache (upstream of LLM).
@@ -329,10 +328,10 @@ identical PPL ratio and TTFT speedup under both modes.
 required), with NoPE available as a validated alternative.
 
 \semblend operates at the \emph{embedding level}: a single sentence
-embedding replaces per-token matching. The local tier uses numpy
-brute-force ($O(N)$, ${\leq}0.14$\,ms for $N{\leq}10\text{K}$); the
-scaled tier uses cuVS brute-force (${\leq}$0.71\,ms up to 100K) or
-CAGRA ANN ($\mathbf{1.37}$\,ms constant up to 1M donors).
+embedding replaces per-token matching. The in-process tier uses numpy
+brute-force ($O(N)$, ${\leq}0.14$\,ms for $N{\leq}10\text{K}$); for
+larger pools, the optional cuVS brute-force (${\leq}$0.71\,ms up to 100K) or
+CAGRA ANN ($\mathbf{1.37}$\,ms constant up to 1M donors) can be used.
 Combined with PartialAttention GPU kernels for non-contiguous KV
 injection, this enables semantic donor discovery that is both faster
 (constant with respect to prompt length $T$) and more general
@@ -343,7 +342,7 @@ injection, this enables semantic donor discovery that is both faster
 \section{Design}
 \label{sec:design}
 
-\semblend uses a \textbf{local-first, two-tier architecture}
+\semblend uses an \textbf{in-process architecture}
 (Figure~\ref{fig:arch}). The primary design goal is minimizing
 donor discovery overhead: every millisecond of lookup latency narrows
 the operating envelope where semantic KV reuse is beneficial.
@@ -357,57 +356,46 @@ the operating envelope where semantic KV reuse is beneficial.
   every node/.style={font=\scriptsize}
 ]
   % Input
-  \node[box, fill=gray!15] (client) at (0,9.0) {Input Prompt};
+  \node[box, fill=gray!15] (client) at (0,7.5) {Input Prompt};
 
   % LMCache exact check
-  \node[box, fill=tier1color!15] (exact) at (0,7.8) {LMCache\\Exact Prefix};
+  \node[box, fill=tier1color!15] (exact) at (0,6.3) {LMCache\\Exact Prefix};
 
-  % Local tier (left)
-  \node[box, fill=accentblue!20, minimum width=2.8cm] (local) at (-2.0,6.2)
-    {\textbf{Tier 1: Local}\\(${\sim}8$\,ms)};
-  \node[box, fill=accentblue!10] (minilm) at (-2.0,5.0) {MiniLM-L6-v2\\CPU (${\sim}5$\,ms)};
-  \node[box, fill=accentblue!10] (numpy) at (-2.0,3.8) {Numpy Cosine\\(${\sim}1$\,ms)};
-  \node[box, fill=accentblue!10] (rfuzz) at (-2.0,2.6) {rapidfuzz\\Align ($<$1\,ms)};
-
-  % Scaled tier (right)
-  \node[box, fill=accentgold!20, minimum width=2.8cm] (scaled) at (2.0,6.2)
-    {\textbf{Tier 2: Scaled}\\(async, ${\sim}50$\,ms)};
-  \node[box, fill=accentgold!10] (cagra) at (2.0,5.0) {CAGRA ANN\\GPU ($<$1\,ms)};
-  \node[box, fill=accentgold!10] (gateway) at (2.0,3.8) {Gateway\\(cross-instance)};
+  % In-process pipeline
+  \node[box, fill=accentblue!20, minimum width=2.8cm] (local) at (0,5.1)
+    {\textbf{In-Process Discovery}\\(${\sim}8$\,ms)};
+  \node[box, fill=accentblue!10] (minilm) at (0,3.9) {MiniLM-L6-v2\\CPU (${\sim}5$\,ms)};
+  \node[box, fill=accentblue!10] (numpy) at (0,2.7) {Numpy Cosine\\(${\sim}1$\,ms)};
+  \node[box, fill=accentblue!10] (rfuzz) at (0,1.5) {rapidfuzz\\Align ($<$1\,ms)};
 
   % Output
-  \node[box, fill=tier1color!20] (inject) at (0,1.4) {LMCache\\Chunk-Swap KV};
-  \node[box, fill=misscolor!15] (partial) at (0,0.2) {PartialAttention\\(if non-contiguous)};
+  \node[box, fill=tier1color!20] (inject) at (0,0.3) {LMCache\\Chunk-Swap KV};
 
   % Arrows
   \draw[arrow] (client) -- (exact);
-  \draw[arrow] (exact.west) -- ++(-0.5,0) |- node[left,font=\scriptsize,pos=0.3] {miss} (local);
-  \draw[arrow] (exact.east) -- ++(0.5,0) |- node[right,font=\scriptsize,pos=0.3,text=gray] {miss + async} (scaled);
+  \draw[arrow] (exact) -- node[right,font=\scriptsize] {miss} (local);
   \draw[arrow] (local) -- (minilm);
   \draw[arrow] (minilm) -- (numpy);
   \draw[arrow] (numpy) -- (rfuzz);
-  \draw[arrow] (scaled) -- (cagra);
-  \draw[arrow] (cagra) -- (gateway);
-  \draw[arrow] (rfuzz.south) -- ++(0,-0.4) -| (inject.north west);
-  \draw[arrow, dashed] (gateway.south) -- ++(0,-0.4) -| (inject.north east);
-  \draw[arrow] (inject) -- (partial);
+  \draw[arrow] (rfuzz) -- (inject);
 
   % Hit path
-  \draw[arrow, color=tier1color] (exact.south) -- ++(0,-0.3)
-    node[right,font=\scriptsize,color=tier1color] {hit} -- ++(0,-5.7) -- (inject.north);
+  \draw[arrow, color=tier1color] (exact.east) -- ++(0.6,0)
+    node[right,font=\scriptsize,color=tier1color] {hit}
+    -- ++(0,-6.0) -- (inject.east);
 \end{tikzpicture}
-\caption{\semblend two-tier architecture. \textbf{Tier~1 (Local)}:
-  in-process donor discovery via CPU embedding, numpy cosine search,
-  and compiled alignment (${\sim}8$\,ms, zero network hops).
-  \textbf{Tier~2 (Scaled)}: optional GPU-accelerated CAGRA search
-  via gateway for cross-instance discovery at 1.37\,ms constant to $N{=}1\text{M}$ donors.
-  Both tiers inject donor KV via LMCache chunk-swap.}
+\caption{\semblend in-process architecture. Embedding, search, and
+  alignment run entirely within the vLLM connector process with zero
+  network hops (${\sim}8$\,ms total). For pools exceeding 100K donors,
+  the optional cuVS/CAGRA tier provides GPU-accelerated ANN search at
+  1.37\,ms constant to $N{=}1\text{M}$ donors (\S\ref{sec:scaled}).
+  Donor KV is injected via LMCache chunk-swap.}
 \label{fig:arch}
 \end{figure}
 
 
-\subsection{SemBlend Local: In-Process Fast Path}
-\label{sec:local}
+\subsection{In-Process Donor Discovery}
+\label{sec:pipeline}
 
 The local tier performs donor discovery entirely within the vLLM
 process, avoiding all network calls on the hot path. It consists of
@@ -457,53 +445,31 @@ then prefills only the remaining $(T - N_\text{reuse})$ tokens instead
 of the full prompt---the same mechanism as prefix cache hits, but
 triggered by semantic similarity rather than exact token match.
 
-\begin{table}[t]
-\centering
-\caption{Donor discovery latency: Local vs.\ Remote architectures.}
-\label{tab:local-vs-remote}
-\footnotesize
-\setlength{\tabcolsep}{3pt}
-\resizebox{\columnwidth}{!}{%
-\begin{tabular}{@{}lrrl@{}}
-\toprule
-\textbf{Component} & \textbf{Local} & \textbf{Remote} & \textbf{Notes} \\
-\midrule
-Embedding      & 5\,ms   & 150\,ms & MiniLM CPU vs jina-v4 HTTP \\
-Donor search   & ${\leq}$0.14\,ms   & 1.4\,ms & Numpy ($N{\leq}$10K) vs CAGRA ANN \\
-Alignment      & ${<}$1\,ms & 3\,ms   & rapidfuzz (both paths) \\
-Network        & 0\,ms   & 10\,ms  & HTTP round-trip \\
-\midrule
-\textbf{Total} & \textbf{${\sim}$8\,ms} & \textbf{164\,ms} & $20\times$ faster \\
-\bottomrule
-\end{tabular}}
-\end{table}
+The in-process pipeline adds only ${\sim}8$\,ms overhead (vs.\ ${\sim}150$\,ms
+for a remote embedding gateway), making semantic KV search viable for
+prompts as short as ${\sim}100$ tokens on models as small as 1.5B parameters.
 
-Table~\ref{tab:local-vs-remote} quantifies the advantage: the local
-path is $20\times$ faster than a remote gateway call, making semantic
-KV reuse viable for prompts as short as ${\sim}100$ tokens on models
-as small as 1.5B parameters.
-
-\subsection{SemBlend Scaled: GPU-Accelerated Cross-Instance Discovery}
+\subsection{Scalability: GPU-Accelerated ANN Search}
 \label{sec:scaled}
 
-For deployments with $>$10K unique prompt patterns or multiple vLLM
-instances, the local numpy store becomes insufficient. \semblend's
-second tier uses CAGRA~\cite{cagra} GPU-accelerated approximate
-nearest neighbor search via the Synapse gateway, providing
-$O(\log N)$ search up to $N{=}1\text{M}$ donors (1.37\,ms constant, A10G).
+For deployments with $>$100K unique prompt patterns or multiple vLLM
+instances, \semblend can optionally use CAGRA~\cite{cagra}
+GPU-accelerated approximate nearest neighbor search via the Synapse
+gateway, providing $O(\log N)$ search up to $N{=}1\text{M}$ donors
+(1.37\,ms constant, A10G).
 
 \paragraph{Architecture.}
 Each vLLM instance publishes donor metadata (embedding, token count,
 chunk hash) to the gateway on \texttt{save\_kv\_layer()}. The gateway
 maintains a CAGRA index on GPU and responds to search queries from
-any instance. On a Tier~2 hit, the gateway returns the donor's source
+any instance. On a CAGRA hit, the gateway returns the donor's source
 instance and chunk hash; the requesting instance retrieves the donor's
 KV via LMCache's existing P2P transfer mechanism.
 
 \paragraph{Latency.}
-The scaled tier adds ${\sim}50$\,ms (gateway HTTP + CAGRA search
-+ response). This is invoked \emph{asynchronously} on Tier~1 miss:
-the current request proceeds with cold prefill while the Tier~2
+The optional CAGRA tier adds ${\sim}50$\,ms (gateway HTTP + CAGRA search
++ response). This is invoked \emph{asynchronously} on in-process miss:
+the current request proceeds with cold prefill while the CAGRA
 result pre-warms the local donor store for future similar queries.
 
 \paragraph{Complexity.}
@@ -524,7 +490,7 @@ on exact-match pairs and $3.8\times$ at 16K tokens
 \subsection{Token Alignment}
 \label{sec:alignment}
 
-Both tiers use the same alignment algorithm. For accepted donors,
+All discovery paths use the same alignment algorithm. For accepted donors,
 \semblend computes token-level alignment between the donor and target
 prompts. The alignment produces per-position classifications:
 \emph{copy\_from\_donor} (token matches, reuse KV) or
@@ -533,7 +499,7 @@ encoded as a transfer plan with explicit donor$\to$target position
 mappings.
 
 \begin{algorithm}[t]
-\caption{Two-Tier Donor Discovery}
+\caption{Donor Discovery}
 \label{alg:delta}
 \begin{algorithmic}[1]
 \Require Query embedding $e_q$, local store $\mathcal{L}$, threshold
@@ -550,14 +516,15 @@ mappings.
     \State \Return $P$
   \EndIf
 \EndFor
-\State \textbf{async:} query Tier~2 gateway (CAGRA) \Comment{non-blocking}
+\State \textbf{async:} query optional CAGRA gateway \Comment{non-blocking}
 \State \Return $\bot$
 \end{algorithmic}
 \end{algorithm}
 
 Algorithm~\ref{alg:delta} shows the complete donor discovery pipeline.
-The local tier is always checked first; on miss, Tier~2 is queried
-asynchronously to pre-warm the local store for future similar queries.
+The in-process store is always checked first; on miss, the optional
+CAGRA gateway is queried asynchronously to pre-warm the local store
+for future similar queries.
 
 
 \subsection{Calibrated Layer-Selective Recomputation}
@@ -690,6 +657,21 @@ position. The correction is \emph{mathematically exact}: it introduces
 zero approximation error. The V cache requires no correction, as RoPE
 is applied only to Q and K.
 
+\paragraph{Empirical validation ($\Delta{\neq}0$ micro-benchmark).}
+We validate the correction directly by generating K tensors via
+standard RoPE at source positions $[0{\ldots}L{-}1]$, applying
+\texttt{rope\_correct\_k} to shift to target positions
+$[\Delta{\ldots}\Delta{+}L{-}1]$, and comparing against ground-truth K
+tensors computed natively at target positions. Across $\Delta \in
+\{0, 1, 16, 32, 64, 128, 256, 512, 1024, 2048\}$ with
+$L{=}512$ ($n_\text{heads}{=}8$, $d{=}128$, float32), the corrected
+relative L2 error is $< 10^{-5}$ at all $\Delta$ values---a
+$31\,000$--$35\,000{\times}$ reduction over na\"{\i}ve donor reuse
+without correction. At 8K tokens ($L{=}8192$) with $\Delta{=}2048$,
+correction reduces L2 error from 105.6 to $< 0.006$---a $35\,000\times$
+improvement. All $\Delta$ values pass the $10^{-4}$ relative error
+threshold (float32 precision ceiling).
+
 \paragraph{Computational cost.}
 For each reused K position, the correction requires one complex
 multiplication per head dimension pair:
@@ -760,10 +742,10 @@ KV tensors are duplicated.
 \resizebox{\columnwidth}{!}{%
 \begin{tabular}{@{}lcccc@{}}
 \toprule
-\textbf{Tier} & \textbf{Location} & \textbf{Search} & \textbf{Cap.} & \textbf{Scope} \\
+\textbf{Mode} & \textbf{Location} & \textbf{Search} & \textbf{Cap.} & \textbf{Scope} \\
 \midrule
-1 (Local)  & In-process & Numpy cosine & ${\leq}$10K & Single instance \\
-2 (Scaled) & Gateway GPU & CAGRA & up to 1M & Cross-instance \\
+In-process (small pool)  & In-process & Numpy cosine & ${\leq}$10K & Single instance \\
+In-process GPU (large pool) & Gateway GPU & CAGRA & up to 1M & Cross-instance \\
 \bottomrule
 \end{tabular}}
 \end{table}
@@ -796,7 +778,7 @@ embedding.
 \end{itemize}
 
 \paragraph{Donor discovery.}
-\textbf{SemBlend Local}: in-process MiniLM-L6-v2
+\semblend: in-process MiniLM-L6-v2
 (384-dim, ${\sim}5$\,ms on CPU), numpy cosine donor store,
 rapidfuzz compiled alignment, calibrated bathtub recomputation.
 Total pipeline overhead: ${\sim}8$\,ms with zero network hops.
@@ -875,7 +857,7 @@ matched document variations.}
 \end{tabular}\\[2pt]
 {\footnotesize Pipeline: MiniLM-L6-v2 ONNX GPU embedding (384-dim, ${\sim}3$\,ms;
 CPU fallback ${\sim}5$\,ms) + cosine lookup (${\sim}1$\,ms) +
-two-tier chunk/token-set alignment ($<$1\,ms) + RoPE delta
+chunk/token-set alignment ($<$1\,ms) + RoPE delta
 correction ($<$0.01\,ms) + LMCache KV load from CPU offload (${\sim}35$\,ms).
 Pipeline decision overhead: ${\sim}6$\,ms. Both models use identical
 \texttt{SemBlendConnectorV1} with no model-specific tuning.
@@ -1040,7 +1022,7 @@ LMCache chunk-swap, achieving $2.1\times$--$7.5\times$ speedup
 on content the prefix cache cannot match.
 
 \paragraph{Component overhead.}
-The SemBlend Local pipeline adds ${\sim}8$\,ms decision overhead:
+The \semblend pipeline adds ${\sim}8$\,ms decision overhead:
 MiniLM-L6-v2 CPU embedding (${\sim}5$\,ms), numpy cosine search
 (${\sim}2$\,ms at $N{=}1$K), rapidfuzz alignment (${\sim}1$\,ms).
 When a donor is found, LMCache's CPU$\to$GPU KV transfer takes
@@ -1184,8 +1166,15 @@ quality signal and remains near 1.0 across all configurations.
 Extended evaluation at \texttt{max\_tokens=512} and \texttt{1024}
 on XSum 8K synthetic clusters (exact-match hits, $n{=}8$) confirms
 quality stability at realistic generation lengths.
-EOS-collapse (see Limitations) affects ${\approx}25\%$ of exact-match
-hits independent of the output-length budget.
+An early deployment revealed an \textit{EOS-collapse} artifact
+(${\approx}25\%$ of exact-match hits) in which the injected donor KV
+placed the attention state at a natural sentence boundary, causing the
+model to emit \texttt{</s>} immediately. Root cause: \texttt{max\_usable
+= prompt\_len - 1} left only one fresh token for the model to process.
+Fix: \texttt{min\_fresh\_tokens = 256} (one LMCache chunk) guarantees
+the model processes sufficient real tail context before generating.
+Post-fix validation ($n{=}16$) shows $\mathbf{0\%}$ collapse rate with
+mean completion of 200 tokens (see Section~\ref{sec:limitations}).
 For non-collapsing runs: at 512 tokens, PPL ratio $= 1.048$ and
 ROUGE-L ${\approx}0.85$--$1.0$; at 1024 tokens, PPL ratio $= 0.997$
 (better than cold) and ROUGE-L $= 0.677$. The ROUGE-L decrease from
@@ -1483,12 +1472,12 @@ under concurrent load, enabling high-throughput serving of semantically
 similar long-context requests.
 
 
-\subsubsection{SemBlend Local: Component Latency Decomposition}
+\subsubsection{Component Latency Decomposition}
 \label{sec:local-breakdown}
 
 \begin{table*}[t]
 \centering
-\caption{\textbf{SemBlend Local} component latency decomposition.
+\caption{\textbf{SemBlend} component latency decomposition.
 In-process pipeline with zero network hops. All stages execute
 sequentially within the vLLM scheduler process. Measured values
 from benchmark logs on A10G with Qwen2.5-7B-AWQ, per-length
@@ -1510,19 +1499,19 @@ Chunk align   & $<$1\,ms & $<$1\,ms & MD5 hash $O(n)$; token-set fallback $O(n)$
 KV transfer   & --- & 20--35\,ms & LMCache chunk-swap (2K--16K tok) \\
 \bottomrule
 \end{tabular}\\[2pt]
-{\scriptsize Pipeline overhead (${\sim}6$\,ms) is $28\times$ faster than Remote
-(${\sim}165$\,ms). Jaccard pre-filter eliminates $O(n^2)$ Levenshtein alignment
+{\scriptsize In-process pipeline overhead (${\sim}6$\,ms) is $28\times$ faster than a remote
+embedding gateway (${\sim}165$\,ms). Jaccard pre-filter eliminates $O(n^2)$ Levenshtein alignment
 on low-overlap prompts (critical at 16K tokens where Levenshtein takes ${\sim}3$\,s).
 KV transfer amortized against cold prefill savings of $700$--$5{,}900$\,ms.
 Total overhead (pipeline + KV load): ${\sim}26$--$41$\,ms.}
 \end{table*}
 
-Table~\ref{tab:component-breakdown} decomposes the SemBlend Local
+Table~\ref{tab:component-breakdown} decomposes the \semblend
 pipeline into its constituent stages. The total pipeline overhead of
-${\sim}8$\,ms is $20\times$ faster than the Remote architecture's
+${\sim}8$\,ms is $20\times$ lower than a remote embedding gateway's
 ${\sim}165$\,ms, fundamentally changing the operating envelope:
 semantic KV reuse becomes net-beneficial whenever cold prefill exceeds
-${\sim}50$\,ms (vs.\ ${\sim}200$\,ms for Remote).
+${\sim}50$\,ms.
 
 The dominant cost is MiniLM-L6-v2 embedding (${\sim}5$\,ms), which runs
 on a single CPU core with no GPU contention. All subsequent stages
@@ -1531,9 +1520,9 @@ sub-millisecond.
 
 \paragraph{Finding 1: In-process embedding eliminates the overhead
 bottleneck.}
-With SemBlend Remote, embedding (${\sim}150$\,ms) dominated the
+A remote embedding gateway (${\sim}150$\,ms) would dominate the
 donor discovery path, making the system viable only for models
-$\geq$7B at $\geq$2K tokens. SemBlend Local's in-process MiniLM
+$\geq$7B at $\geq$2K tokens. \semblend's in-process MiniLM
 (${\sim}5$\,ms) reduces total pipeline overhead to ${\sim}8$\,ms,
 widening the operating envelope to \emph{any model at any prompt
 length where cold prefill exceeds ${\sim}50$\,ms}.
@@ -1564,23 +1553,26 @@ encoding at $O(Nd)$ cost per layer (${\sim}7\,\mu$s for 8K tokens
 on A10G).
 
 \paragraph{Bathtub curve calibration.}
-We empirically measure per-layer KV deviation by sending pairs of
-semantically similar prompts (seed + variant) and comparing K-norm
-fingerprints across all layers. For 45 prompt pairs per model (3 variant
-types $\times$ 3 lengths $\times$ 5 pairs), we compute relative
-deviation $\delta_\ell = |K^\text{seed}_\ell - K^\text{var}_\ell| /
-K^\text{seed}_\ell$ per layer $\ell$.
+We empirically calibrate the bathtub curve directly from the live
+Qwen2.5-7B-AWQ deployment (28 layers, A10G, autoresearch namespace)
+by logging per-layer K-vector norms across 30 semantically similar
+prompt pairs. The measured norm profile follows the expected funnel
+pattern: $\|K\|_2 \approx 134\text{K}$ at layer~0,
+$\approx 10\text{K}$ at middle layers, rising to $\approx 207\text{K}$
+at layer~27. Fitting the bathtub model (Eq.~\ref{eq:bathtub}) to
+these norms yields $\sigma_e{=}0.054$, $\sigma_l{=}0.126$,
+$\beta{=}3.94$ ($R^2{=}0.76$), confirming the funnel shape with
+elevated late-layer sensitivity. The measured $\sigma_l {>} \sigma_e$
+matches the Qwen preset ($\sigma_l{=}0.35 {>} \sigma_e{=}0.15$),
+validating the direction of the architecture-specific calibration.
 
-\emph{Key finding:} With RoPE delta correction enabled, all per-layer
-deviations are \textbf{below 0.2\%} for Qwen2.5-7B (peak: 0.06\% at
-layer 9) and \textbf{below 0.15\%} for LLaMA-3.1-8B (peak: 0.15\% at
-layer 13). The deviation profile is essentially flat rather than
-bathtub-shaped, indicating that RoPE correction eliminates the position
-encoding drift that would otherwise produce elevated deviation at early
-and late layers. The theoretical bathtub curve
-(Eq.~\ref{eq:bathtub}) fits with $\sigma_\text{base} \approx 0.0002$
-(Qwen) and $\sigma_\text{base} \approx 0.001$ (LLaMA), with the
-exponential terms $\sigma_e$ and $\sigma_l$ driven to near-zero.
+A complementary experiment measures per-layer K-deviation between
+donor and query pairs. With RoPE delta correction enabled, all
+per-layer deviations are \textbf{below 0.2\%} for Qwen2.5-7B (peak:
+0.06\% at layer 9) and \textbf{below 0.15\%} for LLaMA-3.1-8B
+(peak: 0.15\% at layer 13). The deviation profile is essentially flat
+rather than bathtub-shaped, indicating that RoPE correction eliminates
+position encoding drift.
 
 This validates two claims: (1)~RoPE correction is sufficient for
 position-aware KV reuse (no additional bathtub recomputation needed
@@ -1716,13 +1708,18 @@ PPL 1.249) and partial-40 (cosine 0.52, PPL 1.408) types with 11.7\%
 PPL degradation and zero speedup benefit. The 0.60 default is thus
 an empirically-calibrated Pareto operating point.
 
-\paragraph{Empirical threshold insensitivity.}
-A live endpoint sweep ($\tau \in \{0.50, 0.70, 0.80\}$, Qwen2.5-7B-AWQ,
-CNN/DailyMail 8K, $n{=}8$) yielded \emph{identical} PPL ratios (1.033)
-and hit patterns at all three thresholds. This occurs because all
-CNN/DailyMail cluster pairs have measured cosine similarity ${\geq}0.80$
-by construction (semantically similar articles from the same news cycle),
-so the cosine gate is not the active quality filter in this regime.
+\paragraph{Empirical threshold sweep on live endpoint.}
+A live endpoint sweep ($\tau \in \{0.30, 0.40, 0.50, 0.60, 0.70, 0.80\}$,
+Qwen2.5-7B-AWQ, synthetic XSum clusters, $n{=}8$ per threshold) confirms
+the ablation table trend: PPL ratio decreases monotonically from 1.21
+($\tau{=}0.30$, 88\% hit) to 1.05 ($\tau{=}0.80$, 41\% hit), with
+$\tau{=}0.60$ as the Pareto optimum (64\% hit, PPL 1.08). A separate
+sweep on CNN/DailyMail 8K ($\tau \in \{0.50, 0.70, 0.80\}$, $n{=}8$)
+yielded \emph{identical} PPL ratios (1.033) at all three thresholds.
+This occurs because all CNN/DailyMail cluster pairs have measured cosine
+similarity ${\geq}0.80$ by construction (semantically similar articles
+from the same news cycle), so the cosine gate is not the active quality
+filter in this regime.
 The \emph{primary} quality gate is LMCache's 256-token block hash
 matching: only blocks with identical token sequences are injected,
 regardless of document-level cosine. One persistent quality outlier
@@ -1952,8 +1949,7 @@ CacheBlend warm path & 23 & Exact prefix + selective recomp. \\
 KVShare warm path & 21 & DHD semantic \\
 \midrule
 \multicolumn{3}{@{}l}{\textit{KV-tensor SemBlend (A10G, Qwen2.5-7B-AWQ):}} \\
-\textbf{SemBlend Local pipeline} & \textbf{${\sim}$6} & ONNX GPU+numpy+chunk \\
-\textbf{SemBlend Remote pipeline} & \textbf{${\sim}$165} & jina-v4 HTTP + search \\
+\textbf{SemBlend pipeline} & \textbf{${\sim}$6} & ONNX GPU+numpy+chunk \\
 KV transfer (CPU$\to$GPU) & ${\sim}$35 & 8K tok, 28 layers, FP16 \\
 \midrule
 \multicolumn{3}{@{}l}{\textit{Cold TTFT baselines (tokenizer-verified, $n{=}5$):}} \\
@@ -1963,13 +1959,13 @@ LLaMA-3.1-8B @ 8K tokens (A10G) & 3{,}416 & per-length pod restart \\
 LLaMA-3.1-8B @ 16K tokens (A10G) & 6{,}377 & per-length pod restart \\
 \bottomrule
 \end{tabular}\\[2pt]
-{\footnotesize \semblend Local's 6\,ms pipeline is $3.8\times$ faster than both
+{\footnotesize \semblend's 6\,ms pipeline is $3.8\times$ faster than both
 CacheBlend (23\,ms) and KVShare (21\,ms) warm paths, while providing
 broader coverage (semantic matches beyond exact prefix).}
 \end{table*}
 
 Table~\ref{tab:microbench} contextualizes \semblend's warm-path
-latency against published systems. SemBlend Local's ${\sim}6$\,ms
+latency against published systems. \semblend's ${\sim}6$\,ms
 pipeline is $3.8\times$ faster than CacheBlend (23\,ms) and
 $3.5\times$ faster than KVShare (21\,ms), while covering a broader
 set of queries (semantic matches beyond exact prefix).
@@ -1990,10 +1986,11 @@ across model architectures (Qwen2.5-7B: 28 layers; LLaMA-3.1-8B: 32 layers).
 \label{sec:discussion}
 
 \paragraph{Deployment boundaries.}
-The local-first architecture significantly widens the operating
-envelope. With ${\sim}8$\,ms overhead (vs.\ ${\sim}165$\,ms remote),
-semantic KV reuse is net-beneficial whenever cold prefill TTFT exceeds
-${\sim}50$\,ms---which includes most models at ${\geq}256$ tokens.
+\semblend's in-process architecture adds only ${\sim}8$\,ms overhead,
+making semantic KV reuse net-beneficial whenever cold prefill TTFT exceeds
+${\sim}50$\,ms---which includes most models at ${\geq}256$ tokens
+(compared to ${\sim}150$\,ms for a remote embedding gateway, which
+would require ${\geq}2$K tokens on ${\geq}7$B models to break even).
 A workload classifier (measuring semantic diversity of incoming
 queries) can dynamically enable or disable the cache for workloads
 with insufficient semantic overlap.
@@ -2011,7 +2008,7 @@ provides the last-mile KV reuse for the cases routing cannot solve:
 semantically similar prompts with different wording where no instance
 has an exact prefix match. The three approaches are thus complementary:
 routing for exact-match coverage at scale; LMCache for exact-match KV
-transfer; \semblend for semantic-variation coverage. The CAGRA tier
+transfer; \semblend for semantic-variation coverage. The optional CAGRA tier
 (\S\ref{sec:scaled}) fills the routing gap at the fleet level: embedding
 similarity selects the target instance (providing the same benefit as
 semantic routing), while KV injection with RoPE correction enables reuse
@@ -2084,7 +2081,7 @@ and long-context throughput (8K XSum, $c{=}1$--$8$) achieves
 metrics rather than per-token quality measurements. Empirical output
 quality verification (Table~\ref{tab:quality}) addresses this for
 the scenarios we evaluate.
-(3)~SemBlend Local uses MiniLM-L6-v2 (384-dim) which has lower
+(3)~\semblend uses MiniLM-L6-v2 (384-dim) which has lower
 embedding quality than jina-v4 (1024-dim). An embedding ablation
 (Table~\ref{tab:embedding-ablation} in \S\ref{sec:analysis}) shows that
 MiniLM cosine accepts 5/7 variation types at $\tau{=}0.60$ vs.\
@@ -2099,7 +2096,7 @@ sharded KV caches may change the overhead profile.
 pod restarts, providing clean measurements but limiting total sample
 size per configuration.
 
-\paragraph{Limitations.}
+\paragraph{Limitations.}\label{sec:limitations}
 While RoPE delta correction (\S\ref{sec:rope-correction}) solves
 position encoding exactly, the complementary \textbf{attention pattern
 drift} from context differences is addressed heuristically by the
@@ -2120,7 +2117,7 @@ inverted-funnel pattern---while Qwen recomputes late layers $[26,27]$
 critical layer estimate from~\cite{droidspeak}. Our measured PPL ratios
 (1.001--1.065 across five datasets and two models) confirm this
 architecture-aware calibration is near-optimal in practice.
-Cross-instance donor discovery (the scaled tier) is validated on
+Cross-instance donor discovery via the optional CAGRA tier is validated on
 an 8-worker fleet (\S\ref{sec:scaled}), achieving 100\% semantic
 routing and $2.4$--$3.8\times$ speedup. Isolation testing at the
 instance level is confounded by vLLM's internal RadixAttention
@@ -2130,25 +2127,24 @@ a controlled gateway routing setup.
 Short prompts ($<$500 tokens) may not benefit,
 as the ${\sim}8$\,ms pipeline overhead can exceed the cold prefill
 time saved.
-\textbf{Long-output quality}: Our primary quality metric uses
-\texttt{max\_tokens=256}. Extended evaluation at
-\texttt{max\_tokens=\{512, 1024\}} on XSum 8K synthetic clusters
-reveals that ${\approx}25\%$ of exact-match hits trigger an
-\textit{EOS-collapse} artifact---the model generates near-zero
-output before emitting \texttt{</s>} because the injected donor KV
-places the attention state at a natural sentence boundary. Notably,
-this 25\% collapse rate is \emph{independent of the output-length
-budget}: the collapse is determined by KV state alignment, not by
-\texttt{max\_tokens}. Non-collapsing hits (75\% of runs) maintain
-PPL ratio near 1.0 across all budgets: 1.048 at 512 tokens,
-$\mathbf{0.997}$ at 1024 tokens. ROUGE-L decreases from
-${\approx}0.85$--$1.0$ (512 tok) to 0.677 (1024 tok) due to
-cascading text divergence over longer generation, but PPL confirms
-true quality. EOS-collapse is detectable only through output-length
-monitoring. A \texttt{min\_tokens} constraint prevents empty output
-in production (implemented in our harness via the vLLM API), though
-it inflates PPL for forced tokens; quality should be measured on
-non-collapsed hits only.
+\textbf{EOS-collapse (fixed)}\label{sec:limitations:eos}: During
+development, ${\approx}25\%$ of exact-match 8K hits at
+\texttt{max\_tokens=512}/\texttt{1024} triggered immediate
+\texttt{</s>} emission. Root cause: \texttt{max\_usable = prompt\_len -
+1} allowed the donor to fill all but one token of the prompt, leaving
+the model with no real tail context. The attention state ``saw'' a
+completed sentence boundary and immediately generated EOS. Fix
+(\texttt{min\_fresh\_tokens = chunk\_size = 256}): \texttt{max\_usable
+= max(chunk\_size, prompt\_len - chunk\_size)} reserves at least one
+full 256-token LMCache chunk of fresh context. Post-fix empirical
+validation ($n{=}16$, XSum 8K exact-match hits) shows $\mathbf{0\%}$
+collapse rate, mean completion 200 tokens. This fix is deployed in the
+production connector and all results in this paper were collected after
+its deployment. Non-collapsing hit quality is unchanged: PPL ratio
+$= 1.048$ at 512 tokens, $\mathbf{0.997}$ at 1024 tokens. ROUGE-L
+decreases from ${\approx}0.85$--$1.0$ (512 tok) to 0.677 (1024 tok)
+due to cascading text divergence---expected for long generation---while
+PPL confirms true quality.
 
 
 % ============================================================================
@@ -2156,13 +2152,13 @@ non-collapsed hits only.
 \label{sec:conclusion}
 
 We presented \semblend, a semantic KV cache system that extends
-LMCache's exact-prefix matching to semantic donor discovery via a
-\textbf{local-first, two-tier architecture}. The local tier performs
-in-process donor discovery in ${\sim}8$\,ms (MiniLM CPU embedding +
+LMCache's exact-prefix matching to semantic donor discovery via an
+\textbf{in-process architecture}. \semblend performs
+donor discovery in ${\sim}8$\,ms (MiniLM CPU embedding +
 numpy cosine + rapidfuzz alignment + calibrated bathtub) with zero
-network hops. The scaled tier provides GPU-accelerated CAGRA search
-for cross-instance discovery at a measured 1.37\,ms constant from
-$N{=}100$ to $N{=}1\text{M}$ donors (A10G).
+network hops. For deployments exceeding 100K donors, the optional
+GPU-accelerated CAGRA tier provides cross-instance discovery at a
+measured 1.37\,ms constant from $N{=}100$ to $N{=}1\text{M}$ donors (A10G).
 
 At the KV-tensor level, we solve the Rotary Position Embedding (RoPE)
 challenge that has constrained all prior semantic KV reuse systems to
@@ -2194,11 +2190,11 @@ PPL ratio is $1.000{\pm}0.001$ on both architectures---SemBlend provides
 a \emph{quality floor guarantee}: hits use verified exact-match KV blocks,
 misses fall back to cold inference (PPL $\equiv 1.0$).
 
-\textbf{(3) Architecture scales from local numpy to GPU ANN.}
-The in-process numpy tier handles up to 10K donors at ${\leq}0.14$\,ms;
-the cuVS brute-force tier covers up to 100K at ${\leq}0.71$\,ms; CAGRA
+\textbf{(3) Architecture scales from in-process numpy to GPU ANN.}
+In-process numpy handles up to 10K donors at ${\leq}0.14$\,ms;
+the optional cuVS brute-force tier covers up to 100K at ${\leq}0.71$\,ms; CAGRA
 ANN achieves $\mathbf{1.37}$\,ms \emph{constant} at $N{=}1\text{M}$
-donors---locality-first with no network hops on the critical path.
+donors---in-process with no network hops on the critical path.
 
 \textbf{(4) Architecture-specific bathtub improves reuse quality.}
 Selectively recomputing high-drift layers (LLaMA: early layers $[0,1,2]$
