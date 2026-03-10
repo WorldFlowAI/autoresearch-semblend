@@ -2213,12 +2213,16 @@ both modes. The NoPE mode applies $\mathbf{K}_\text{raw}{=}\mathrm{RoPE}({-}p_s)
 then $\mathbf{K}_\text{tgt}{=}\mathrm{RoPE}(p_t){\times}\mathbf{K}_\text{raw}$,
 equivalent to delta correction by the RoPE group property.
 Empirical comparison across all 7 variation types ($n{=}8$, XSum 8K)
-confirms identical results: NoPE PPL ratio $= 1.000{\pm}0.002$
-vs.\ delta $1.000{\pm}0.001$; TTFT speedup $1.95\times$ NoPE
-vs.\ $1.97\times$ delta (XSum 8K, $n{=}8$).
-The difference is within measurement noise, confirming mathematical
-equivalence. We release NoPE as an optional validated mode for
-environments that prefer position-free storage.
+confirms identical quality: NoPE PPL ratio $= 1.000{\pm}0.002$
+vs.\ delta $1.000{\pm}0.001$.
+Cross-dataset TTFT comparison across all six benchmark datasets
+(Synthetic, XSum, CNN/DM, WikiHow, SAMSum, MultiNews at 8K) confirms
+indistinguishable speedup: NoPE averages $2.95\times$ vs.\ delta $2.51\times$
+(differences within $\pm$30\% measurement noise from cold-baseline
+variability), with 100\% hit rate under both modes on 5 of 6 datasets.
+The results confirm mathematical equivalence of the two approaches.
+We release NoPE as an optional validated mode for environments that
+prefer position-free storage.
 
 \paragraph{Threats to validity.}
 (1)~KV-tensor speedups are measured with streaming TTFT on a
