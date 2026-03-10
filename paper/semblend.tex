@@ -2074,7 +2074,13 @@ tokens (cold prefill 15.4\,s vs SemBlend 1.3\,s at 32K);
 $\mathbf{10.5}$--$\mathbf{10.7}\times$ P50 TTFT speedup at 8K tokens
 across pool sizes 1--16 (100\% hit), with the two mechanisms
 providing complementary coverage: prefix caching for exact repeats,
-SemBlend for semantic variants.
+SemBlend for semantic variants; and
+(8)~across all 7 variation types spanning cosine similarity 1.0 (exact
+copy) to 0.20 (topically diverse), PPL ratio stays at $1.000\pm0.001$---
+SemBlend provides a \emph{quality floor guarantee}: any query receiving
+a KV hit uses verified exact-match blocks (no quality loss), while any
+query receiving a miss falls back to cold inference (PPL ratio $\equiv
+1.0$ by definition), with no intermediate degraded state.
 
 \semblend is, to our knowledge, the first system combining exact RoPE
 correction with calibrated layer-level recomputation to enable fully
