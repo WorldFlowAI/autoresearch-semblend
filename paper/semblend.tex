@@ -97,8 +97,10 @@ exact position correction}. Our key contributions are:
   matching (${\sim}1$\,ms for ${\leq}10\text{K}$ donors), and
   two-tier token alignment via MD5 chunk hashing + token-set hash-map
   (both $O(n)$, $<$1\,ms at 16K tokens)
-  with \textbf{zero network hops}, plus an optional CAGRA~\cite{cagra}
-  $O(\log N)$ tier for cross-instance scale at $100\text{K}{+}$ donors.
+  with \textbf{zero network hops}, plus a cuVS GPU-accelerated tier:
+  brute-force (${\leq}0.71$\,ms at 100K donors) and CAGRA~\cite{cagra}
+  ANN ($\mathbf{1.37}$\,ms \emph{constant} at 1M donors, empirically
+  measured; build time 7.3\,s one-time).
 
 \item \textbf{Production vLLM Integration}: paged KV cache scatter with
   block table translation, FlashAttention compatibility, and LMCache
@@ -119,8 +121,12 @@ semantic variations across five datasets; on datasets with ${\geq}88\%$
 hit rate (WikiHow, XSum, synthetic), PPL ratio stays ${\leq}1.065$ on
 both models, confirming zero quality degradation when KV reuse succeeds.
 Elevated PPL on lower-hit datasets (SAMSum, CNN/DM) is driven by
-miss-run outliers (cold inference), not KV injection quality. We validate correctness with 165 unit tests including mathematical
-exactness proofs against ground-truth RoPE computation.
+miss-run outliers (cold inference), not KV injection quality.
+The expected TTFT follows a validated linear model
+$\mathbb{E}[\text{TTFT}] = P_h \cdot \text{TTFT}_\text{hit} + (1{-}P_h) \cdot \text{TTFT}_\text{cold}$
+(${<}5\%$ error at all measured hit fractions), so any nonzero hit
+rate improves mean latency. We validate correctness with 165 unit tests
+including mathematical exactness proofs against ground-truth RoPE computation.
 \end{abstract}
 
 \noindent\textbf{Keywords:} KV cache, semantic caching, LLM inference,
@@ -186,9 +192,10 @@ We make five contributions:
   alignment---making semantic KV search viable for any model size.
 
 \item \textbf{Two-tier scaled architecture} (\S\ref{sec:scaled}):
-  in-process numpy for ${\leq}10\text{K}$ donors, GPU-accelerated
-  CAGRA~\cite{cagra} via an optional gateway for $100\text{K}{+}$
-  cross-instance donor discovery.
+  in-process numpy (${\leq}0.14$\,ms at $N{\leq}10\text{K}$),
+  cuVS brute-force GPU (${\leq}0.71$\,ms at $N{\leq}100\text{K}$),
+  and CAGRA ANN ($\mathbf{1.37}$\,ms \emph{constant} at $N{=}1$\,M;
+  empirically measured) for cross-instance donor discovery at scale.
 
 \item \textbf{Architecture-specific calibrated quality model}
   (\S\ref{sec:recomp}): a bathtub-curve layer sensitivity function
