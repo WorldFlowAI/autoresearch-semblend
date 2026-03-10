@@ -143,7 +143,7 @@ Bootstrap CIs on all P50 values for statistical rigor.
 #### I-15. FM1 RoPE Correction Ablation ✅ DONE
 **Status**: COMPLETE. `SEMBLEND_USE_ALIGNMENT=0` deployed via `kubectl set env` (commit 230c250). Runtime ablation confirms Δ=0 for all chunk-boundary matched blocks in current deployment.
 **Results** (n=8, XSum 8K, SEMBLEND_USE_ALIGNMENT=0): PPL ratio=1.000±0.006 across all 7 variation types — identical to alignment=1 baseline. partial_40 hit rate 100%, PPL=0.995. REORDER 0% hit rate (XSum clusters start at different tokens → no shared chunk-boundary blocks in test set).
-**Paper**: Discussion §RoPE scope paragraph updated with runtime ablation. Two regimes documented: (i) chunk-boundary reuse Δ=0 → no-op (confirmed empirically), (ii) sub-chunk injection Δ≠0 → correction essential (validated by 165 unit tests).
+**Paper**: Discussion §RoPE scope paragraph updated with runtime ablation. Two regimes documented: (i) chunk-boundary reuse Δ=0 → no-op (confirmed empirically by runtime ablation), (ii) sub-chunk injection Δ≠0 → correction essential (mathematical correctness validated by 165 unit tests; E2E empirical validation with live Δ≠0 injection is future work — requires sub-chunk or sentence-level injection mode not yet deployed).
 
 #### I-16. FM2 Semantic Staleness Test ✅ DONE
 **Status**: COMPLETE. entity_swap_fm2_qwen8k: PPL=1.000 at 1, 2, 3 entity swaps (n=8).
