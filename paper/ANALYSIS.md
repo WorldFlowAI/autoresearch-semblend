@@ -135,6 +135,27 @@ Test at temperature > 0 to understand quality variance in production settings.
 #### I-13. Confidence Intervals on KV-Tensor Results
 Bootstrap CIs on all P50 values for statistical rigor.
 
+#### I-14. CAGRA at Scale — Empirical Latency Benchmark (NEW — In Progress)
+**Status**: Implementation complete (CAGRADonorStore + cagra_search_benchmark.py). Docker image with cuVS 26.2.0 built and being deployed.
+**Experiment**: numpy cosine scan vs cuVS brute_force vs CAGRA ANN at N=100/1K/10K/100K/1M donors. Run inside GPU pod.
+**Expected result**: CAGRA <1ms at any N, numpy grows linearly (100ms at N=100K). Crossover ≈10K donors.
+**Paper impact**: "Production Scalability" subsection with empirical latency table demonstrating CAGRA makes SemBlend viable at fleet scale.
+
+#### I-15. FM1 RoPE Correction Ablation (NEW — Pending CAGRA deploy)
+**Status**: Existing `rope_ablation_bench.py` and `rope_position_shift_bench.py` exist. `rope_corrected.json` has 0% hit rate (design flaw — filler-based approach didn't produce LMCache chunk matches).
+**Correct experiment**: Run `variation_sensitivity.py` with REORDER type, once with `SEMBLEND_USE_ALIGNMENT=true` (current: PPL=1.000), once with `SEMBLEND_USE_ALIGNMENT=false`. If REORDER PPL degrades without alignment → empirical FM1 proof.
+**Paper impact**: Direct empirical evidence that RoPE delta correction preserves quality under non-contiguous KV reuse.
+
+#### I-16. FM2 Semantic Staleness Test (NEW — Pending)
+**Status**: `entity_swap_bench.py` implemented. Tests prompts with structural similarity but different named entities.
+**Expected result**: High hit rate (cos sim ≥ 0.60 due to same structure) but PPL ≈ 1.0 even on entity-swapped hits (because LMCache chunk hashing catches the exact content change and falls back to cold).
+**Paper impact**: Shows SemBlend's LMCache chunk-level exact matching provides implicit FM2 protection.
+
+#### I-17. Operating Envelope — Break-Even Hit Rate (NEW — Pending)
+**Status**: `operating_envelope_bench.py` implemented.
+**Expected result**: Analytical prediction is break-even ≈ 0.5% hit rate (overhead 8ms / speedup 1600ms). Empirical validation should confirm SemBlend is beneficial at any non-trivial hit rate.
+**Paper claim**: "SemBlend provides positive TTFT improvement whenever hit rate exceeds ≈1%, making it universally deployable."
+
 ---
 
 ## Part III: Paper Structure Improvements
