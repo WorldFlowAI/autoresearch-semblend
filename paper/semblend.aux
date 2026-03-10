@@ -196,30 +196,31 @@
 \newlabel{tab:embedding-ablation}{{12}{19}{\textbf {Embedding vs.\ Jaccard ablation.} Mean Jaccard (word-set) vs.\ MiniLM cosine similarity for each variation type. Accepted = above $\tau {=}0.60$ threshold. CNN/DailyMail, $n{=}200$ clusters}{table.caption.70}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.4}RoPE Correction: Position-Shift Validation}{19}{subsubsection.4.4.4}\protected@file@percent }
 \newlabel{sec:analysis:rope}{{4.4.4}{19}{RoPE Correction: Position-Shift Validation}{subsubsection.4.4.4}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.5}When Competitors Are Better}{19}{subsubsection.4.4.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Indirect validation via REORDER variation sensitivity.}{19}{section*.72}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces \textbf  {RoPE correction position-shift experiment.} Donor registered at $N$ tokens; variation query is [FILLER$_{256}$][same content] forcing content chunks to positions shifted by $+256$ tokens. LLaMA-3.1-8B-AWQ, 4K token content, $n{=}8$. PPL Ratio = PPL(SemBlend) / PPL(cold). Hit = SemBlend TTFT $<$ 50\% of cold TTFT.}}{19}{table.caption.71}\protected@file@percent }
 \newlabel{tab:rope-validation}{{13}{19}{\textbf {RoPE correction position-shift experiment.} Donor registered at $N$ tokens; variation query is [FILLER$_{256}$][same content] forcing content chunks to positions shifted by $+256$ tokens. LLaMA-3.1-8B-AWQ, 4K token content, $n{=}8$. PPL Ratio = PPL(SemBlend) / PPL(cold). Hit = SemBlend TTFT $<$ 50\% of cold TTFT}{table.caption.71}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.5}When Competitors Are Better}{19}{subsubsection.4.4.5}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.6}Real-World Conversational Workload Validation}{19}{subsubsection.4.4.6}\protected@file@percent }
 \newlabel{sec:analysis:wildchat}{{4.4.6}{19}{Real-World Conversational Workload Validation}{subsubsection.4.4.6}{}}
 \citation{dynamo}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Inference-Engine Comparison}{20}{subsection.4.5}\protected@file@percent }
 \newlabel{sec:inference-comparison}{{4.5}{20}{Inference-Engine Comparison}{subsection.4.5}{}}
-\@writefile{toc}{\contentsline {paragraph}{Speedup scaling.}{20}{section*.73}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Speedup scaling.}{20}{section*.74}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {5}Discussion}{20}{section.5}\protected@file@percent }
 \newlabel{sec:discussion}{{5}{20}{Discussion}{section.5}{}}
-\@writefile{toc}{\contentsline {paragraph}{Deployment boundaries.}{20}{section*.74}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Relationship to exact-match systems.}{20}{section*.75}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{PartialAttention integration.}{20}{section*.76}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {14}{\ignorespaces Inference-engine warm-path latency. KV-tensor SemBlend on A10G with Qwen2.5-7B-AWQ.}}{21}{table.caption.72}\protected@file@percent }
-\newlabel{tab:microbench}{{14}{21}{Inference-engine warm-path latency. KV-tensor SemBlend on A10G with Qwen2.5-7B-AWQ}{table.caption.72}{}}
-\@writefile{toc}{\contentsline {paragraph}{Ablation: component contributions.}{21}{section*.77}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Threats to validity.}{21}{section*.78}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Deployment boundaries.}{20}{section*.75}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Relationship to exact-match systems.}{20}{section*.76}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {14}{\ignorespaces Inference-engine warm-path latency. KV-tensor SemBlend on A10G with Qwen2.5-7B-AWQ.}}{21}{table.caption.73}\protected@file@percent }
+\newlabel{tab:microbench}{{14}{21}{Inference-engine warm-path latency. KV-tensor SemBlend on A10G with Qwen2.5-7B-AWQ}{table.caption.73}{}}
+\@writefile{toc}{\contentsline {paragraph}{PartialAttention integration.}{21}{section*.77}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Ablation: component contributions.}{21}{section*.78}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Threats to validity.}{21}{section*.79}\protected@file@percent }
 \citation{kvphysics}
 \citation{droidspeak}
-\@writefile{toc}{\contentsline {paragraph}{Limitations.}{22}{section*.79}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Limitations.}{22}{section*.80}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{22}{section.6}\protected@file@percent }
 \newlabel{sec:conclusion}{{6}{22}{Conclusion}{section.6}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {15}{\ignorespaces Triton kernel configurations for PartialAttention.}}{24}{table.caption.80}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {15}{\ignorespaces Triton kernel configurations for PartialAttention.}}{24}{table.caption.81}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {A}PartialAttention Kernel Specifications}{24}{appendix.A}\protected@file@percent }
 \newlabel{app:kernels}{{A}{24}{PartialAttention Kernel Specifications}{appendix.A}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {B}Reproduction}{24}{appendix.B}\protected@file@percent }
