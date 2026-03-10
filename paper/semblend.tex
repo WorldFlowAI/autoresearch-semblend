@@ -401,7 +401,7 @@ the operating envelope where semantic KV reuse is beneficial.
   in-process donor discovery via CPU embedding, numpy cosine search,
   and compiled alignment (${\sim}8$\,ms, zero network hops).
   \textbf{Tier~2 (Scaled)}: optional GPU-accelerated CAGRA search
-  via gateway for cross-instance discovery at $100\text{K}{+}$ donors.
+  via gateway for cross-instance discovery at 1.37\,ms constant to $N{=}1\text{M}$ donors.
   Both tiers inject donor KV via LMCache chunk-swap.}
 \label{fig:arch}
 \end{figure}
@@ -491,7 +491,7 @@ For deployments with $>$10K unique prompt patterns or multiple vLLM
 instances, the local numpy store becomes insufficient. \semblend's
 second tier uses CAGRA~\cite{cagra} GPU-accelerated approximate
 nearest neighbor search via the Synapse gateway, providing
-$O(\log N)$ search across $100\text{K}{+}$ donors.
+$O(\log N)$ search up to $N{=}1\text{M}$ donors (1.37\,ms constant, A10G).
 
 \paragraph{Architecture.}
 Each vLLM instance publishes donor metadata (embedding, token count,
@@ -796,7 +796,7 @@ KV tensors are duplicated.
 \textbf{Tier} & \textbf{Location} & \textbf{Search} & \textbf{Cap.} & \textbf{Scope} \\
 \midrule
 1 (Local)  & In-process & Numpy cosine & ${\leq}$10K & Single instance \\
-2 (Scaled) & Gateway GPU & CAGRA & ${>}$100K & Cross-instance \\
+2 (Scaled) & Gateway GPU & CAGRA & up to 1M & Cross-instance \\
 \bottomrule
 \end{tabular}}
 \end{table}
