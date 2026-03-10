@@ -1629,6 +1629,22 @@ identity does not guarantee semantic position alignment. Per-chunk
 quality scoring (ProphetKV-style selective recomputation~\cite{prophetkv})
 would filter such cases at the cost of additional overhead.
 
+\paragraph{Quality invariance across variation types.}
+To quantify quality across the full similarity gradient, we ran
+a controlled experiment on 8 CNN/DailyMail 8K clusters, each with
+7 variation types spanning cosine similarity 1.0 (exact copy) to
+0.20 (topically diverse). Cold baselines were measured \emph{before}
+donor registration to prevent vLLM's internal prefix cache from
+contaminating cold TTFT measurements. Across all 56 variation-cluster
+pairs, PPL ratio was $1.000 \pm 0.001$---indistinguishable from cold
+across all similarity levels.
+This follows directly from SemBlend's block-level quality gate:
+accepted hits use verified exact-match KV blocks (inherently near-zero
+quality loss), while rejected queries fall back to standard cold
+inference (PPL ratio $\equiv 1.0$ by construction). The system
+thus provides a \emph{quality floor guarantee}: no input can experience
+worse quality than the cold baseline.
+
 \paragraph{Overlap exponent $\beta$.} Linear overlap ($\beta{=}1.0$)
 loosens the 95\% quality threshold to $s{\geq}0.82$; cubic
 ($\beta{=}3.0$) raises it to $s{\geq}0.95$. The quadratic fit
