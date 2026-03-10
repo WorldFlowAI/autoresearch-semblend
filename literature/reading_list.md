@@ -20,12 +20,12 @@
 These papers were cited in a research primer analyzing failure modes of CacheBlend-style correction. Notes in `primer_kvreuse_notes.md`.
 
 - [ ] **KVComm** (2024) — KV cache transfer with positional-aware block selection; how RoPE correction is done in other systems
-- [ ] **ProphetKV** (2024) — "Prophet: Speculative KV Cache Reuse via Query Prediction"; query-attention-weighted recomputation selection (FM2 fix)
+- [x] **ProphetKV** (2602.02579) — query-attention-weighted recomputation selection (FM2 fix); notes in `prophetkv_notes.md`
 - [ ] **MEPIC** (2025) — Memory-Efficient Prefix-Informed Computation; prefix reuse with quality bounds
 - [ ] **KVLink** (2024) — Cross-request KV cache linking with semantic similarity; direct competitor
 - [ ] **EPIC** (2025) — Efficient Prefix-Informed Computation; selective prefix computation with semantic overlap
 - [ ] **DroidSpeak** (2025) — Only 11% of layers are critical; per-model layer criticality profiling (FM3 fix)
-- [ ] **kv-cache-physics** (2025) — LLaMA=inverted funnel (early layers critical), Qwen=funnel (late layers critical); architecture-specific KV importance profiles
+- [x] **kv-cache-physics** (2603.01426) — LLaMA=inverted funnel (early layers critical), Qwen=funnel (late layers critical); safety cliff at α≈0.90; notes in `kv_cache_physics_notes.md`
 
 ## Priority 3: Theoretical Foundations
 - [ ] **RoFormer** — Enhanced Transformer with Rotary Position Embedding (Su et al., 2024)

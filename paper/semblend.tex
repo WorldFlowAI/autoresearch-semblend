@@ -283,9 +283,14 @@ speedup at 5K tokens using token-level LSH, but its $O(T)$ overhead
 provides minimal benefit below 700 tokens.
 
 \textbf{RAG-specific KV systems.}
-ProphetKV~\cite{prophetkv} uses dual-stage user query relevance scoring,
-achieving 96--101\% quality at 20\% recomputation, but is limited to
-retrieval-augmented generation workloads. KVLink~\cite{kvlink} precomputes
+ProphetKV~\cite{prophetkv} uses a query-attention pass against cached
+keys to score per-token relevance, selectively recomputing the
+top-$p$ attention-critical tokens while reusing the rest---achieving
+96--101\% of full-prefill quality at 20\% recomputation budget and
+4.6--4.7$\times$ TTFT speedup at 16K context (H100). ProphetKV
+addresses \emph{intra-request} cross-chunk attention (retrieved
+documents do not attend to each other in a pre-computed cache),
+a problem orthogonal to \semblend's cross-request donor reuse. KVLink~\cite{kvlink} precomputes
 per-document KV caches for RAG scenarios and concatenates them with
 positional embedding adjustment, achieving up to 96\% TTFT reduction.
 Unlike \semblend, KVLink requires model fine-tuning (trainable special
@@ -296,15 +301,26 @@ retrieval rather than semantic query matching.
 DroidSpeak~\cite{droidspeak} profiles transformer layer criticality
 for KV cache sharing across heterogeneous LLMs, finding that only
 ${\sim}11\%$ of layers are critical for output quality.
-Concurrent work on KV cache physics~\cite{kvphysics} identifies
-architecture-specific information flow patterns: LLaMA-family models
-exhibit an ``inverted funnel'' (early-layer consolidation), while
-Qwen-family shows a ``funnel'' (late-layer consolidation). Our
-calibrated bathtub curve (\S\ref{sec:recomp}) implements this principle
-directly: LLaMA parameters ($\sigma_e{=}0.45$, $\sigma_l{=}0.15$)
-recompute early layers $[0,1,2]$ (9.4\%), while Qwen parameters
+KV Cache Physics~\cite{kvphysics} identifies architecture-specific
+information flow: LLaMA exhibits an ``inverted funnel'' (early layers
+1--8 consolidate; late layers are redundant), while Qwen exhibits a
+``funnel'' (late layers 20--28 consolidate; early layers more redundant).
+The paper further identifies a \emph{safety cliff} at ${\approx}90\%$
+token compression where hallucination rates spike nonlinearly---caused
+by simultaneous eviction of answer-critical tokens from all attention
+heads. \semblend operates in an entirely different regime (Global
+Eviction Ratio $= 0$: no tokens are evicted from matched blocks),
+so the cliff is irrelevant to our approach.
+Our calibrated bathtub curve (\S\ref{sec:recomp}) directly implements
+the architecture-specific insight: LLaMA parameters ($\sigma_e{=}0.45$,
+$\sigma_l{=}0.15$) recompute early layers $[0,1,2]$ (9.4\%), targeting
+the inverted-funnel consolidation point; Qwen parameters
 ($\sigma_e{=}0.15$, $\sigma_l{=}0.35$) recompute late layers
-$[26,27]$ (7.1\%), matching each architecture's consolidation pattern.
+$[26,27]$ (7.1\%), targeting the funnel convergence layers.
+This architecture-aware selection is independently validated by
+our per-layer K-norm deviation measurements: with RoPE correction,
+all-layer deviation is ${<}0.2\%$ for both models, confirming
+the bathtub-selected layers are the right recomputation targets.
 
 \semblend operates at the \emph{embedding level}: a single sentence
 embedding replaces per-token matching. The local tier uses numpy
