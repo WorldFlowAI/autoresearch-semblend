@@ -416,3 +416,193 @@ class TestPositionMapping:
                 corrected[:, i, :], k_target_gt[:, i, :],
                 atol=1e-3, rtol=1e-3,
             )
+
+
+class TestNoPePermutation:
+    """Tests for NoPE two-step correction: strip RoPE(-src) then apply RoPE(tgt).
+
+    NoPE is mathematically equivalent to delta correction:
+      RoPE(tgt) × RoPE(-src) = RoPE(tgt - src)
+
+    These tests verify:
+    1. NoPE identity: src_pos == tgt_pos → no change
+    2. NoPE correctness: result matches delta correction for arbitrary Δ
+    3. NoPE matches fresh RoPE at target position (same as delta test)
+    4. NoPE correctness in paged cache (via nope_permute_paged_kv)
+    """
+
+    def _build_paged_cache(
+        self, num_heads: int, head_dim: int, seq_len: int, block_size: int = 16
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Build a paged KV cache and block table for testing."""
+        num_blocks = (seq_len + block_size - 1) // block_size + 2
+        kv_cache = torch.zeros(num_blocks, 2, num_heads, block_size, head_dim,
+                               dtype=torch.float16)
+        num_logical = (seq_len + block_size - 1) // block_size
+        block_table = torch.arange(num_logical, dtype=torch.int32)
+        return kv_cache, block_table
+
+    def _apply_rope_single(
+        self, k_raw: torch.Tensor, pos: int, head_dim: int, rope_base: float = 10000.0
+    ) -> torch.Tensor:
+        """Apply RoPE(pos) to a single K vector [num_heads, head_dim]."""
+        inv_freq = 1.0 / (
+            rope_base ** (torch.arange(0, head_dim, 2, dtype=torch.float32) / head_dim)
+        )
+        theta = float(pos) * inv_freq
+        cos_v = torch.cos(theta)
+        sin_v = torch.sin(theta)
+        k = k_raw.float().clone()
+        k_even = k[:, 0::2].clone()
+        k_odd = k[:, 1::2].clone()
+        k[:, 0::2] = k_even * cos_v - k_odd * sin_v
+        k[:, 1::2] = k_even * sin_v + k_odd * cos_v
+        return k
+
+    def test_nope_identity_no_shift(self):
+        """NoPE with src_pos == tgt_pos: K should be unchanged."""
+        from synapse_kv_connector.rope_correction import nope_permute_paged_kv
+
+        num_heads, head_dim, block_size = 4, 64, 16
+        raw_k = torch.randn(num_heads, head_dim, dtype=torch.float32)
+        k_at_pos5 = self._apply_rope_single(raw_k, pos=5, head_dim=head_dim)
+
+        kv_cache, block_table = self._build_paged_cache(num_heads, head_dim, 32, block_size)
+        kv_cache[0, 0, :, 5 % block_size, :] = k_at_pos5.half()  # K at pos 5
+
+        nope_permute_paged_kv(
+            kv_cache, block_table, permutation=[(5, 5)], rope_base=10000.0
+        )
+
+        result = kv_cache[0, 0, :, 5 % block_size, :].float()
+        torch.testing.assert_close(result, k_at_pos5, atol=5e-3, rtol=5e-3)
+
+    def test_nope_matches_delta_arbitrary_shift(self):
+        """NoPE two-step produces same result as delta correction for Δ ≠ 0."""
+        from synapse_kv_connector.rope_correction import (
+            nope_permute_paged_kv,
+            permute_paged_kv_with_rope,
+        )
+
+        num_heads, head_dim, block_size = 4, 64, 16
+        raw_k = torch.randn(num_heads, head_dim, dtype=torch.float32)
+        src_pos, tgt_pos = 3, 17  # Δ = 14
+
+        k_at_src = self._apply_rope_single(raw_k, src_pos, head_dim)
+
+        # Build two identical paged caches
+        kv_delta, block_table = self._build_paged_cache(num_heads, head_dim, 64, block_size)
+        kv_nope, _ = self._build_paged_cache(num_heads, head_dim, 64, block_size)
+
+        # Write K at src_pos to both caches
+        sb = src_pos // block_size
+        so = src_pos % block_size
+        kv_delta[sb, 0, :, so, :] = k_at_src.half()
+        kv_nope[sb, 0, :, so, :] = k_at_src.half()
+
+        # Delta: RoPE(Δ) in one step
+        permute_paged_kv_with_rope(
+            kv_delta, block_table, permutation=[(src_pos, tgt_pos)], rope_base=10000.0
+        )
+
+        # NoPE: strip RoPE(-src) then apply RoPE(tgt)
+        nope_permute_paged_kv(
+            kv_nope, block_table, permutation=[(src_pos, tgt_pos)], rope_base=10000.0
+        )
+
+        tb = tgt_pos // block_size
+        to_ = tgt_pos % block_size
+        k_delta_result = kv_delta[tb, 0, :, to_, :].float()
+        k_nope_result = kv_nope[tb, 0, :, to_, :].float()
+
+        # Both should produce identical K at target position
+        torch.testing.assert_close(k_nope_result, k_delta_result, atol=5e-3, rtol=5e-3)
+
+    def test_nope_matches_fresh_rope_at_target(self):
+        """NoPE-corrected K matches fresh RoPE computed at target position."""
+        from synapse_kv_connector.rope_correction import nope_permute_paged_kv
+
+        num_heads, head_dim, block_size = 4, 128, 16
+        raw_k = torch.randn(num_heads, head_dim, dtype=torch.float32)
+        src_pos, tgt_pos = 7, 23
+
+        k_at_src = self._apply_rope_single(raw_k, src_pos, head_dim)
+        k_at_tgt_fresh = self._apply_rope_single(raw_k, tgt_pos, head_dim)
+
+        kv_cache, block_table = self._build_paged_cache(num_heads, head_dim, 64, block_size)
+        sb = src_pos // block_size
+        so = src_pos % block_size
+        kv_cache[sb, 0, :, so, :] = k_at_src.half()
+
+        nope_permute_paged_kv(
+            kv_cache, block_table, permutation=[(src_pos, tgt_pos)], rope_base=10000.0
+        )
+
+        tb = tgt_pos // block_size
+        to_ = tgt_pos % block_size
+        result = kv_cache[tb, 0, :, to_, :].float()
+
+        # NoPE-corrected K should match fresh RoPE at target
+        # Tolerance is higher due to float16 rounding in src
+        torch.testing.assert_close(result, k_at_tgt_fresh, atol=1e-2, rtol=1e-2)
+
+    def test_nope_v_cache_unchanged(self):
+        """V cache should be copied directly without any rotation (both modes)."""
+        from synapse_kv_connector.rope_correction import nope_permute_paged_kv
+
+        num_heads, head_dim, block_size = 4, 64, 16
+        kv_cache, block_table = self._build_paged_cache(num_heads, head_dim, 32, block_size)
+        v_original = torch.randn(num_heads, head_dim, dtype=torch.float16)
+        kv_cache[0, 1, :, 2, :] = v_original  # V at pos 2 (block 0, offset 2)
+
+        nope_permute_paged_kv(
+            kv_cache, block_table, permutation=[(2, 10)], rope_base=10000.0
+        )
+
+        tb = 10 // block_size
+        to_ = 10 % block_size
+        v_at_target = kv_cache[tb, 1, :, to_, :]
+        torch.testing.assert_close(v_at_target, v_original, atol=0.0, rtol=0.0)
+
+    @pytest.mark.parametrize("delta", [0, 1, 5, 50, 100, 256, 1000])
+    def test_nope_delta_correction_parity(self, delta: int):
+        """NoPE == delta for all Δ values: 0, 1, 5, 50, 100, 256, 1000."""
+        from synapse_kv_connector.rope_correction import (
+            nope_permute_paged_kv,
+            permute_paged_kv_with_rope,
+        )
+
+        num_heads, head_dim, block_size = 8, 128, 16
+        src_pos = 5
+        tgt_pos = src_pos + delta
+        if tgt_pos >= 64 * block_size:
+            pytest.skip("tgt_pos exceeds test cache size")
+
+        raw_k = torch.randn(num_heads, head_dim, dtype=torch.float32)
+        inv_freq = 1.0 / (10000.0 ** (torch.arange(0, head_dim, 2, dtype=torch.float32) / head_dim))
+        theta = src_pos * inv_freq
+        k_at_src = raw_k.clone()
+        k_at_src[:, 0::2] = raw_k[:, 0::2] * torch.cos(theta) - raw_k[:, 1::2] * torch.sin(theta)
+        k_at_src[:, 1::2] = raw_k[:, 0::2] * torch.sin(theta) + raw_k[:, 1::2] * torch.cos(theta)
+
+        def make_cache():
+            kv, bt = self._build_paged_cache(num_heads, head_dim, max(tgt_pos + 16, 128), block_size)
+            sb = src_pos // block_size
+            so = src_pos % block_size
+            kv[sb, 0, :, so, :] = k_at_src.half()
+            return kv, bt
+
+        kv_d, bt_d = make_cache()
+        kv_n, bt_n = make_cache()
+
+        permute_paged_kv_with_rope(kv_d, bt_d, [(src_pos, tgt_pos)], rope_base=10000.0)
+        nope_permute_paged_kv(kv_n, bt_n, [(src_pos, tgt_pos)], rope_base=10000.0)
+
+        tb = tgt_pos // block_size
+        to_ = tgt_pos % block_size
+        torch.testing.assert_close(
+            kv_n[tb, 0, :, to_, :].float(),
+            kv_d[tb, 0, :, to_, :].float(),
+            atol=5e-3, rtol=5e-3,
+            msg=f"NoPE != delta at Δ={delta}",
+        )

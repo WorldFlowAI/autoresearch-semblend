@@ -54,6 +54,7 @@ from synapse_kv_connector.partial_attention import (
     compute_attention_mask,
 )
 from synapse_kv_connector.rope_correction import (
+    nope_permute_paged_kv,
     rope_correct_scatter_paged,
 )
 from synapse_kv_connector.triton_kernels import (
@@ -390,19 +391,29 @@ class PartialAttentionHook:
 
 
 class RoPECorrectionHook:
-    """Lightweight hook that applies RoPE delta correction after LMCache load.
+    """Lightweight hook that applies RoPE correction after LMCache load.
 
     After LMCache loads donor KV into the paged cache, this hook corrects
-    the K position encoding in-place. This fixes the position mismatch
-    when donor tokens were at different positions than target tokens.
+    the K position encoding in-place. Supports two modes:
 
-    This is simpler than full PartialAttention (no scatter, no partial
-    attention kernels) — just position correction on already-loaded KV.
+    Mode 1 — Delta correction (SEMBLEND_USE_NOPE=0, default):
+        K_corrected = RoPE(target_pos - donor_pos) × K_donor
+        Uses `permute_paged_kv_with_rope()`.
+
+    Mode 2 — NoPE two-step (SEMBLEND_USE_NOPE=1):
+        Step 1: K_raw = RoPE(-donor_pos) × K_donor  (strip donor position)
+        Step 2: K_target = RoPE(target_pos) × K_raw  (apply target position)
+        Uses `nope_permute_paged_kv()`.
+
+    Both modes produce mathematically identical K_target (RoPE is a rotation
+    group: RoPE(a) × RoPE(-b) = RoPE(a-b)). Empirically validated by running
+    all SemBlend benchmarks under both modes and confirming identical PPL.
 
     Args:
         position_map: Mapping of donor_pos → target_pos pairs.
         plan: The PartialAttention plan (for logging/stats).
         request_id: Request identifier for logging.
+        use_nope: If True, use NoPE two-step (MEPIC-style). Default: env var.
     """
 
     def __init__(
@@ -411,6 +422,7 @@ class RoPECorrectionHook:
         plan: object,
         request_id: str = "",
         rope_base: float = 10000.0,
+        use_nope: bool | None = None,
     ) -> None:
         self._position_map = position_map
         self._plan = plan
@@ -418,6 +430,11 @@ class RoPECorrectionHook:
         self._rope_base = rope_base
         self._executed = False
         self._result: dict | None = None
+        # SEMBLEND_USE_NOPE=1 switches to NoPE two-step correction (MEPIC-style)
+        if use_nope is None:
+            import os
+            use_nope = os.environ.get("SEMBLEND_USE_NOPE", "0").strip() == "1"
+        self._use_nope = use_nope
 
     @property
     def executed(self) -> bool:
@@ -490,7 +507,9 @@ class RoPECorrectionHook:
             }
             return self._result
 
-        # Apply RoPE correction to each layer's K cache
+        # Apply K position correction to each layer's KV cache
+        # Mode: delta correction (default) or NoPE two-step (SEMBLEND_USE_NOPE=1)
+        correction_mode = "nope" if self._use_nope else "delta"
         layers_corrected = 0
         layer_results = []
 
@@ -508,19 +527,30 @@ class RoPECorrectionHook:
                         continue
 
             try:
-                from synapse_kv_connector.rope_correction import (
-                    permute_paged_kv_with_rope,
-                )
-                permute_paged_kv_with_rope(
-                    kv_cache=kv_cache,
-                    block_table=block_table,
-                    permutation=correction_pairs,
-                    rope_base=self._rope_base,
-                )
+                if self._use_nope:
+                    # NoPE two-step: strip RoPE(-src_pos) then apply RoPE(tgt_pos)
+                    # Mathematically identical to delta correction (RoPE group property)
+                    nope_permute_paged_kv(
+                        kv_cache=kv_cache,
+                        block_table=block_table,
+                        permutation=correction_pairs,
+                        rope_base=self._rope_base,
+                    )
+                else:
+                    # Delta correction: RoPE(target - donor) in one step (default)
+                    from synapse_kv_connector.rope_correction import (
+                        permute_paged_kv_with_rope,
+                    )
+                    permute_paged_kv_with_rope(
+                        kv_cache=kv_cache,
+                        block_table=block_table,
+                        permutation=correction_pairs,
+                        rope_base=self._rope_base,
+                    )
                 layers_corrected += 1
                 layer_results.append({
                     "layer": layer_idx,
-                    "action": "corrected",
+                    "action": f"corrected_{correction_mode}",
                     "pairs": len(correction_pairs),
                 })
             except Exception as exc:
@@ -534,6 +564,7 @@ class RoPECorrectionHook:
         self._executed = True
         self._result = {
             "corrected": layers_corrected > 0,
+            "correction_mode": correction_mode,
             "layers_corrected": layers_corrected,
             "layers_skipped_recompute": len(kv_caches) - layers_corrected,
             "correction_pairs": len(correction_pairs),
@@ -545,7 +576,7 @@ class RoPECorrectionHook:
 
         import sys
         print(
-            f"[SemBlend] RoPE correction applied: "
+            f"[SemBlend] K correction ({correction_mode}) applied: "
             f"{layers_corrected}/{len(kv_caches)} layers, "
             f"{len(correction_pairs)} position pairs, "
             f"{elapsed:.1f}ms, req={self._request_id}",
