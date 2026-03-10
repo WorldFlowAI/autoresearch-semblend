@@ -114,6 +114,10 @@ class SemBlendPipeline:
         self._min_similarity = min_similarity
         self._min_reuse_ratio = min_reuse_ratio
         self._model_name = model_name
+        # FM1 ablation: set SEMBLEND_USE_ALIGNMENT=0 to disable RoPE delta correction
+        self._use_alignment = os.environ.get("SEMBLEND_USE_ALIGNMENT", "1").strip() not in ("0", "false", "False")
+        if not self._use_alignment:
+            logger.warning("[SemBlend] SEMBLEND_USE_ALIGNMENT=0: RoPE delta correction DISABLED (FM1 ablation mode)")
 
         # Lazy imports to avoid hard dependency at module level
         from synapse_kv_connector.cagra_donor_store import make_donor_store
@@ -226,11 +230,20 @@ class SemBlendPipeline:
         # Build position map for RoPE correction
         # Each COPY_FROM_DONOR slot action has a donor_pos and target_pos.
         # When donor_pos != target_pos, the K cache needs RoPE delta correction.
+        # FM1 ablation: when SEMBLEND_USE_ALIGNMENT=0, use identity mapping
+        # (no correction) to measure quality impact of missing RoPE delta correction.
         position_map = PositionMapping()
-        for sa in match.alignment.slot_actions:
-            if sa.action.value == "copy_from_donor" and sa.donor_pos is not None:
-                position_map.donor_positions.append(sa.donor_pos)
-                position_map.target_positions.append(sa.target_pos)
+        if self._use_alignment:
+            for sa in match.alignment.slot_actions:
+                if sa.action.value == "copy_from_donor" and sa.donor_pos is not None:
+                    position_map.donor_positions.append(sa.donor_pos)
+                    position_map.target_positions.append(sa.target_pos)
+        else:
+            # No alignment: sequential identity map (pretend donor KV is in-place)
+            n = sum(1 for sa in match.alignment.slot_actions
+                    if sa.action.value == "copy_from_donor")
+            position_map.donor_positions = list(range(n))
+            position_map.target_positions = list(range(n))
 
         return PipelineResult(
             found=True,
@@ -320,10 +333,16 @@ class SemBlendPipeline:
             ]
 
             position_map = PositionMapping()
-            for sa in match.alignment.slot_actions:
-                if sa.action.value == "copy_from_donor" and sa.donor_pos is not None:
-                    position_map.donor_positions.append(sa.donor_pos)
-                    position_map.target_positions.append(sa.target_pos)
+            if self._use_alignment:
+                for sa in match.alignment.slot_actions:
+                    if sa.action.value == "copy_from_donor" and sa.donor_pos is not None:
+                        position_map.donor_positions.append(sa.donor_pos)
+                        position_map.target_positions.append(sa.target_pos)
+            else:
+                n = sum(1 for sa in match.alignment.slot_actions
+                        if sa.action.value == "copy_from_donor")
+                position_map.donor_positions = list(range(n))
+                position_map.target_positions = list(range(n))
 
             result_timings = PipelineTimings(
                 embed_ms=timings.embed_ms,
