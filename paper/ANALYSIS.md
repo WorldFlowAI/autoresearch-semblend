@@ -135,26 +135,25 @@ Test at temperature > 0 to understand quality variance in production settings.
 #### I-13. Confidence Intervals on KV-Tensor Results
 Bootstrap CIs on all P50 values for statistical rigor.
 
-#### I-14. CAGRA at Scale — Empirical Latency Benchmark (NEW — In Progress)
-**Status**: Implementation complete (CAGRADonorStore + cagra_search_benchmark.py). Docker image with cuVS 26.2.0 built and being deployed.
-**Experiment**: numpy cosine scan vs cuVS brute_force vs CAGRA ANN at N=100/1K/10K/100K/1M donors. Run inside GPU pod.
-**Expected result**: CAGRA <1ms at any N, numpy grows linearly (100ms at N=100K). Crossover ≈10K donors.
-**Paper impact**: "Production Scalability" subsection with empirical latency table demonstrating CAGRA makes SemBlend viable at fleet scale.
+#### I-14. CAGRA at Scale — Empirical Latency Benchmark ✅ DONE
+**Status**: COMPLETE. Dedicated A10G pod (22.8GB free), N=100→1M donors.
+**Results**: numpy crossover ≈10K, brute_force constant 0.23-0.71ms, CAGRA **constant 1.37ms at any N** (1M donors, build=7.3s). Three search tiers: numpy≤10K, brute_force 10K-1M, CAGRA 1M+ (2.6× faster than brute_force).
+**Paper**: Tab:donor-store-scaling added. Abstract + contributions updated. All CAGRA numbers now empirical.
 
-#### I-15. FM1 RoPE Correction Ablation (NEW — Pending CAGRA deploy)
-**Status**: Existing `rope_ablation_bench.py` and `rope_position_shift_bench.py` exist. `rope_corrected.json` has 0% hit rate (design flaw — filler-based approach didn't produce LMCache chunk matches).
-**Correct experiment**: Run `variation_sensitivity.py` with REORDER type, once with `SEMBLEND_USE_ALIGNMENT=true` (current: PPL=1.000), once with `SEMBLEND_USE_ALIGNMENT=false`. If REORDER PPL degrades without alignment → empirical FM1 proof.
-**Paper impact**: Direct empirical evidence that RoPE delta correction preserves quality under non-contiguous KV reuse.
+#### I-15. FM1 RoPE Correction Ablation (NEW — Pending)
+**Status**: `SEMBLEND_USE_ALIGNMENT` env var not exposed as a runtime switch in deployed image (8987f25). Cannot run ablation without redeploying with code change.
+**Workaround evidence**: K-norm deviation <0.2%, 165 unit tests with exactness proofs, variation sensitivity PPL=1.000 on REORDER (most sensitive to position mismatch).
+**Paper impact**: FM1 documented as architecture advantage; empirical ablation remains future work.
 
-#### I-16. FM2 Semantic Staleness Test (NEW — Pending)
-**Status**: `entity_swap_bench.py` implemented. Tests prompts with structural similarity but different named entities.
-**Expected result**: High hit rate (cos sim ≥ 0.60 due to same structure) but PPL ≈ 1.0 even on entity-swapped hits (because LMCache chunk hashing catches the exact content change and falls back to cold).
-**Paper impact**: Shows SemBlend's LMCache chunk-level exact matching provides implicit FM2 protection.
+#### I-16. FM2 Semantic Staleness Test ✅ DONE
+**Status**: COMPLETE. entity_swap_fm2_qwen8k: PPL=1.000 at 1, 2, 3 entity swaps (n=8).
+**Result**: Block-hash gate (LMCache 256-token chunk matching) prevents injection on entity-swapped text. SemBlend does not hallucinate from stale donor KV. FM2 protection is implicit in chunk-level exact matching.
+**Paper**: §Failure Mode Validation paragraph added with entity-swap results.
 
-#### I-17. Operating Envelope — Break-Even Hit Rate (NEW — Pending)
-**Status**: `operating_envelope_bench.py` implemented.
-**Expected result**: Analytical prediction is break-even ≈ 0.5% hit rate (overhead 8ms / speedup 1600ms). Empirical validation should confirm SemBlend is beneficial at any non-trivial hit rate.
-**Paper claim**: "SemBlend provides positive TTFT improvement whenever hit rate exceeds ≈1%, making it universally deployable."
+#### I-17. Operating Envelope — Break-Even Hit Rate ✅ DONE
+**Status**: COMPLETE. operating_envelope_qwen8k_xsum: cold=3428ms, hit=303ms, 11.3× hit speedup.
+**Result**: Linear model E[TTFT]=P_h·303+(1-P_h)·3428ms validated at P_h∈{0,0.25,0.50,0.75,1.0}, <5% error. Break-even = 0% (any hit improves latency). WildChat 33% hit rate → 1.43× mean TTFT improvement.
+**Paper**: §Operating Envelope subsection added with empirical table and formula.
 
 ---
 

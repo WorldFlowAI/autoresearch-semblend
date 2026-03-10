@@ -510,8 +510,11 @@ result pre-warms the local donor store for future similar queries.
 \paragraph{Complexity.}
 CAGRA search is $O(\log N)$ and independent of prompt length $T$---a
 key advantage over SemShareKV's~\cite{semsharekv} $O(T)$ token-level
-LSH. At $N{=}100\text{K}$ donors, search completes in ${<}1$\,ms on
-GPU.
+LSH. Empirically, CAGRA achieves $\mathbf{1.37}$\,ms \emph{constant}
+from $N{=}100$ to $N{=}1\text{M}$ donors on a dedicated A10G
+(build time 7.3\,s one-time); cuVS brute-force completes in 0.71\,ms
+at $N{=}100\text{K}$ and is optimal for co-located
+deployments below that threshold.
 
 
 \subsection{Token Alignment}
@@ -1985,6 +1988,12 @@ donor / 2,659 query tokens) and run live inference against
 Qwen2.5-7B-AWQ. Of 30 pairs, 33.3\% receive a SemBlend hit
 (cosine$\geq$0.60). Hit-only TTFT is \textbf{1.74$\times$ (p50)}
 with a peak of $2.22\times$, compared to a cold baseline of 1,596\,ms.
+Applying the operating envelope model (Eq.~\ref{eq:expected-ttft}) to
+this workload ($P_h{=}0.333$, $\text{TTFT}_\text{hit}{=}917$\,ms,
+$\text{TTFT}_\text{cold}{=}1596$\,ms) gives
+$\mathbb{E}[\text{TTFT}] = 0.333 \times 917 + 0.667 \times 1596
+= 1{,}370$\,ms, a $\mathbf{1.16\times}$ improvement over cold serving
+even though two-thirds of requests miss.
 These speedups are consistent with our controlled-dataset results
 at the 2K--4K token range (Table~\ref{tab:results-kv}), confirming
 that real-user conversation pairs activate SemBlend with equivalent
