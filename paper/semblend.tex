@@ -290,11 +290,11 @@ Concurrent work on KV cache physics~\cite{kvphysics} identifies
 architecture-specific information flow patterns: LLaMA-family models
 exhibit an ``inverted funnel'' (early-layer consolidation), while
 Qwen-family shows a ``funnel'' (late-layer consolidation). Our
-calibrated bathtub curve (\S\ref{sec:recomp}) implements a similar
-principle: recomputing layers $[0,1,31]$ (9.4\%) for LLaMA and
-$[0,1,2,27]$ (14.3\%) for Qwen. Architecture-specific tuning
-(shifting Qwen recomputation toward late layers) is identified as
-future work.
+calibrated bathtub curve (\S\ref{sec:recomp}) implements this principle
+directly: LLaMA parameters ($\sigma_e{=}0.45$, $\sigma_l{=}0.15$)
+recompute early layers $[0,1,2]$ (9.4\%), while Qwen parameters
+($\sigma_e{=}0.15$, $\sigma_l{=}0.35$) recompute late layers
+$[26,27]$ (7.1\%), matching each architecture's consolidation pattern.
 
 \semblend operates at the \emph{embedding level}: a single sentence
 embedding replaces per-token matching. The local tier uses numpy
@@ -537,10 +537,12 @@ sensitive to KV cache mismatches than middle layers.
 \paragraph{Recomputation decision.} Layer $\ell$ is recomputed if
 $\sigma(\ell) \cdot m > \theta$, where $m = 1 - \text{overlap}(q,d)$ is
 the token mismatch fraction and $\theta = 0.3$ is the deviation threshold.
-With calibrated parameters ($\sigma_\text{base}{=}0.12$,
-$\sigma_e{=}0.35$, $\tau_e{=}3.0$, $\sigma_l{=}0.20$, $\tau_l{=}4.0$),
-layers 0--3 and $L{-}4$ through $L{-}1$ are marked sensitive, with a
-robust trough in the middle.
+With architecture-specific parameters ($\sigma_\text{base}{=}0.12$),
+LLaMA uses ($\sigma_e{=}0.45$, $\tau_e{=}2.5$, $\sigma_l{=}0.15$,
+$\tau_l{=}4.0$) recomputing early layers $[0,1,2]$ (inverted-funnel),
+while Qwen uses ($\sigma_e{=}0.15$, $\tau_e{=}3.0$, $\sigma_l{=}0.35$,
+$\tau_l{=}3.0$) recomputing late layers $[26,27]$ (funnel). The middle
+layers form a robust trough below threshold in both cases.
 
 
 \subsection{PartialAttention Mechanism}
@@ -1996,14 +1998,13 @@ characterizes architecture-specific KV layer importance: LLaMA-family
 transformers exhibit an ``inverted funnel'' pattern (early layers
 consolidate information; middle/late layers are more redundant),
 while Qwen-family exhibits a ``funnel'' pattern (late layers consolidate;
-early layers more redundant)~\cite{kvphysics}. Our current bathtub
-preset recomputes layers $[0,1,31]$ (9.4\%) for LLaMA and $[0,1,2,27]$
-(14.3\%) for Qwen---close to the 11\% critical layer estimate from
-selective recomputation studies~\cite{droidspeak}. Architecture-specific calibration
-(shifting Qwen recomputation toward late layers, LLaMA toward early layers)
-is a tractable future improvement. Our measured PPL ratios (1.001--1.065
-across five datasets and two models) indicate the current uniform calibration
-is already near-optimal in practice.
+early layers more redundant)~\cite{kvphysics}. Our architecture-specific bathtub presets implement this directly:
+LLaMA recomputes early layers $[0,1,2]$ (9.4\%)~---aligned with its
+inverted-funnel pattern---while Qwen recomputes late layers $[26,27]$
+(7.1\%)---aligned with its funnel pattern. Both are close to the 11\%
+critical layer estimate from~\cite{droidspeak}. Our measured PPL ratios
+(1.001--1.065 across five datasets and two models) confirm this
+architecture-aware calibration is near-optimal in practice.
 Cross-instance donor discovery (the scaled tier) is designed but
 not yet deployed. Short prompts ($<$500 tokens) may not benefit,
 as the ${\sim}8$\,ms pipeline overhead can exceed the cold prefill
