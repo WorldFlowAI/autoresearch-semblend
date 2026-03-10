@@ -280,6 +280,20 @@ ProphetKV~\cite{prophetkv} uses dual-stage user query relevance scoring,
 achieving 96--101\% quality at 20\% recomputation, but is limited to
 retrieval-augmented generation workloads.
 
+\textbf{Layer criticality in KV reuse.}
+DroidSpeak~\cite{droidspeak} profiles transformer layer criticality
+for KV cache sharing across heterogeneous LLMs, finding that only
+${\sim}11\%$ of layers are critical for output quality.
+Concurrent work on KV cache physics~\cite{kvphysics} identifies
+architecture-specific information flow patterns: LLaMA-family models
+exhibit an ``inverted funnel'' (early-layer consolidation), while
+Qwen-family shows a ``funnel'' (late-layer consolidation). Our
+calibrated bathtub curve (\S\ref{sec:recomp}) implements a similar
+principle: recomputing layers $[0,1,31]$ (9.4\%) for LLaMA and
+$[0,1,2,27]$ (14.3\%) for Qwen. Architecture-specific tuning
+(shifting Qwen recomputation toward late layers) is identified as
+future work.
+
 \semblend operates at the \emph{embedding level}: a single sentence
 embedding replaces per-token matching. The local tier uses numpy
 brute-force ($O(N)$, ${\sim}1$\,ms for $N{\leq}10\text{K}$); the
