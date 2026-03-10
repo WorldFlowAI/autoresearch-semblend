@@ -116,11 +116,11 @@ class SemBlendPipeline:
         self._model_name = model_name
 
         # Lazy imports to avoid hard dependency at module level
+        from synapse_kv_connector.cagra_donor_store import make_donor_store
         from synapse_kv_connector.embedder import create_embedder
-        from synapse_kv_connector.donor_store import DonorStore
 
         self._embedder = create_embedder(embedder_type)
-        self._donor_store = DonorStore(
+        self._donor_store = make_donor_store(
             max_entries=max_donors,
             embedding_dim=self._embedder.dimension,
             min_similarity=min_similarity,
