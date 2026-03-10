@@ -248,6 +248,7 @@ LMCache~\cite{lmcache} & 2025 & Exact prefix & No & No & P2P & $O(1)$ & KV-tenso
 KVShare~\cite{kvshare} & arXiv\,'25 & DHD semantic & DHD & No & No & $O(T)$ & KV-tensor \\
 SemShareKV~\cite{semsharekv} & arXiv\,'25 & Token LSH & Heuristic & No & No & $O(T)$ & KV-tensor \\
 ProphetKV~\cite{prophetkv} & arXiv\,'26 & RAG-specific & Dual-stage & No & No & $O(1)$ & KV-tensor \\
+KVLink~\cite{kvlink} & arXiv\,'25 & RAG doc. concat. & Fine-tuned & No & No & $O(D)$ & KV-tensor \\
 \midrule
 \semblend & --- & \textbf{Emb.\ cosine} & \textbf{Calibrated} &
   \textbf{Yes} & \textbf{Two-tier} & $O(N)$/$O(\log N)$ & \textbf{KV-tensor} \\
@@ -284,7 +285,12 @@ provides minimal benefit below 700 tokens.
 \textbf{RAG-specific KV systems.}
 ProphetKV~\cite{prophetkv} uses dual-stage user query relevance scoring,
 achieving 96--101\% quality at 20\% recomputation, but is limited to
-retrieval-augmented generation workloads.
+retrieval-augmented generation workloads. KVLink~\cite{kvlink} precomputes
+per-document KV caches for RAG scenarios and concatenates them with
+positional embedding adjustment, achieving up to 96\% TTFT reduction.
+Unlike \semblend, KVLink requires model fine-tuning (trainable special
+tokens + mixed-data fine-tuning) and is designed for static document
+retrieval rather than semantic query matching.
 
 \textbf{Layer criticality in KV reuse.}
 DroidSpeak~\cite{droidspeak} profiles transformer layer criticality
@@ -2280,6 +2286,12 @@ in \textit{Proc.\ EMNLP Workshop}, 2019.
 W.~Zhao \textit{et al.},
 ``WildChat: 1M ChatGPT Interaction Logs in the Wild,''
 in \textit{Proc.\ ICLR}, 2024.
+
+\bibitem{kvlink}
+J.~Yang, B.~Hou, W.~Wei, Y.~Bao, and S.~Chang,
+``KVLink: Accelerating Large Language Models via Efficient KV Cache
+Reuse,''
+arXiv:2502.16002, Feb.\ 2025.
 
 \bibitem{droidspeak}
 Y.~Liu \textit{et al.},
