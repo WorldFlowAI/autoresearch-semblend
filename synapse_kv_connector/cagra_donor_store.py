@@ -81,6 +81,7 @@ class CAGRADonorStore:
 
         self._index: object | None = None
         self._index_kind: str = ""  # "cagra" | "brute" | ""
+        self._index_dataset_gpu: object | None = None  # CRITICAL: keep dataset alive for CAGRA
         self._dirty: bool = True
         self._adds_since_rebuild: int = 0
 
@@ -141,6 +142,10 @@ class CAGRADonorStore:
             norms = np.linalg.norm(data, axis=1, keepdims=True)
             data = data / (norms + 1e-8)
             data_gpu = cp.asarray(data)
+            # CRITICAL: keep data_gpu alive on self so CAGRA index doesn't hold
+            # a dangling pointer. cagra_donor_store.py dataset lifetime bug
+            # (cuvs-cagra-python-dataset-lifetime skill).
+            self._index_dataset_gpu = data_gpu
 
             n = len(data)
             t0 = time.monotonic()
