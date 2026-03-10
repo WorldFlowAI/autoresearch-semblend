@@ -1945,21 +1945,26 @@ which requires sub-chunk alignment (future work). Mathematical correctness
 is verified by 165 unit tests against ground-truth RoPE recomputation.}
 \end{table}
 
-\paragraph{Indirect validation via REORDER variation sensitivity.}
-Stronger behavioral evidence for RoPE correction comes from the variation
-sensitivity experiment (\S\ref{sec:analysis}).
-REORDER variations---where the same article sentences appear in a
-different order---achieve 50\% hit rate at 8K tokens on CNN/DailyMail
-(Qwen) and 62.5\% on LLaMA. When LMCache injects KV blocks from the
-donor sequence, those blocks land at \emph{different absolute positions}
-in the target prompt, activating the RoPE delta correction kernel.
-The PPL ratio for these REORDER hits is $1.000 \pm 0.001$ on both models,
-confirming that the correction exactly restores the intended positional
-encoding. Without correction (identity position map), $K_\text{corrected} = K_\text{donor}$
-would carry wrong RoPE phases, producing attention patterns inconsistent
-with the target sequence and degrading output quality. The measured
-PPL $\approx 1.0$ on reordered-content hits thus provides direct behavioral
-evidence that FM1 is resolved.
+\paragraph{Quality invariance across variation types.}
+The variation sensitivity experiment (\S\ref{sec:analysis})
+shows PPL ratio $= 1.000 \pm 0.001$ across all 7 variation types on both
+models, including REORDER (50\% hit rate on Qwen, 62.5\% on LLaMA).
+REORDER hit rate arises from shared prompt structure: prompts share a
+common prefix (system prompt and early context), whose 256-token
+LMCache blocks match between donor and REORDER variant at identical
+positions ($\Delta{=}0$). For these shared-prefix blocks, RoPE
+correction is a no-op (identity map), and quality is preserved.
+Content blocks with reordered sentences do not match at the same
+chunk boundaries (minor whitespace differences produce distinct hashes),
+so the content portion falls back to cold inference (PPL $=1.0$ by
+definition). In all cases PPL $\approx 1.0$, confirming the quality
+floor guarantee (\S\ref{sec:analysis}): any miss falls back to cold
+prefill; any hit reuses exactly-matched KV blocks with or without
+RoPE correction depending on $\Delta$.
+Direct empirical validation for $\Delta {\neq} 0$ scenarios (sub-chunk
+or sentence-level injection) requires future benchmarking.
+Mathematical correctness of RoPE delta correction for $\Delta {\neq} 0$
+is verified by 165 unit tests against ground-truth RoPE recomputation.
 
 \subsubsection{When Competitors Are Better}
 
