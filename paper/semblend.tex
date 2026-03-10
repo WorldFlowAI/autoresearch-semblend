@@ -190,9 +190,13 @@ We make five contributions:
   CAGRA~\cite{cagra} via an optional gateway for $100\text{K}{+}$
   cross-instance donor discovery.
 
-\item \textbf{Calibrated quality model} using a bathtub-curve layer
-  sensitivity function validated against 6~published data points from
-  CacheBlend, KVShare, ProphetKV, and SemShareKV (\S\ref{sec:recomp}).
+\item \textbf{Architecture-specific calibrated quality model}
+  (\S\ref{sec:recomp}): a bathtub-curve layer sensitivity function
+  with per-family presets---LLaMA (inverted funnel: early layers
+  recomputed, $\sigma_e{>}\sigma_l$) and Qwen (funnel: late layers
+  recomputed, $\sigma_l{>}\sigma_e$)---consistent with kv-cache-physics
+  findings~\cite{kvphysics}, validated against published data points
+  from CacheBlend, KVShare, ProphetKV, and SemShareKV.
 
 \item \textbf{Exact RoPE delta correction} (\S\ref{sec:rope-correction}):
   a mathematically exact method for correcting donor K tensors to
