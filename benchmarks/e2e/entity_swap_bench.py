@@ -108,8 +108,16 @@ PLACE_SWAPS = [
 ]
 
 
+import re as _re
+
 def _apply_entity_swap(text: str, n_swaps: int = 1) -> tuple[str, list[tuple[str, str]]]:
     """Apply N entity swaps to text.
+
+    Strategy:
+    1. Try hardcoded swap tables first (PERSON/ORG/PLACE).
+    2. If no matches, fall back to regex-based proper noun extraction:
+       find capitalized word sequences (3+ chars) and substitute them
+       with plausible alternatives drawn from the text itself (rotate entities).
 
     Returns (swapped_text, applied_swaps) where applied_swaps is a list of
     (original, replacement) pairs that were actually applied.
@@ -117,13 +125,44 @@ def _apply_entity_swap(text: str, n_swaps: int = 1) -> tuple[str, list[tuple[str
     applied: list[tuple[str, str]] = []
     result = text
 
+    # Strategy 1: Hardcoded swap tables
     all_swaps = PERSON_SWAPS + ORG_SWAPS + PLACE_SWAPS
-
     for orig, replacement in all_swaps:
         if len(applied) >= n_swaps:
             break
         if orig in result:
             result = result.replace(orig, replacement)
+            applied.append((orig, replacement))
+
+    if len(applied) >= n_swaps:
+        return result, applied
+
+    # Strategy 2: Regex-based proper noun extraction and rotation swap
+    # Find all multi-word capitalized phrases (e.g. "John Smith", "New York", "World Bank")
+    proper_pattern = _re.compile(r'\b([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,})+)\b')
+    found_entities = list(dict.fromkeys(m.group(0) for m in proper_pattern.finditer(text)))
+
+    # Also find single capitalized words preceded by a space
+    single_pattern = _re.compile(r'(?<=\s)([A-Z][a-z]{4,})\b')
+    for m in single_pattern.finditer(text):
+        w = m.group(1)
+        if w and w not in found_entities and w not in {
+            "The", "This", "That", "They", "When", "Where", "While", "With",
+            "From", "After", "Before", "Since", "Their", "There", "These",
+            "Those", "About", "Under", "Over", "Into", "Upon", "Between",
+        }:
+            found_entities.append(w)
+
+    # Rotate: swap entity[i] with entity[i+1] (both are real entities from the text)
+    for i in range(min(len(found_entities) - 1, n_swaps * 3)):
+        if len(applied) >= n_swaps:
+            break
+        orig = found_entities[i]
+        replacement = found_entities[(i + 1) % len(found_entities)]
+        if orig == replacement:
+            continue
+        if orig in result:
+            result = result.replace(orig, replacement, 1)
             applied.append((orig, replacement))
 
     return result, applied
@@ -278,15 +317,29 @@ def run_entity_swap_bench(
     with open(clusters_file) as f:
         clusters_data = json.load(f)
 
-    clusters = clusters_data.get("clusters", clusters_data)
-    if isinstance(clusters, dict):
-        clusters = list(clusters.values())
+    # Normalize: handle both list format and {"clusters": [...]} format
+    if isinstance(clusters_data, list):
+        raw = clusters_data
+    else:
+        raw = clusters_data.get("clusters", list(clusters_data.values()) if isinstance(clusters_data, dict) else [])
+        if isinstance(raw, dict):
+            raw = list(raw.values())
 
-    # Filter to clusters with seed + at least one variation at target_length
-    usable = []
-    for c in clusters:
+    def _get_seed_text(c: dict) -> str:
+        if "seed_text" in c:
+            return c["seed_text"]
         seed = c.get("seed", {})
-        seed_tokens = seed.get("token_count", 0)
+        return seed.get("text", seed.get("prompt", ""))
+
+    def _get_seed_tokens(c: dict) -> int:
+        if "seed_token_count" in c:
+            return c["seed_token_count"]
+        return c.get("seed", {}).get("token_count", 0)
+
+    # Filter to clusters at target_length
+    usable = []
+    for c in raw:
+        seed_tokens = _get_seed_tokens(c)
         if abs(seed_tokens - target_length) > target_length * 0.3:
             continue
         usable.append(c)
@@ -304,8 +357,7 @@ def run_entity_swap_bench(
 
     for ci, cluster in enumerate(clusters_to_use):
         cluster_id = cluster.get("cluster_id", f"c{ci}")
-        seed = cluster.get("seed", {})
-        seed_text = seed.get("text", seed.get("prompt", ""))
+        seed_text = _get_seed_text(cluster)
 
         if not seed_text:
             continue

@@ -216,14 +216,35 @@ def run_layer_entropy_bench(
     with open(clusters_file) as f:
         clusters_data = json.load(f)
 
-    clusters = clusters_data.get("clusters", clusters_data)
-    if isinstance(clusters, dict):
-        clusters = list(clusters.values())
+    # Normalize: handle both list and {"clusters": {...}} formats
+    if isinstance(clusters_data, list):
+        raw = clusters_data
+    else:
+        raw = clusters_data.get("clusters", list(clusters_data.values()) if isinstance(clusters_data, dict) else [])
+        if isinstance(raw, dict):
+            raw = list(raw.values())
+
+    def _seed_text(c: dict) -> str:
+        return c.get("seed_text") or c.get("seed", {}).get("text", c.get("seed", {}).get("prompt", ""))
+
+    def _seed_tokens(c: dict) -> int:
+        return c.get("seed_token_count") or c.get("seed", {}).get("token_count", 0)
+
+    def _variation_text(c: dict, vtype: str) -> str:
+        vars_raw = c.get("variations", {})
+        if isinstance(vars_raw, list):
+            for v in vars_raw:
+                if v.get("overlap_type") == vtype:
+                    return v.get("text", "")
+            return ""
+        v = vars_raw.get(vtype, {})
+        return v.get("text", v.get("prompt", "")) if isinstance(v, dict) else ""
 
     # Filter by target_length
     usable = [
-        c for c in clusters
-        if abs(c.get("seed", {}).get("token_count", 0) - target_length) <= target_length * 0.30
+        c for c in raw
+        if abs(_seed_tokens(c) - target_length) <= target_length * 0.30
+        and _seed_text(c)
     ][:n_prompts]
 
     if not usable:
@@ -239,13 +260,10 @@ def run_layer_entropy_bench(
 
     for ci, cluster in enumerate(usable):
         cluster_id = cluster.get("cluster_id", f"c{ci}")
-        seed = cluster.get("seed", {})
-        seed_text = seed.get("text", seed.get("prompt", ""))
+        seed_text = _seed_text(cluster)
 
         # Use REORDER variation if available (tests position-dependent layer recomputation)
-        variations = cluster.get("variations", {})
-        reorder_var = variations.get("reorder", {})
-        test_text = reorder_var.get("text", reorder_var.get("prompt", "")) or seed_text
+        test_text = _variation_text(cluster, "reorder") or seed_text
 
         if not seed_text or not test_text:
             continue

@@ -160,38 +160,63 @@ def run_operating_envelope_bench(
     with open(clusters_file) as f:
         clusters_data = json.load(f)
 
-    clusters = clusters_data.get("clusters", clusters_data)
-    if isinstance(clusters, dict):
-        clusters = list(clusters.values())
+    # Normalize: handle both list format and {"clusters": [...]} format
+    if isinstance(clusters_data, list):
+        raw = clusters_data
+    else:
+        raw = clusters_data.get("clusters", list(clusters_data.values()) if isinstance(clusters_data, dict) else [])
+        if isinstance(raw, dict):
+            raw = list(raw.values())
+
+    # Normalize each cluster to a common format
+    def normalize_cluster(c: dict) -> dict:
+        """Normalize cluster to standard format with seed_text, seed_token_count, variations_dict."""
+        if "seed" in c:
+            # Old format: {"seed": {"text": ..., "token_count": ...}, "variations": {"exact": {...}}}
+            seed_text = c["seed"].get("text", c["seed"].get("prompt", ""))
+            seed_token_count = c["seed"].get("token_count", 0)
+            vars_raw = c.get("variations", {})
+            if isinstance(vars_raw, dict):
+                variations_dict = {k: v.get("text", v.get("prompt", "")) for k, v in vars_raw.items()}
+            else:
+                variations_dict = {v["overlap_type"]: v["text"] for v in vars_raw if "text" in v}
+        else:
+            # New flat format: {"seed_text": ..., "seed_token_count": ..., "variations": [...]}
+            seed_text = c.get("seed_text", "")
+            seed_token_count = c.get("seed_token_count", c.get("target_token_length", 0))
+            vars_raw = c.get("variations", [])
+            if isinstance(vars_raw, list):
+                variations_dict = {v["overlap_type"]: v["text"] for v in vars_raw if "text" in v}
+            else:
+                variations_dict = {k: v.get("text", "") for k, v in vars_raw.items()}
+        return {"seed_text": seed_text, "seed_token_count": seed_token_count, "variations": variations_dict}
+
+    clusters = [normalize_cluster(c) for c in raw]
 
     # Filter clusters to target_length
     usable = [
         c for c in clusters
-        if abs(c.get("seed", {}).get("token_count", 0) - target_length) <= target_length * 0.30
+        if abs(c["seed_token_count"] - target_length) <= target_length * 0.30
+        and c["seed_text"]
     ]
 
     if len(usable) < 4:
         print(f"ERROR: Only {len(usable)} clusters near target_length={target_length}")
+        print(f"  Total clusters: {len(clusters)}, token counts sample: {[c['seed_token_count'] for c in clusters[:5]]}")
         sys.exit(1)
 
     print(f"=== Operating Envelope Benchmark ===")
     print(f"model={model}, target_length={target_length}, n_per_point={n_per_point}")
     print(f"hit_fractions={hit_fractions}")
+    print(f"usable clusters: {len(usable)}")
 
-    # Pre-compute cold TTFT baseline (no donors registered, system clean)
-    print("\n--- Measuring cold baseline ---")
-    cold_prompts = [c["seed"].get("text", c["seed"].get("prompt", "")) for c in usable[:8] if c.get("seed")]
-    cold_ttfts = []
-    for p in cold_prompts[:4]:
-        if p:
-            t = measure_ttft(endpoint, model, p)
-            if t > 0:
-                cold_ttfts.append(t)
-            time.sleep(1.0)
-    cold_baseline_ms = statistics.median(cold_ttfts) if cold_ttfts else 2000.0
-    print(f"Cold baseline: {cold_baseline_ms:.0f}ms (n={len(cold_ttfts)})")
+    # IMPORTANT: We do NOT pre-warm prompts from the test set to avoid LMCache contamination.
+    # Cold baseline will be derived from hit_fraction=0.0 results (pure miss condition).
+    # Using a placeholder here; updated after all results are in.
+    cold_baseline_ms: float = -1.0  # Determined from hit_fraction=0.0 results below
 
     results: list[EnvelopePoint] = []
+    used_prompts: set[str] = set()  # Track prompts already measured (avoid LMCache contamination)
 
     for hit_frac in hit_fractions:
         print(f"\n--- Hit fraction = {hit_frac:.2f} ---")
@@ -206,24 +231,25 @@ def run_operating_envelope_bench(
         for c in usable:
             if len(matching_pairs) >= n_matching:
                 break
-            seed = c.get("seed", {})
-            seed_text = seed.get("text", seed.get("prompt", ""))
-            variations = c.get("variations", {})
-            # Use EXACT variation (highest expected hit rate)
-            var = variations.get("exact", variations.get("reorder", {}))
-            var_text = var.get("text", var.get("prompt", "")) if var else ""
+            seed_text = c["seed_text"]
+            variations = c["variations"]
+            # Use EXACT variation (highest expected hit rate), fall back to reorder
+            var_text = variations.get("exact", variations.get("reorder", ""))
             if seed_text and var_text:
                 matching_pairs.append((seed_text, var_text))
 
-        # Get non-matching prompts (seeds from OTHER clusters, shuffled)
-        rng = random.Random(42)
-        all_seeds = [
-            c.get("seed", {}).get("text", c.get("seed", {}).get("prompt", ""))
-            for c in usable
-            if c.get("seed", {}).get("text", c.get("seed", {}).get("prompt", ""))
+        # Get non-matching prompts: FRESH clusters not used in any prior round
+        # (avoids LMCache contamination from previous hit_fraction iterations)
+        fresh_nonmatching = [
+            c["seed_text"] for c in usable
+            if c["seed_text"]
+            and c["seed_text"] not in used_prompts
+            and c["seed_text"] not in {s for s, _ in matching_pairs}
+            and c["seed_text"] not in {v for _, v in matching_pairs}
         ]
-        rng.shuffle(all_seeds)
-        non_matching_prompts = all_seeds[:n_nonmatching]
+        rng = random.Random(42 + int(hit_frac * 100))
+        rng.shuffle(fresh_nonmatching)
+        non_matching_prompts = fresh_nonmatching[:n_nonmatching]
 
         # Register donors for matching prompts
         print("  Registering donors...")
@@ -251,40 +277,66 @@ def run_operating_envelope_bench(
             t = measure_ttft(endpoint, model, prompt)
             if t > 0:
                 ttfts.append(t)
-                # Proxy hit detection: speedup ≥ 1.5 vs cold baseline
-                hit_proxies.append((cold_baseline_ms / t) >= 1.5)
+                # Proxy hit detection: speedup ≥ 1.5 vs cold baseline (updated after 0% run)
+                ref = cold_baseline_ms if cold_baseline_ms > 0 else 3000.0
+                hit_proxies.append((ref / t) >= 1.5)
             time.sleep(0.5)
 
         if not ttfts:
             print(f"  SKIPPED: no successful requests")
             continue
 
-        actual_hit_rate = sum(hit_proxies) / len(hit_proxies)
         mean_ttft = statistics.mean(ttfts)
-        mean_speedup = cold_baseline_ms / mean_ttft
-        ttft_ratio = mean_ttft / cold_baseline_ms
 
+        # After hit_fraction=0.0, set cold baseline from measured miss-only results
+        if hit_frac == 0.0 and cold_baseline_ms < 0:
+            cold_baseline_ms = mean_ttft
+            print(f"  Cold baseline set from 0% hit run: {cold_baseline_ms:.0f}ms")
+            # Recompute hit proxies with correct cold baseline
+            hit_proxies = [(cold_baseline_ms / t) >= 1.5 for t in ttfts]
+
+        actual_hit_rate = sum(hit_proxies) / len(hit_proxies)
+
+        cold_ref = cold_baseline_ms if cold_baseline_ms > 0 else mean_ttft
         point = EnvelopePoint(
             target_hit_fraction=hit_frac,
             n_matching=n_matching,
             n_nonmatching=n_nonmatching,
             actual_hit_rate=actual_hit_rate,
             mean_ttft_ms=mean_ttft,
-            cold_ttft_ms=cold_baseline_ms,
-            mean_speedup=mean_speedup,
-            ttft_ratio=ttft_ratio,
+            cold_ttft_ms=cold_ref,
+            mean_speedup=cold_ref / mean_ttft if mean_ttft > 0 else 0.0,
+            ttft_ratio=mean_ttft / cold_ref if cold_ref > 0 else 0.0,
         )
         results.append(point)
+        # Mark all prompts measured this round as used
+        for prompt, _ in request_list:
+            used_prompts.add(prompt)
+        for seed, var in matching_pairs:
+            used_prompts.add(seed)
+            used_prompts.add(var)
+        cold_ref = cold_baseline_ms if cold_baseline_ms > 0 else mean_ttft
         print(
             f"  actual_hit_rate={actual_hit_rate:.3f} "
             f"mean_ttft={mean_ttft:.0f}ms "
-            f"speedup={mean_speedup:.2f}× "
-            f"ttft_ratio={ttft_ratio:.3f}"
+            f"speedup={cold_ref/mean_ttft:.2f}× "
+            f"ttft_ratio={mean_ttft/cold_ref:.3f}"
         )
+
+    # Final cold baseline (from hit_fraction=0.0 results)
+    zero_hit_results = [p for p in results if p.target_hit_fraction == 0.0]
+    if zero_hit_results:
+        cold_baseline_ms = zero_hit_results[0].mean_ttft_ms
+        # Recompute speedup/ratio with correct cold baseline
+        for p in results:
+            p.cold_ttft_ms = cold_baseline_ms
+            if p.mean_ttft_ms > 0:
+                p.mean_speedup = cold_baseline_ms / p.mean_ttft_ms
+                p.ttft_ratio = p.mean_ttft_ms / cold_baseline_ms
 
     # Print summary table
     print("\n=== Operating Envelope Summary ===")
-    print(f"Cold baseline: {cold_baseline_ms:.0f}ms")
+    print(f"Cold baseline (from 0% hit run): {cold_baseline_ms:.0f}ms")
     print(f"{'Target HR':>10} {'Actual HR':>10} {'Mean TTFT':>10} {'Speedup':>10} {'Ratio':>8}")
     for p in results:
         print(
