@@ -292,33 +292,39 @@ def run_ttft_benchmark(
     make_fn,
     n_warmup: int = 2,
     n_trials: int = 5,
-    sleep_between: float = 2.0,
+    sleep_between: float = 3.0,
 ) -> dict[str, Any]:
     """Run TTFT benchmark for a single dataset.
 
+    Cold and hit prompts are the same token length:
+    - Cold: make_fn(seed=99999) — different content, same format (no LMCache hit)
+    - Donor/Test: make_fn(seed=42) — warmup + hit measurement
+
     Returns dict with: cold_ms, hit_ms, speedup, hit_rate, n_hits, n_total
     """
-    print(f"\n  [{dataset_name}] warming up...", file=sys.stderr)
+    print(f"\n  [{dataset_name}] measuring cold baseline...", file=sys.stderr)
 
-    # Generate donor prompt
+    # Donor and test prompts (identical, seed=42)
     donor_prompt = make_fn(seed=42)
-    test_prompt = make_fn(seed=42)  # Exact match for maximum hit rate
+    test_prompt = make_fn(seed=42)
 
-    # Cold measurement (unique prompt to avoid cache)
+    # Cold measurement: use different seed → same length, cold content (no cache)
+    cold_prompt = make_fn(seed=99999)
     cold_ttfts = []
     for i in range(2):
-        unique = donor_prompt[:500] + f" __COLD_{random.randint(100000, 999999)}__"
-        t = send_request(endpoint, model, unique, max_tokens=8)
+        t = send_request(endpoint, model, cold_prompt, max_tokens=8)
         if t > 0:
             cold_ttfts.append(t)
-        time.sleep(3)
+            print(f"  [{dataset_name}] cold[{i}]: {t:.0f}ms", file=sys.stderr)
+        time.sleep(4)
     cold_ms = statistics.mean(cold_ttfts) if cold_ttfts else 0
-    print(f"  [{dataset_name}] cold: {cold_ms:.0f}ms", file=sys.stderr)
+    print(f"  [{dataset_name}] cold avg: {cold_ms:.0f}ms", file=sys.stderr)
 
-    # Warmup: register donor in LMCache
+    # Warmup: register donor in LMCache (must send at least n_warmup times)
+    print(f"  [{dataset_name}] warming up ({n_warmup} rounds)...", file=sys.stderr)
     for i in range(n_warmup):
         send_request(endpoint, model, donor_prompt, max_tokens=8)
-        time.sleep(3)
+        time.sleep(4)
     print(f"  [{dataset_name}] warmed up", file=sys.stderr)
 
     # Hit measurements
@@ -328,9 +334,12 @@ def run_ttft_benchmark(
         t = send_request(endpoint, model, test_prompt, max_tokens=8)
         if t > 0:
             hit_ttfts.append(t)
-            if cold_ms > 0 and t < cold_ms * 0.85:  # 15% speedup = hit
+            # Hit if meaningfully faster than cold (20% threshold)
+            if cold_ms > 0 and t < cold_ms * 0.80:
                 n_hits += 1
-        print(f"  [{dataset_name}] trial {i+1}: {t:.0f}ms", file=sys.stderr)
+        print(f"  [{dataset_name}] hit[{i+1}]: {t:.0f}ms "
+              f"({'HIT' if cold_ms > 0 and t < cold_ms * 0.80 else 'miss'})",
+              file=sys.stderr)
         time.sleep(sleep_between)
 
     hit_ms = statistics.mean(hit_ttfts) if hit_ttfts else 0

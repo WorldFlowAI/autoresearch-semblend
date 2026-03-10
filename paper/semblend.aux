@@ -14,6 +14,10 @@
 \newlabel{eq:kv-size}{{1}{2}{Introduction}{equation.1}{}}
 \@writefile{toc}{\contentsline {paragraph}{Positioning relative to LMCache.}{2}{section*.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Contributions.}{2}{section*.3}\protected@file@percent }
+\citation{mepic}
+\citation{kvcomm}
+\citation{mepic}
+\citation{kvcomm}
 \citation{gptcache}
 \citation{langchain}
 \citation{pagedattention}
@@ -21,6 +25,10 @@
 \citation{lmcache}
 \citation{kvshare}
 \citation{semsharekv}
+\citation{kvcomm}
+\citation{epic}
+\citation{mepic}
+\citation{sentencekv}
 \citation{prophetkv}
 \citation{kvlink}
 \citation{gptcache}
@@ -29,86 +37,92 @@
 \citation{lmcache}
 \citation{kvshare}
 \citation{semsharekv}
+\citation{kvcomm}
+\citation{sentencekv}
 \citation{prophetkv}
 \citation{kvlink}
+\citation{epic}
 \citation{droidspeak}
 \citation{kvphysics}
+\citation{kvphysics}
+\citation{droidspeak}
+\citation{statefulkv}
+\citation{mepic}
 \@writefile{toc}{\contentsline {section}{\numberline {2}Background and Related Work}{3}{section.2}\protected@file@percent }
 \newlabel{sec:related}{{2}{3}{Background and Related Work}{section.2}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {3}Design}{3}{section.3}\protected@file@percent }
-\newlabel{sec:design}{{3}{3}{Design}{section.3}{}}
 \citation{minilm}
-\citation{rapidfuzz}
-\citation{wagnerfischer}
-\citation{cagra}
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Taxonomy of KV cache reuse systems. \textsc  {SemBlend}\xspace  combines in-process semantic donor discovery, layer-granular recomputation modeling, exact RoPE delta correction, and two-tier scaling. \textsc  {SemBlend}\xspace  is the first to solve the RoPE position encoding challenge (\S  \ref {sec:rope-correction}), enabling non-contiguous KV reuse on modern transformers. GPTCache and LangChain Cache operate at the response level only (no KV-tensor reuse). $O(N)$/$O(\log N)$ = local brute-force / GPU-accelerated ANN.}}{4}{table.caption.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Taxonomy of KV cache reuse systems. \textsc  {SemBlend}\xspace  combines in-process \emph  {semantic} donor discovery across different requests, layer-granular calibrated recomputation, exact RoPE delta correction (\emph  {without} model fine-tuning or custom kernels), and two-tier scaling. MEPIC~\cite  {mepic} and KVCOMM~\cite  {kvcomm} also address RoPE but via NoPE storage format (MEPIC, requires custom CUDA kernel) or approximate anchor interpolation (KVCOMM, requires precomputed anchors) for \emph  {positional} shift on \emph  {identical} content; \textsc  {SemBlend}\xspace  handles \emph  {semantic} similarity with zero-shot exact correction. GPTCache and LangChain Cache operate at the response level only. $O(N)$/$O(\log N)$ = local brute-force / GPU-accelerated ANN. $S$ = sentence count.}}{4}{table.caption.4}\protected@file@percent }
 \providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
-\newlabel{tab:taxonomy}{{1}{4}{Taxonomy of KV cache reuse systems. \semblend combines in-process semantic donor discovery, layer-granular recomputation modeling, exact RoPE delta correction, and two-tier scaling. \semblend is the first to solve the RoPE position encoding challenge (\S \ref {sec:rope-correction}), enabling non-contiguous KV reuse on modern transformers. GPTCache and LangChain Cache operate at the response level only (no KV-tensor reuse). $O(N)$/$O(\log N)$ = local brute-force / GPU-accelerated ANN}{table.caption.4}{}}
+\newlabel{tab:taxonomy}{{1}{4}{Taxonomy of KV cache reuse systems. \semblend combines in-process \emph {semantic} donor discovery across different requests, layer-granular calibrated recomputation, exact RoPE delta correction (\emph {without} model fine-tuning or custom kernels), and two-tier scaling. MEPIC~\cite {mepic} and KVCOMM~\cite {kvcomm} also address RoPE but via NoPE storage format (MEPIC, requires custom CUDA kernel) or approximate anchor interpolation (KVCOMM, requires precomputed anchors) for \emph {positional} shift on \emph {identical} content; \semblend handles \emph {semantic} similarity with zero-shot exact correction. GPTCache and LangChain Cache operate at the response level only. $O(N)$/$O(\log N)$ = local brute-force / GPU-accelerated ANN. $S$ = sentence count}{table.caption.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Design}{4}{section.3}\protected@file@percent }
+\newlabel{sec:design}{{3}{4}{Design}{section.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.1}SemBlend Local: In-Process Fast Path}{4}{subsection.3.1}\protected@file@percent }
 \newlabel{sec:local}{{3.1}{4}{SemBlend Local: In-Process Fast Path}{subsection.3.1}{}}
 \@writefile{toc}{\contentsline {paragraph}{Stage 1: Sentence Embedding (${\sim }5$\,ms).}{4}{section*.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Stage 2: Numpy Cosine Search (${\sim }1$\,ms).}{4}{section*.7}\protected@file@percent }
-\newlabel{eq:cosine-local}{{2}{4}{Stage 2: Numpy Cosine Search (${\sim }1$\,ms)}{equation.2}{}}
-\@writefile{toc}{\contentsline {paragraph}{Stage 3: Compiled Token Alignment ($<$1\,ms).}{4}{section*.8}\protected@file@percent }
-\newlabel{eq:chunk-align}{{3}{4}{Stage 3: Compiled Token Alignment ($<$1\,ms)}{equation.3}{}}
-\@writefile{toc}{\contentsline {paragraph}{KV Injection.}{4}{section*.9}\protected@file@percent }
-\citation{semsharekv}
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces \textsc  {SemBlend}\xspace  two-tier architecture. \textbf  {Tier~1 (Local)}: in-process donor discovery via CPU embedding, numpy cosine search, and compiled alignment (${\sim }8$\,ms, zero network hops). \textbf  {Tier~2 (Scaled)}: optional GPU-accelerated CAGRA search via gateway for cross-instance discovery at $100\text  {K}{+}$ donors. Both tiers inject donor KV via LMCache chunk-swap.}}{5}{figure.caption.5}\protected@file@percent }
-\newlabel{fig:arch}{{1}{5}{\semblend two-tier architecture. \textbf {Tier~1 (Local)}: in-process donor discovery via CPU embedding, numpy cosine search, and compiled alignment (${\sim }8$\,ms, zero network hops). \textbf {Tier~2 (Scaled)}: optional GPU-accelerated CAGRA search via gateway for cross-instance discovery at $100\text {K}{+}$ donors. Both tiers inject donor KV via LMCache chunk-swap}{figure.caption.5}{}}
+\citation{rapidfuzz}
+\citation{wagnerfischer}
+\citation{cagra}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces \textsc  {SemBlend}\xspace  two-tier architecture. \textbf  {Tier~1 (Local)}: in-process donor discovery via CPU embedding, numpy cosine search, and compiled alignment (${\sim }8$\,ms, zero network hops). \textbf  {Tier~2 (Scaled)}: optional GPU-accelerated CAGRA search via gateway for cross-instance discovery at 1.37\,ms constant to $N{=}1\text  {M}$ donors. Both tiers inject donor KV via LMCache chunk-swap.}}{5}{figure.caption.5}\protected@file@percent }
+\newlabel{fig:arch}{{1}{5}{\semblend two-tier architecture. \textbf {Tier~1 (Local)}: in-process donor discovery via CPU embedding, numpy cosine search, and compiled alignment (${\sim }8$\,ms, zero network hops). \textbf {Tier~2 (Scaled)}: optional GPU-accelerated CAGRA search via gateway for cross-instance discovery at 1.37\,ms constant to $N{=}1\text {M}$ donors. Both tiers inject donor KV via LMCache chunk-swap}{figure.caption.5}{}}
+\@writefile{toc}{\contentsline {paragraph}{Stage 2: Numpy Cosine Search (${\sim }1$\,ms).}{5}{section*.7}\protected@file@percent }
+\newlabel{eq:cosine-local}{{2}{5}{Stage 2: Numpy Cosine Search (${\sim }1$\,ms)}{equation.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{Stage 3: Compiled Token Alignment ($<$1\,ms).}{5}{section*.8}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Donor discovery latency: Local vs.\ Remote architectures.}}{5}{table.caption.10}\protected@file@percent }
+\newlabel{tab:local-vs-remote}{{2}{5}{Donor discovery latency: Local vs.\ Remote architectures}{table.caption.10}{}}
+\newlabel{eq:chunk-align}{{3}{5}{Stage 3: Compiled Token Alignment ($<$1\,ms)}{equation.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{KV Injection.}{5}{section*.9}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.2}SemBlend Scaled: GPU-Accelerated Cross-Instance Discovery}{5}{subsection.3.2}\protected@file@percent }
 \newlabel{sec:scaled}{{3.2}{5}{SemBlend Scaled: GPU-Accelerated Cross-Instance Discovery}{subsection.3.2}{}}
 \@writefile{toc}{\contentsline {paragraph}{Architecture.}{5}{section*.11}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Donor discovery latency: Local vs.\ Remote architectures.}}{5}{table.caption.10}\protected@file@percent }
-\newlabel{tab:local-vs-remote}{{2}{5}{Donor discovery latency: Local vs.\ Remote architectures}{table.caption.10}{}}
-\@writefile{toc}{\contentsline {paragraph}{Latency.}{5}{section*.12}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Complexity.}{5}{section*.13}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Token Alignment}{5}{subsection.3.3}\protected@file@percent }
-\newlabel{sec:alignment}{{3.3}{5}{Token Alignment}{subsection.3.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Calibrated Layer-Selective Recomputation}{5}{subsection.3.4}\protected@file@percent }
-\newlabel{sec:recomp}{{3.4}{5}{Calibrated Layer-Selective Recomputation}{subsection.3.4}{}}
-\newlabel{eq:bathtub}{{4}{5}{Calibrated Layer-Selective Recomputation}{equation.4}{}}
-\citation{triton}
+\citation{semsharekv}
+\@writefile{toc}{\contentsline {paragraph}{Latency.}{6}{section*.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Complexity.}{6}{section*.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Token Alignment}{6}{subsection.3.3}\protected@file@percent }
+\newlabel{sec:alignment}{{3.3}{6}{Token Alignment}{subsection.3.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Calibrated Layer-Selective Recomputation}{6}{subsection.3.4}\protected@file@percent }
+\newlabel{sec:recomp}{{3.4}{6}{Calibrated Layer-Selective Recomputation}{subsection.3.4}{}}
+\newlabel{eq:bathtub}{{4}{6}{Calibrated Layer-Selective Recomputation}{equation.4}{}}
 \@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces Two-Tier Donor Discovery}}{6}{algorithm.1}\protected@file@percent }
 \newlabel{alg:delta}{{1}{6}{Two-Tier Donor Discovery}{algorithm.1}{}}
 \@writefile{toc}{\contentsline {paragraph}{Recomputation decision.}{6}{section*.14}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.5}PartialAttention Mechanism}{6}{subsection.3.5}\protected@file@percent }
 \newlabel{sec:partial}{{3.5}{6}{PartialAttention Mechanism}{subsection.3.5}{}}
-\@writefile{loa}{\contentsline {algorithm}{\numberline {2}{\ignorespaces Build PartialAttention Plan}}{6}{algorithm.2}\protected@file@percent }
-\newlabel{alg:partial}{{2}{6}{Build PartialAttention Plan}{algorithm.2}{}}
-\newlabel{eq:cratio}{{5}{6}{PartialAttention Mechanism}{equation.5}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.5.1}Triton GPU Kernel Implementation}{6}{subsubsection.3.5.1}\protected@file@percent }
-\newlabel{sec:triton}{{3.5.1}{6}{Triton GPU Kernel Implementation}{subsubsection.3.5.1}{}}
-\@writefile{toc}{\contentsline {paragraph}{Stage 1: Scatter Donor KV (\texttt  {scatter\_donor\_kv}).}{6}{section*.15}\protected@file@percent }
+\citation{triton}
 \citation{flashattention}
 \citation{rope}
+\@writefile{loa}{\contentsline {algorithm}{\numberline {2}{\ignorespaces Build PartialAttention Plan}}{7}{algorithm.2}\protected@file@percent }
+\newlabel{alg:partial}{{2}{7}{Build PartialAttention Plan}{algorithm.2}{}}
+\newlabel{eq:cratio}{{5}{7}{PartialAttention Mechanism}{equation.5}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.5.1}Triton GPU Kernel Implementation}{7}{subsubsection.3.5.1}\protected@file@percent }
+\newlabel{sec:triton}{{3.5.1}{7}{Triton GPU Kernel Implementation}{subsubsection.3.5.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Stage 1: Scatter Donor KV (\texttt  {scatter\_donor\_kv}).}{7}{section*.15}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Stage 2: Masked QKV Projection (\texttt  {masked\_qkv\_proj}).}{7}{section*.16}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Stage 3: Partial Prefill Attention (\texttt  {partial\_prefill\_attn}).}{7}{section*.17}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Orchestration.}{7}{section*.18}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Correctness.}{7}{section*.19}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.6}RoPE Delta Correction for Non-Contiguous KV Reuse}{7}{subsection.3.6}\protected@file@percent }
 \newlabel{sec:rope-correction}{{3.6}{7}{RoPE Delta Correction for Non-Contiguous KV Reuse}{subsection.3.6}{}}
-\newlabel{eq:rope}{{7}{7}{RoPE Delta Correction for Non-Contiguous KV Reuse}{equation.7}{}}
-\@writefile{toc}{\contentsline {paragraph}{Exact delta correction.}{7}{section*.20}\protected@file@percent }
-\newlabel{eq:rope-correction}{{8}{7}{Exact delta correction}{equation.8}{}}
-\@writefile{toc}{\contentsline {paragraph}{Computational cost.}{7}{section*.21}\protected@file@percent }
-\newlabel{eq:rope-complex}{{9}{7}{Computational cost}{equation.9}{}}
-\citation{semsharekv}
+\newlabel{eq:rope}{{7}{8}{RoPE Delta Correction for Non-Contiguous KV Reuse}{equation.7}{}}
+\@writefile{toc}{\contentsline {paragraph}{Exact delta correction.}{8}{section*.20}\protected@file@percent }
+\newlabel{eq:rope-correction}{{8}{8}{Exact delta correction}{equation.8}{}}
+\@writefile{toc}{\contentsline {paragraph}{Computational cost.}{8}{section*.21}\protected@file@percent }
+\newlabel{eq:rope-complex}{{9}{8}{Computational cost}{equation.9}{}}
 \@writefile{toc}{\contentsline {paragraph}{Implementation.}{8}{section*.22}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Donor metadata store tiers (no KV tensor storage).}}{8}{table.caption.25}\protected@file@percent }
+\newlabel{tab:donor-tiers}{{3}{8}{Donor metadata store tiers (no KV tensor storage)}{table.caption.25}{}}
 \@writefile{toc}{\contentsline {paragraph}{Complementary to bathtub recomputation.}{8}{section*.23}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Enabling non-contiguous reuse.}{8}{section*.24}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.7}KV Storage and LMCache Integration}{8}{subsection.3.7}\protected@file@percent }
 \newlabel{sec:tiers}{{3.7}{8}{KV Storage and LMCache Integration}{subsection.3.7}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Donor metadata store tiers (no KV tensor storage).}}{8}{table.caption.25}\protected@file@percent }
-\newlabel{tab:donor-tiers}{{3}{8}{Donor metadata store tiers (no KV tensor storage)}{table.caption.25}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4}Evaluation}{8}{section.4}\protected@file@percent }
-\newlabel{sec:eval}{{4}{8}{Evaluation}{section.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Experimental Setup}{8}{subsection.4.1}\protected@file@percent }
-\newlabel{sec:setup}{{4.1}{8}{Experimental Setup}{subsection.4.1}{}}
-\@writefile{toc}{\contentsline {paragraph}{Hardware.}{8}{section*.26}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Models.}{8}{section*.27}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Donor discovery.}{8}{section*.28}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Dataset.}{8}{section*.29}\protected@file@percent }
 \citation{semsharekv}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Evaluation}{9}{section.4}\protected@file@percent }
+\newlabel{sec:eval}{{4}{9}{Evaluation}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Experimental Setup}{9}{subsection.4.1}\protected@file@percent }
+\newlabel{sec:setup}{{4.1}{9}{Experimental Setup}{subsection.4.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Hardware.}{9}{section*.26}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Models.}{9}{section*.27}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Donor discovery.}{9}{section*.28}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Dataset.}{9}{section*.29}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Protocol.}{9}{section*.30}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Prompt length verification.}{9}{section*.31}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Statistical methodology.}{9}{section*.32}\protected@file@percent }
@@ -116,59 +130,58 @@
 \newlabel{sec:empirical}{{4.2}{9}{Empirical Results}{subsection.4.2}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.1}KV-Tensor-Level Cache: SemBlend Donor Injection}{9}{subsubsection.4.2.1}\protected@file@percent }
 \newlabel{sec:kv-results}{{4.2.1}{9}{KV-Tensor-Level Cache: SemBlend Donor Injection}{subsubsection.4.2.1}{}}
-\@writefile{toc}{\contentsline {paragraph}{Model-agnostic operation.}{9}{section*.34}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Comparison with SemShareKV.}{9}{section*.35}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Why SemBlend speedup exceeds SemShareKV at long sequences.}{9}{section*.36}\protected@file@percent }
+\citation{semsharekv}
 \@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces \textbf  {SemBlend KV donor injection} TTFT speedup across two model architectures on \textbf  {A10G} GPU (24\,GiB). Measured via vLLM~v0.14.1 with \texttt  {SemBlendConnectorV1} wrapping LMCache, with RoPE delta correction enabled. Per-length pod restarts eliminate cross-length contamination. Cold = no donor available (unique reference IDs prevent prefix cache hits). SemBlend TTFT is near-constant (${\sim }500$--$830$\,ms) as prompt length grows, since KV load from CPU offload dominates. $n{=}5$ per length (short/mid-range); $n{=}8$ for 24K/32K (see $n$ column). In controlled single-donor scenarios with matched document variations.}}{10}{table.caption.33}\protected@file@percent }
 \newlabel{tab:results-kv}{{4}{10}{\textbf {SemBlend KV donor injection} TTFT speedup across two model architectures on \textbf {A10G} GPU (24\,GiB). Measured via vLLM~v0.14.1 with \texttt {SemBlendConnectorV1} wrapping LMCache, with RoPE delta correction enabled. Per-length pod restarts eliminate cross-length contamination. Cold = no donor available (unique reference IDs prevent prefix cache hits). SemBlend TTFT is near-constant (${\sim }500$--$830$\,ms) as prompt length grows, since KV load from CPU offload dominates. $n{=}5$ per length (short/mid-range); $n{=}8$ for 24K/32K (see $n$ column). In controlled single-donor scenarios with matched document variations}{table.caption.33}{}}
-\@writefile{toc}{\contentsline {paragraph}{Donor pool scaling.}{10}{section*.37}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.2}SemBlend Injection: Scaling Behavior}{10}{subsubsection.4.2.2}\protected@file@percent }
-\newlabel{sec:semblend-injection-results}{{4.2.2}{10}{SemBlend Injection: Scaling Behavior}{subsubsection.4.2.2}{}}
-\@writefile{toc}{\contentsline {paragraph}{Why SemBlend complements prefix caching.}{10}{section*.38}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Model-agnostic operation.}{10}{section*.34}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Comparison with SemShareKV.}{10}{section*.35}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Why SemBlend speedup exceeds SemShareKV at long sequences.}{10}{section*.36}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Donor pool scaling.}{11}{section*.37}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.2}SemBlend Injection: Scaling Behavior}{11}{subsubsection.4.2.2}\protected@file@percent }
+\newlabel{sec:semblend-injection-results}{{4.2.2}{11}{SemBlend Injection: Scaling Behavior}{subsubsection.4.2.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{Why SemBlend complements prefix caching.}{11}{section*.38}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces \textbf  {Prefix cache coverage gap.} vLLM prefix cache vs.\ \textsc  {SemBlend}\xspace  speedup by prompt variation type at 2K/8K/16K tokens on A10G (Qwen2.5-7B-AWQ). Prefix cache: $n{=}40$ per scenario (4 contexts $\times $ 10 runs, \textsc  {SemBlend}\xspace  disabled). \textsc  {SemBlend}\xspace  data from Table~\ref {tab:cross-dataset}.}}{11}{table.caption.39}\protected@file@percent }
 \newlabel{tab:prefix-cache-gap}{{5}{11}{\textbf {Prefix cache coverage gap.} vLLM prefix cache vs.\^^M\semblend speedup by prompt variation type at 2K/8K/16K tokens on A10G (Qwen2.5-7B-AWQ). Prefix cache: $n{=}40$ per scenario (4 contexts $\times $ 10 runs, \semblend disabled). \semblend data from Table~\ref {tab:cross-dataset}}{table.caption.39}{}}
 \@writefile{toc}{\contentsline {paragraph}{Component overhead.}{11}{section*.40}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Multi-candidate KV fallback.}{11}{section*.41}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Donor store scaling.}{11}{section*.42}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.3}Output Quality Preservation}{11}{subsubsection.4.2.3}\protected@file@percent }
-\newlabel{sec:quality}{{4.2.3}{11}{Output Quality Preservation}{subsubsection.4.2.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{Donor store scaling.}{12}{section*.42}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.3}Output Quality Preservation}{12}{subsubsection.4.2.3}\protected@file@percent }
+\newlabel{sec:quality}{{4.2.3}{12}{Output Quality Preservation}{subsubsection.4.2.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces \textbf  {Quality preservation} under SemBlend KV injection. PPL Ratio = perplexity of SemBlend output / cold baseline (${\sim }1.0$ = no degradation). Extended generation with \texttt  {max\_tokens=256}. $n{=}5$ per cell on A10G.}}{12}{table.caption.44}\protected@file@percent }
+\newlabel{tab:quality}{{6}{12}{\textbf {Quality preservation} under SemBlend KV injection. PPL Ratio = perplexity of SemBlend output / cold baseline (${\sim }1.0$ = no degradation). Extended generation with \texttt {max\_tokens=256}. $n{=}5$ per cell on A10G}{table.caption.44}{}}
+\@writefile{toc}{\contentsline {paragraph}{Methodology.}{12}{section*.43}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Results.}{12}{section*.45}\protected@file@percent }
 \citation{cnn_dailymail}
 \citation{xsum}
 \citation{multinews}
 \citation{wikihow}
 \citation{samsum}
-\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces \textbf  {Quality preservation} under SemBlend KV injection. PPL Ratio = perplexity of SemBlend output / cold baseline (${\sim }1.0$ = no degradation). Extended generation with \texttt  {max\_tokens=256}. $n{=}5$ per cell on A10G.}}{12}{table.caption.44}\protected@file@percent }
-\newlabel{tab:quality}{{6}{12}{\textbf {Quality preservation} under SemBlend KV injection. PPL Ratio = perplexity of SemBlend output / cold baseline (${\sim }1.0$ = no degradation). Extended generation with \texttt {max\_tokens=256}. $n{=}5$ per cell on A10G}{table.caption.44}{}}
-\@writefile{toc}{\contentsline {paragraph}{Methodology.}{12}{section*.43}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Results.}{12}{section*.45}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Extended generation quality (256--512 tokens).}{12}{section*.46}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.4}Cross-Dataset TTFT Evaluation}{12}{subsubsection.4.2.4}\protected@file@percent }
-\newlabel{sec:cross-dataset}{{4.2.4}{12}{Cross-Dataset TTFT Evaluation}{subsubsection.4.2.4}{}}
+\@writefile{toc}{\contentsline {paragraph}{Extended generation quality (256--512 tokens).}{13}{section*.46}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.4}Cross-Dataset TTFT Evaluation}{13}{subsubsection.4.2.4}\protected@file@percent }
+\newlabel{sec:cross-dataset}{{4.2.4}{13}{Cross-Dataset TTFT Evaluation}{subsubsection.4.2.4}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces \textbf  {Cross-dataset TTFT speedup} on real-world NLP datasets. Qwen2.5-7B-AWQ on A10G, $n{=}8$ per length per dataset, per-length donor registration with fresh pod state. Hit Rate = fraction of queries achieving TTFT $< 0.70 \times $ cold P50. Speedup shown is raw P50 (including misses).}}{13}{table.caption.47}\protected@file@percent }
 \newlabel{tab:cross-dataset}{{7}{13}{\textbf {Cross-dataset TTFT speedup} on real-world NLP datasets. Qwen2.5-7B-AWQ on A10G, $n{=}8$ per length per dataset, per-length donor registration with fresh pod state. Hit Rate = fraction of queries achieving TTFT $< 0.70 \times $ cold P50. Speedup shown is raw P50 (including misses)}{table.caption.47}{}}
 \@writefile{toc}{\contentsline {paragraph}{Hit rate analysis.}{13}{section*.48}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Quality on real data.}{13}{section*.49}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.5}Multi-Model Generalization}{13}{subsubsection.4.2.5}\protected@file@percent }
-\newlabel{sec:multi-model-real}{{4.2.5}{13}{Multi-Model Generalization}{subsubsection.4.2.5}{}}
+\@writefile{toc}{\contentsline {paragraph}{Quality on real data.}{14}{section*.49}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.5}Multi-Model Generalization}{14}{subsubsection.4.2.5}\protected@file@percent }
+\newlabel{sec:multi-model-real}{{4.2.5}{14}{Multi-Model Generalization}{subsubsection.4.2.5}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces \textbf  {Multi-model TTFT comparison} on real-world datasets. Both models on A10G, $n{=}8$ per length, fresh pod state per dataset. Hit-only speedup excludes misses for fair comparison.}}{14}{table.caption.50}\protected@file@percent }
 \newlabel{tab:multi-model-cross}{{8}{14}{\textbf {Multi-model TTFT comparison} on real-world datasets. Both models on A10G, $n{=}8$ per length, fresh pod state per dataset. Hit-only speedup excludes misses for fair comparison}{table.caption.50}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces \textbf  {Quality across datasets and models.} PPL ratio $\approx 1.0$ means no degradation; elevated values on MultiNews, CNN/DM, and SAMSum are driven by miss-runs (failed KV transfer), not by KV injection quality. Both models tested on 5 datasets. $n{=}8$ per length.}}{14}{table.caption.52}\protected@file@percent }
-\newlabel{tab:cross-quality}{{9}{14}{\textbf {Quality across datasets and models.} PPL ratio $\approx 1.0$ means no degradation; elevated values on MultiNews, CNN/DM, and SAMSum are driven by miss-runs (failed KV transfer), not by KV injection quality. Both models tested on 5 datasets. $n{=}8$ per length}{table.caption.52}{}}
-\@writefile{toc}{\contentsline {paragraph}{Quality preservation across architectures.}{14}{section*.51}\protected@file@percent }
-\citation{rapidfuzz}
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces \textbf  {Quality across datasets and models.} PPL ratio $\approx 1.0$ means no degradation; elevated values on MultiNews, CNN/DM, and SAMSum are driven by miss-runs (failed KV transfer), not by KV injection quality. Both models tested on 5 datasets. $n{=}8$ per length.}}{15}{table.caption.52}\protected@file@percent }
+\newlabel{tab:cross-quality}{{9}{15}{\textbf {Quality across datasets and models.} PPL ratio $\approx 1.0$ means no degradation; elevated values on MultiNews, CNN/DM, and SAMSum are driven by miss-runs (failed KV transfer), not by KV injection quality. Both models tested on 5 datasets. $n{=}8$ per length}{table.caption.52}{}}
+\@writefile{toc}{\contentsline {paragraph}{Quality preservation across architectures.}{15}{section*.51}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Throughput under concurrent load.}{15}{section*.53}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Long-context throughput with donor reuse.}{15}{section*.54}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.6}SemBlend Local: Component Latency Decomposition}{15}{subsubsection.4.2.6}\protected@file@percent }
 \newlabel{sec:local-breakdown}{{4.2.6}{15}{SemBlend Local: Component Latency Decomposition}{subsubsection.4.2.6}{}}
-\@writefile{toc}{\contentsline {paragraph}{Finding 1: In-process embedding eliminates the overhead bottleneck.}{15}{section*.56}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Finding 2: Embedding vs.\ Jaccard trade-offs.}{15}{section*.57}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Finding 3: RoPE correction produces near-zero per-layer deviation.}{15}{section*.58}\protected@file@percent }
+\citation{rapidfuzz}
 \@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces \textbf  {SemBlend Local} component latency decomposition. In-process pipeline with zero network hops. All stages execute sequentially within the vLLM scheduler process. Measured values from benchmark logs on A10G with Qwen2.5-7B-AWQ, per-length pod restarts.}}{16}{table.caption.55}\protected@file@percent }
 \newlabel{tab:component-breakdown}{{10}{16}{\textbf {SemBlend Local} component latency decomposition. In-process pipeline with zero network hops. All stages execute sequentially within the vLLM scheduler process. Measured values from benchmark logs on A10G with Qwen2.5-7B-AWQ, per-length pod restarts}{table.caption.55}{}}
+\@writefile{toc}{\contentsline {paragraph}{Finding 1: In-process embedding eliminates the overhead bottleneck.}{16}{section*.56}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Finding 2: Embedding vs.\ Jaccard trade-offs.}{16}{section*.57}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Finding 3: RoPE correction produces near-zero per-layer deviation.}{16}{section*.58}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Bathtub curve calibration.}{16}{section*.59}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Prefill computation savings.}{16}{section*.60}\protected@file@percent }
-\citation{prophetkv}
-\citation{prophetkv}
+\@writefile{toc}{\contentsline {paragraph}{Prefill computation savings.}{17}{section*.60}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Operating Envelope}{17}{subsection.4.3}\protected@file@percent }
 \newlabel{sec:operating-envelope}{{4.3}{17}{Operating Envelope}{subsection.4.3}{}}
 \@writefile{toc}{\contentsline {paragraph}{Expected TTFT as a function of hit rate.}{17}{section*.61}\protected@file@percent }
@@ -178,53 +191,55 @@
 \newlabel{sec:analysis}{{4.4}{17}{Analysis}{subsection.4.4}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.1}Sensitivity to Similarity Threshold}{17}{subsubsection.4.4.1}\protected@file@percent }
 \newlabel{sec:analysis:threshold}{{4.4.1}{17}{Sensitivity to Similarity Threshold}{subsubsection.4.4.1}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces \textbf  {Similarity threshold ablation.} Blended TTFT speedup and output quality at different cosine thresholds $\tau $. Coverage = fraction of variation types accepted. PPL Ratio measured on live endpoint. CNN/DailyMail, Qwen2.5-7B-AWQ, A10G.}}{17}{table.caption.63}\protected@file@percent }
-\newlabel{tab:threshold-ablation}{{11}{17}{\textbf {Similarity threshold ablation.} Blended TTFT speedup and output quality at different cosine thresholds $\tau $. Coverage = fraction of variation types accepted. PPL Ratio measured on live endpoint. CNN/DailyMail, Qwen2.5-7B-AWQ, A10G}{table.caption.63}{}}
-\@writefile{toc}{\contentsline {paragraph}{Threshold analysis.}{17}{section*.64}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Empirical threshold insensitivity.}{17}{section*.65}\protected@file@percent }
+\citation{prophetkv}
+\citation{prophetkv}
+\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces \textbf  {Similarity threshold ablation.} Blended TTFT speedup and output quality at different cosine thresholds $\tau $. Coverage = fraction of variation types accepted. PPL Ratio measured on live endpoint. CNN/DailyMail, Qwen2.5-7B-AWQ, A10G.}}{18}{table.caption.63}\protected@file@percent }
+\newlabel{tab:threshold-ablation}{{11}{18}{\textbf {Similarity threshold ablation.} Blended TTFT speedup and output quality at different cosine thresholds $\tau $. Coverage = fraction of variation types accepted. PPL Ratio measured on live endpoint. CNN/DailyMail, Qwen2.5-7B-AWQ, A10G}{table.caption.63}{}}
+\@writefile{toc}{\contentsline {paragraph}{Threshold analysis.}{18}{section*.64}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Empirical threshold insensitivity.}{18}{section*.65}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Entity-swap FM2 validation.}{18}{section*.66}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Quality invariance across variation types.}{18}{section*.67}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces \textbf  {Variation sensitivity.} \textit  {Left:} PPL ratio stays at $1.000\pm 0.001$ for all 7 variation types (cosine 1.0 to 0.20), confirming SemBlend's quality floor guarantee. The red star marks the FM2 semantic-staleness outlier (PPL=1.27) observed in the threshold sweep (\S  \ref {sec:analysis:threshold}); no such outlier appears in the variation sensitivity data. \textit  {Right:} LMCache hit rates are non-monotonic---block-hash matching, not cosine similarity, determines hit probability. CNN/DailyMail 8K; Qwen2.5-7B-AWQ shown (LLaMA-3.1-8B-AWQ replicates: PPL=$1.000{\pm }0.001$ across all types), $n{=}8$ per type.}}{18}{figure.caption.68}\protected@file@percent }
-\newlabel{fig:variation-sensitivity}{{2}{18}{\textbf {Variation sensitivity.} \textit {Left:} PPL ratio stays at $1.000\pm 0.001$ for all 7 variation types (cosine 1.0 to 0.20), confirming SemBlend's quality floor guarantee. The red star marks the FM2 semantic-staleness outlier (PPL=1.27) observed in the threshold sweep (\S \ref {sec:analysis:threshold}); no such outlier appears in the variation sensitivity data. \textit {Right:} LMCache hit rates are non-monotonic---block-hash matching, not cosine similarity, determines hit probability. CNN/DailyMail 8K; Qwen2.5-7B-AWQ shown (LLaMA-3.1-8B-AWQ replicates: PPL=$1.000{\pm }0.001$ across all types), $n{=}8$ per type}{figure.caption.68}{}}
-\@writefile{toc}{\contentsline {paragraph}{Overlap exponent $\beta $.}{18}{section*.69}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.2}PartialAttention Computation Savings}{18}{subsubsection.4.4.2}\protected@file@percent }
-\newlabel{eq:savings}{{11}{18}{PartialAttention Computation Savings}{equation.11}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.3}Embedding vs.\ Jaccard Ablation}{18}{subsubsection.4.4.3}\protected@file@percent }
-\newlabel{sec:analysis:embedding}{{4.4.3}{18}{Embedding vs.\ Jaccard Ablation}{subsubsection.4.4.3}{}}
-\citation{zhao2024wildchat}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces \textbf  {Variation sensitivity.} \textit  {Left:} PPL ratio stays at $1.000\pm 0.001$ for all 7 variation types (cosine 1.0 to 0.20), confirming SemBlend's quality floor guarantee. The red star marks the FM2 semantic-staleness outlier (PPL=1.27) observed in the threshold sweep (\S  \ref {sec:analysis:threshold}); no such outlier appears in the variation sensitivity data. \textit  {Right:} LMCache hit rates are non-monotonic---block-hash matching, not cosine similarity, determines hit probability. CNN/DailyMail 8K; Qwen2.5-7B-AWQ shown (LLaMA-3.1-8B-AWQ replicates: PPL=$1.000{\pm }0.001$ across all types), $n{=}8$ per type.}}{19}{figure.caption.68}\protected@file@percent }
+\newlabel{fig:variation-sensitivity}{{2}{19}{\textbf {Variation sensitivity.} \textit {Left:} PPL ratio stays at $1.000\pm 0.001$ for all 7 variation types (cosine 1.0 to 0.20), confirming SemBlend's quality floor guarantee. The red star marks the FM2 semantic-staleness outlier (PPL=1.27) observed in the threshold sweep (\S \ref {sec:analysis:threshold}); no such outlier appears in the variation sensitivity data. \textit {Right:} LMCache hit rates are non-monotonic---block-hash matching, not cosine similarity, determines hit probability. CNN/DailyMail 8K; Qwen2.5-7B-AWQ shown (LLaMA-3.1-8B-AWQ replicates: PPL=$1.000{\pm }0.001$ across all types), $n{=}8$ per type}{figure.caption.68}{}}
+\@writefile{toc}{\contentsline {paragraph}{Overlap exponent $\beta $.}{19}{section*.69}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.2}PartialAttention Computation Savings}{19}{subsubsection.4.4.2}\protected@file@percent }
+\newlabel{eq:savings}{{11}{19}{PartialAttention Computation Savings}{equation.11}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.3}Embedding vs.\ Jaccard Ablation}{19}{subsubsection.4.4.3}\protected@file@percent }
+\newlabel{sec:analysis:embedding}{{4.4.3}{19}{Embedding vs.\ Jaccard Ablation}{subsubsection.4.4.3}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces \textbf  {Embedding vs.\ Jaccard ablation.} Mean Jaccard (word-set) vs.\ MiniLM cosine similarity for each variation type. Accepted = above $\tau {=}0.60$ threshold. CNN/DailyMail, $n{=}200$ clusters.}}{19}{table.caption.70}\protected@file@percent }
 \newlabel{tab:embedding-ablation}{{12}{19}{\textbf {Embedding vs.\ Jaccard ablation.} Mean Jaccard (word-set) vs.\ MiniLM cosine similarity for each variation type. Accepted = above $\tau {=}0.60$ threshold. CNN/DailyMail, $n{=}200$ clusters}{table.caption.70}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.4}RoPE Correction: Position-Shift Validation}{19}{subsubsection.4.4.4}\protected@file@percent }
 \newlabel{sec:analysis:rope}{{4.4.4}{19}{RoPE Correction: Position-Shift Validation}{subsubsection.4.4.4}{}}
-\@writefile{toc}{\contentsline {paragraph}{Indirect validation via REORDER variation sensitivity.}{19}{section*.72}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces \textbf  {RoPE correction position-shift experiment.} Donor registered at $N$ tokens; variation query is [FILLER$_{256}$][same content] forcing content chunks to positions shifted by $+256$ tokens. LLaMA-3.1-8B-AWQ, 4K token content, $n{=}8$. PPL Ratio = PPL(SemBlend) / PPL(cold). Hit = SemBlend TTFT $<$ 50\% of cold TTFT.}}{19}{table.caption.71}\protected@file@percent }
-\newlabel{tab:rope-validation}{{13}{19}{\textbf {RoPE correction position-shift experiment.} Donor registered at $N$ tokens; variation query is [FILLER$_{256}$][same content] forcing content chunks to positions shifted by $+256$ tokens. LLaMA-3.1-8B-AWQ, 4K token content, $n{=}8$. PPL Ratio = PPL(SemBlend) / PPL(cold). Hit = SemBlend TTFT $<$ 50\% of cold TTFT}{table.caption.71}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.5}When Competitors Are Better}{19}{subsubsection.4.4.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.6}Real-World Conversational Workload Validation}{19}{subsubsection.4.4.6}\protected@file@percent }
-\newlabel{sec:analysis:wildchat}{{4.4.6}{19}{Real-World Conversational Workload Validation}{subsubsection.4.4.6}{}}
+\@writefile{toc}{\contentsline {paragraph}{Quality invariance across variation types.}{19}{section*.72}\protected@file@percent }
+\citation{zhao2024wildchat}
+\@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces \textbf  {RoPE correction position-shift experiment.} Donor registered at $N$ tokens; variation query is [FILLER$_{256}$][same content] forcing content chunks to positions shifted by $+256$ tokens. LLaMA-3.1-8B-AWQ, 4K token content, $n{=}8$. PPL Ratio = PPL(SemBlend) / PPL(cold). Hit = SemBlend TTFT $<$ 50\% of cold TTFT.}}{20}{table.caption.71}\protected@file@percent }
+\newlabel{tab:rope-validation}{{13}{20}{\textbf {RoPE correction position-shift experiment.} Donor registered at $N$ tokens; variation query is [FILLER$_{256}$][same content] forcing content chunks to positions shifted by $+256$ tokens. LLaMA-3.1-8B-AWQ, 4K token content, $n{=}8$. PPL Ratio = PPL(SemBlend) / PPL(cold). Hit = SemBlend TTFT $<$ 50\% of cold TTFT}{table.caption.71}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.5}When Competitors Are Better}{20}{subsubsection.4.4.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.6}Real-World Conversational Workload Validation}{20}{subsubsection.4.4.6}\protected@file@percent }
+\newlabel{sec:analysis:wildchat}{{4.4.6}{20}{Real-World Conversational Workload Validation}{subsubsection.4.4.6}{}}
 \citation{dynamo}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Inference-Engine Comparison}{20}{subsection.4.5}\protected@file@percent }
-\newlabel{sec:inference-comparison}{{4.5}{20}{Inference-Engine Comparison}{subsection.4.5}{}}
-\@writefile{toc}{\contentsline {paragraph}{Speedup scaling.}{20}{section*.74}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {5}Discussion}{20}{section.5}\protected@file@percent }
-\newlabel{sec:discussion}{{5}{20}{Discussion}{section.5}{}}
-\@writefile{toc}{\contentsline {paragraph}{Deployment boundaries.}{20}{section*.75}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Relationship to exact-match systems.}{20}{section*.76}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {14}{\ignorespaces Inference-engine warm-path latency. KV-tensor SemBlend on A10G with Qwen2.5-7B-AWQ.}}{21}{table.caption.73}\protected@file@percent }
-\newlabel{tab:microbench}{{14}{21}{Inference-engine warm-path latency. KV-tensor SemBlend on A10G with Qwen2.5-7B-AWQ}{table.caption.73}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Inference-Engine Comparison}{21}{subsection.4.5}\protected@file@percent }
+\newlabel{sec:inference-comparison}{{4.5}{21}{Inference-Engine Comparison}{subsection.4.5}{}}
+\@writefile{toc}{\contentsline {paragraph}{Speedup scaling.}{21}{section*.74}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Discussion}{21}{section.5}\protected@file@percent }
+\newlabel{sec:discussion}{{5}{21}{Discussion}{section.5}{}}
+\@writefile{toc}{\contentsline {paragraph}{Deployment boundaries.}{21}{section*.75}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Relationship to exact-match systems.}{21}{section*.76}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{PartialAttention integration.}{21}{section*.77}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Ablation: component contributions.}{21}{section*.78}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Threats to validity.}{21}{section*.79}\protected@file@percent }
 \citation{kvphysics}
 \citation{droidspeak}
+\@writefile{lot}{\contentsline {table}{\numberline {14}{\ignorespaces Inference-engine warm-path latency. KV-tensor SemBlend on A10G with Qwen2.5-7B-AWQ.}}{22}{table.caption.73}\protected@file@percent }
+\newlabel{tab:microbench}{{14}{22}{Inference-engine warm-path latency. KV-tensor SemBlend on A10G with Qwen2.5-7B-AWQ}{table.caption.73}{}}
+\@writefile{toc}{\contentsline {paragraph}{Threats to validity.}{22}{section*.79}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Limitations.}{22}{section*.80}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{22}{section.6}\protected@file@percent }
-\newlabel{sec:conclusion}{{6}{22}{Conclusion}{section.6}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {15}{\ignorespaces Triton kernel configurations for PartialAttention.}}{24}{table.caption.81}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {A}PartialAttention Kernel Specifications}{24}{appendix.A}\protected@file@percent }
-\newlabel{app:kernels}{{A}{24}{PartialAttention Kernel Specifications}{appendix.A}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {B}Reproduction}{24}{appendix.B}\protected@file@percent }
-\newlabel{app:reproduction}{{B}{24}{Reproduction}{appendix.B}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{23}{section.6}\protected@file@percent }
+\newlabel{sec:conclusion}{{6}{23}{Conclusion}{section.6}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {15}{\ignorespaces Triton kernel configurations for PartialAttention.}}{25}{table.caption.81}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {A}PartialAttention Kernel Specifications}{25}{appendix.A}\protected@file@percent }
+\newlabel{app:kernels}{{A}{25}{PartialAttention Kernel Specifications}{appendix.A}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {B}Reproduction}{25}{appendix.B}\protected@file@percent }
+\newlabel{app:reproduction}{{B}{25}{Reproduction}{appendix.B}{}}
 \bibcite{cacheblend}{1}
 \bibcite{kvshare}{2}
 \bibcite{semsharekv}{3}
@@ -251,4 +266,9 @@
 \bibcite{kvlink}{24}
 \bibcite{droidspeak}{25}
 \bibcite{kvphysics}{26}
-\gdef \@abspage@last{26}
+\bibcite{statefulkv}{27}
+\bibcite{kvcomm}{28}
+\bibcite{mepic}{29}
+\bibcite{epic}{30}
+\bibcite{sentencekv}{31}
+\gdef \@abspage@last{27}

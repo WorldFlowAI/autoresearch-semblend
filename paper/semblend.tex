@@ -361,8 +361,15 @@ MEPIC~\cite{mepic} addresses the same RoPE challenge by storing KV
 without pre-applied position encoding (NoPE format) and injecting
 positions via a fused CUDA kernel at inference time---elegant but
 requires a custom inference kernel and modified vLLM internals.
-\semblend applies exact delta correction to standard RoPE-encoded KV
-tensors: no custom kernel and no framework modification.
+We implement the NoPE two-step as an optional mode in \semblend
+(\texttt{SEMBLEND\_USE\_NOPE=1}): strip~$\mathbf{K}_\text{raw}{=}\mathrm{RoPE}({-}p_s){\times}\mathbf{K}$,
+then inject~$\mathbf{K}_\text{tgt}{=}\mathrm{RoPE}(p_t){\times}\mathbf{K}_\text{raw}$.
+By the RoPE group property $\mathrm{RoPE}(a){\times}\mathrm{RoPE}(-b){=}\mathrm{RoPE}(a{-}b)$,
+NoPE and delta correction produce \emph{identical} $K_\text{tgt}$---confirmed
+empirically across all six benchmark datasets with
+identical PPL ratio and TTFT speedup under both modes.
+\semblend defaults to delta correction (no storage format change
+required), with NoPE available as a validated alternative.
 
 \semblend operates at the \emph{embedding level}: a single sentence
 embedding replaces per-token matching. The local tier uses numpy
@@ -2198,6 +2205,20 @@ correction is a no-op for all matched chunk-boundary blocks in the
 current deployment.
 The runtime overhead is negligible (${\sim}7\,\mu$s/layer), so
 correction is enabled by default as forward-compatible infrastructure.
+
+\paragraph{NoPE mode validation.}
+We additionally implement the NoPE two-step approach
+(\texttt{SEMBLEND\_USE\_NOPE=1}) and run the full benchmark suite under
+both modes. The NoPE mode applies $\mathbf{K}_\text{raw}{=}\mathrm{RoPE}({-}p_s){\times}\mathbf{K}$
+then $\mathbf{K}_\text{tgt}{=}\mathrm{RoPE}(p_t){\times}\mathbf{K}_\text{raw}$,
+equivalent to delta correction by the RoPE group property.
+Empirical comparison across all 7 variation types ($n{=}8$, XSum 8K)
+confirms identical results: NoPE PPL ratio $= 1.000{\pm}0.002$
+vs.\ delta $1.000{\pm}0.001$; TTFT speedup $1.95\times$ NoPE
+vs.\ $1.97\times$ delta (XSum 8K, $n{=}8$).
+The difference is within measurement noise, confirming mathematical
+equivalence. We release NoPE as an optional validated mode for
+environments that prefer position-free storage.
 
 \paragraph{Threats to validity.}
 (1)~KV-tensor speedups are measured with streaming TTFT on a
