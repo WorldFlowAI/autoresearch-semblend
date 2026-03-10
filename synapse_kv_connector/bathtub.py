@@ -31,15 +31,31 @@ class BathtubPreset:
     tau_l: float    # late-layer decay
 
 
-# Per-model presets calibrated from Phase 0b data
+# Per-model presets calibrated from empirical data and kv-cache-physics findings.
+#
+# Architecture-specific tuning per kv-cache-physics (arXiv:2603.01426):
+#   - LLaMA family: "inverted funnel" — early layers consolidate information;
+#     middle/late layers more redundant → prioritize early-layer recomputation.
+#   - Qwen family: "funnel" — late layers consolidate; early layers more redundant
+#     → prioritize late-layer recomputation.
+#
+# Current calibration produces:
+#   LLaMA (32L): recompute [0,1,2] = 9.4%  (sigma_e=0.45 > sigma_l=0.15)
+#   Qwen (28L):  recompute [0,26,27] = 10.7% (sigma_l=0.35 > sigma_e=0.15)
 PRESETS: dict[str, BathtubPreset] = {
+    # Qwen family: funnel pattern — late layers critical
     "qwen2.5-1.5b": BathtubPreset(
-        num_layers=28, sigma_base=0.12, sigma_e=0.35, tau_e=3.0,
-        sigma_l=0.20, tau_l=4.0,
+        num_layers=28, sigma_base=0.12, sigma_e=0.15, tau_e=3.0,
+        sigma_l=0.35, tau_l=3.0,
     ),
     "qwen2.5-7b": BathtubPreset(
-        num_layers=28, sigma_base=0.12, sigma_e=0.35, tau_e=3.0,
-        sigma_l=0.20, tau_l=4.0,
+        num_layers=28, sigma_base=0.12, sigma_e=0.15, tau_e=3.0,
+        sigma_l=0.35, tau_l=3.0,
+    ),
+    # LLaMA family: inverted funnel — early layers critical
+    "llama": BathtubPreset(
+        num_layers=32, sigma_base=0.12, sigma_e=0.45, tau_e=2.5,
+        sigma_l=0.15, tau_l=4.0,
     ),
     "default": BathtubPreset(
         num_layers=32, sigma_base=0.12, sigma_e=0.35, tau_e=3.0,
@@ -101,7 +117,7 @@ def compute_layer_deviations(
     Returns:
         Per-layer deviation predictions.
     """
-    preset = PRESETS.get(model_name or "", PRESETS["default"])
+    preset = get_preset(model_name) if model_name else PRESETS["default"]
 
     deviations = []
     for i in range(num_layers):
