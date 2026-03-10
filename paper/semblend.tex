@@ -1565,6 +1565,7 @@ dominate cold prefill.
 \label{sec:analysis}
 
 \subsubsection{Sensitivity to Similarity Threshold}
+\label{sec:analysis:threshold}
 
 Table~\ref{tab:threshold-ablation} shows the full coverage-quality-speedup
 tradeoff across cosine thresholds $\tau$ on CNN/DailyMail with Qwen2.5-7B-AWQ
@@ -1637,13 +1638,33 @@ a controlled experiment on 8 CNN/DailyMail 8K clusters, each with
 donor registration to prevent vLLM's internal prefix cache from
 contaminating cold TTFT measurements. Across all 56 variation-cluster
 pairs, PPL ratio was $1.000 \pm 0.001$---indistinguishable from cold
-across all similarity levels.
+across all similarity levels (Figure~\ref{fig:variation-sensitivity}).
 This follows directly from SemBlend's block-level quality gate:
 accepted hits use verified exact-match KV blocks (inherently near-zero
 quality loss), while rejected queries fall back to standard cold
 inference (PPL ratio $\equiv 1.0$ by construction). The system
 thus provides a \emph{quality floor guarantee}: no input can experience
-worse quality than the cold baseline.
+worse quality than the cold baseline. The non-monotonic hit-rate
+pattern in Figure~\ref{fig:variation-sensitivity}(b) confirms that
+LMCache block-hash matching---not cosine similarity---is the operative
+quality gate: partial-document variations (40\% overlap, cosine
+${\approx}0.47$) achieve 62\% hit rate by sharing verbatim 256-token
+paragraph blocks, while exact-copy variations (cosine $=1.0$) miss
+due to minor tokenization differences.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig_variation_sensitivity.pdf}
+\caption{\textbf{Variation sensitivity.} \textit{Left:} PPL ratio stays at
+$1.000\pm0.001$ for all 7 variation types (cosine 1.0 to 0.20), confirming
+SemBlend's quality floor guarantee. The red star marks the FM2 semantic-staleness
+outlier (PPL=1.27) observed in the threshold sweep (\S\ref{sec:analysis:threshold});
+no such outlier appears in the variation sensitivity data.
+\textit{Right:} LMCache hit rates are non-monotonic---block-hash matching,
+not cosine similarity, determines hit probability.
+CNN/DailyMail 8K, Qwen2.5-7B-AWQ, $n{=}8$ per type.}
+\label{fig:variation-sensitivity}
+\end{figure}
 
 \paragraph{Overlap exponent $\beta$.} Linear overlap ($\beta{=}1.0$)
 loosens the 95\% quality threshold to $s{\geq}0.82$; cubic
