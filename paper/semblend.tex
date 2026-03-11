@@ -655,8 +655,8 @@ placeholder positions via tiled GEMM with per-row masking; and
 compute positions using the online softmax algorithm~\cite{flashattention},
 attending over the merged donor+fresh KV cache. The three kernels are
 chained in a single CUDA stream with a PyTorch CPU fallback, and
-validated by 16 unit tests covering plan construction, attention mask
-computation, and per-layer reuse decisions.
+validated for plan construction, attention mask computation, and
+per-layer reuse decisions.
 
 
 \subsection{RoPE Delta Correction for Non-Contiguous KV Reuse}
@@ -798,19 +798,17 @@ chunk hash, and optional per-layer KV fingerprints. At 10K donors with
 \subsection{Experimental Setup}
 \label{sec:setup}
 
-\paragraph{Hardware.} We evaluate on \textbf{A10G} GPU (24\,GiB VRAM,
-g5.xlarge) for all KV-tensor-level experiments with in-process MiniLM
-embedding.
+\paragraph{Hardware.} We evaluate on \textbf{A10G} GPU (24\,GiB VRAM)
+for all KV-tensor-level experiments with in-process MiniLM embedding.
 
 \paragraph{Models.}
 \begin{itemize}[leftmargin=*,nosep]
 \item \textbf{Qwen2.5-7B-Instruct-AWQ} (28 layers, 4 KV heads, 128
-  head dim): served on A10G via vLLM~v0.14.1 with \texttt{SemBlendConnectorV1}
+  head dim): served on A10G via vLLM~v0.14.1 with \semblend
   wrapping LMCache. Used for KV-tensor donor injection evaluation.
 \item \textbf{LLaMA-3.1-8B-Instruct-AWQ-INT4} (32 layers, 8 KV heads,
   128 head dim): served on A10G via vLLM~v0.14.1 with the same
-  \texttt{SemBlendConnectorV1} pipeline. Used to validate
-  model-agnostic KV donor injection across architectures.
+  pipeline. Used to validate model-agnostic KV donor injection across architectures.
 \end{itemize}
 
 \paragraph{Donor discovery.}
@@ -826,24 +824,21 @@ XSum, MultiNews, WikiHow, and SAMSum. Chunks
 can be reordered, removed, or replaced to produce REORDER, PARTIAL,
 and COLD test cases with known overlap characteristics.
 
-\paragraph{Protocol.} We use a
-\emph{per-length pod restart} methodology: the vLLM pod is restarted
-before each prompt length, clearing both the in-memory donor store
-and LMCache's CPU KV buffer. This eliminates cross-length
-contamination, where donors registered during cold baselines at
-shorter lengths inflate hit rates for subsequent lengths.
+\paragraph{Protocol.} We restart the inference server before each
+prompt length, clearing both the in-memory donor store and LMCache's
+CPU KV buffer to eliminate cross-length contamination.
 Within each length, execution is two-phase:
 (1)~\emph{Seed}---send seed prompts to populate the donor store, then
 (2)~\emph{Test}---send variant prompts with unique reference IDs
 (preventing prefix cache hits), measuring per-query TTFT via SSE
-streaming. Cold baselines are measured with a fresh pod (no donors).
+streaming. Cold baselines use a fresh server state with no donors.
 Synthetic-context experiments use $n{=}5$ unique contexts per length;
 cluster-based cross-dataset experiments use $n{=}8$ per length,
 drawn from independent cluster files (no context reuse across lengths).
 
 
 \paragraph{Statistical methodology.} We report P50 TTFT with the
-range of individual measurements, with per-length pod restarts
+range of individual measurements, with per-length server restarts
 ensuring independence across lengths. Quality metrics (ROUGE-L,
 exact match, PPL ratio) are computed per-sample and reported as
 aggregates across all $n$ samples at each length. The number of
@@ -890,9 +885,8 @@ Variants C/D/E: [978--1049\,ms], $\pm$2.7\% variance.}
 \centering
 \caption{\textbf{SemBlend KV donor injection} TTFT speedup across two
 model architectures on \textbf{A10G} GPU (24\,GiB).
-Measured via vLLM~v0.14.1 with \texttt{SemBlendConnectorV1}
-wrapping LMCache, with RoPE delta correction enabled.
-Per-length pod restarts eliminate cross-length contamination.
+vLLM~v0.14.1 + LMCache with RoPE delta correction enabled.
+Per-length server restarts eliminate cross-length contamination.
 Cold = no donor available (unique reference IDs prevent prefix cache hits).
 SemBlend TTFT is near-constant (${\sim}500$--$830$\,ms) as prompt length
 grows, since KV load from CPU offload dominates.
@@ -925,11 +919,11 @@ matched document variations.}
 CPU fallback ${\sim}5$\,ms) + cosine lookup (${\sim}1$\,ms) +
 chunk/token-set alignment ($<$1\,ms) + RoPE delta
 correction ($<$0.01\,ms) + LMCache KV load from CPU offload (${\sim}35$\,ms).
-Pipeline decision overhead: ${\sim}6$\,ms. Both models use identical
-\texttt{SemBlendConnectorV1} with no model-specific tuning.
+Pipeline decision overhead: ${\sim}6$\,ms. Both models use the identical
+pipeline with no model-specific tuning.
 $^*$Hit-only speedup; 24K/32K rows use 8 runs with interleaved donor registration.
-$^\dagger$LLaMA 16K/32K rows measured on g5.2xlarge with 15\,GB LMCache buffer
-(vs.\ 10\,GB on g5.xlarge), enabling 88\% hit rate at 16K and 75\% at 32K.
+$^\dagger$LLaMA 16K/32K rows use a 15\,GB LMCache CPU buffer
+(vs.\ 10\,GB default), enabling 88\% hit rate at 16K and 75\% at 32K.
 LLaMA's larger KV footprint (8 KV heads $\times$ 32 layers $= 2\times$ vs.\ Qwen's
 4 KV heads $\times$ 28 layers) fills the CPU buffer faster. On real NLP datasets
 at 8K tokens, speedup ranges $1.97$--$3.71\times$ on high-hit conditions
@@ -955,13 +949,12 @@ feasibility of long-context inference.
 \paragraph{Model-agnostic operation.}
 SemBlend achieves consistent speedups across both Qwen2.5-7B (28 layers,
 GQA with 4 KV heads) and LLaMA-3.1-8B (32 layers, GQA with 8 KV heads)
-\emph{without any model-specific tuning}. The identical
-\texttt{SemBlendConnectorV1} pipeline handles both architectures:
-embedding-based donor discovery, rapidfuzz alignment, RoPE delta correction,
-and LMCache chunk-swap injection. At 32K tokens, LLaMA achieves
-$\mathbf{11.06\times}$ hit-only speedup (peak individual $12.92\times$),
-comparable to Qwen's $11.97\times$, confirming architectural portability.
-With the larger 15\,GB CPU buffer on g5.2xlarge, LLaMA achieves 88\% hit rate
+\emph{without any model-specific tuning}. The identical pipeline handles
+both architectures: embedding-based donor discovery, rapidfuzz alignment,
+RoPE delta correction, and LMCache chunk-swap injection. At 32K tokens,
+LLaMA achieves $\mathbf{11.06\times}$ hit-only speedup (peak individual
+$12.92\times$), comparable to Qwen's $11.97\times$, confirming architectural
+portability. With a 15\,GB CPU buffer, LLaMA achieves 88\% hit rate
 at 16K ($7.73\times$) and 75\% hit rate at 32K ($11.06\times$);
 hit-run speedups remain consistent with Qwen across all lengths.
 
@@ -1161,8 +1154,8 @@ eviction without degrading hit rate at practical donor store sizes
 (${\leq}$50 donors per length in our experiments).
 
 \paragraph{Donor store scaling.}
-We benchmark donor store search latency across five scales on a
-dedicated A10G node (22.8\,GB free), measuring \textbf{numpy cosine
+We benchmark donor store search latency across five scales on A10G,
+measuring \textbf{numpy cosine
 scan}, \textbf{cuVS brute-force GPU search}, and \textbf{CAGRA ANN}
 at $N \in \{100, 1\text{K}, 10\text{K}, 100\text{K}, 1\text{M}\}$
 with 384-dim MiniLM embeddings (100-query average, top-10):
@@ -1303,14 +1296,13 @@ SAMSum~\cite{samsum}. Each dataset provides
 50 articles processed into prompt clusters with controlled semantic
 variations (REORDER, PARTIAL\_80, PARAPHRASE, DIVERSE). We measure
 cold baseline TTFT (no donors), register seed prompts as donors, then
-measure variation prompts---all via the \texttt{SemBlendConnectorV1}
-pipeline on A10G GPU.
+measure variation prompts---all on A10G GPU.
 
 \begin{table}[t]
 \centering
 \caption{\textbf{Cross-dataset TTFT speedup} on real-world NLP datasets.
 Qwen2.5-7B-AWQ on A10G, $n{=}8$ per length per dataset, per-length
-donor registration with fresh pod state. Hit Rate = fraction of
+server restart with clean state. Hit Rate = fraction of
 queries achieving TTFT $< 0.70 \times$ cold P50. Speedup shown
 is raw P50 (including misses).}
 \label{tab:cross-dataset}
@@ -1431,7 +1423,7 @@ cluster construction methodology.
 \begin{table}[t]
 \centering
 \caption{\textbf{Multi-model TTFT comparison} on real-world datasets.
-Both models on A10G, $n{=}8$ per length, fresh pod state per dataset.
+Both models on A10G, $n{=}8$ per length, clean server state per dataset.
 Hit-only speedup excludes misses for fair comparison.}
 \label{tab:multi-model-cross}
 \footnotesize
@@ -1589,8 +1581,7 @@ similar long-context requests.
 \caption{\textbf{SemBlend} component latency decomposition.
 In-process pipeline with zero network hops. All stages execute
 sequentially within the vLLM scheduler process. Measured values
-from benchmark logs on A10G with Qwen2.5-7B-AWQ, per-length
-pod restarts.}
+from benchmark logs on A10G with Qwen2.5-7B-AWQ.}
 \label{tab:component-breakdown}
 \scriptsize
 \setlength{\tabcolsep}{2.5pt}
@@ -1663,7 +1654,7 @@ on A10G).
 
 \paragraph{Bathtub curve calibration.}
 We empirically calibrate the bathtub curve directly from the live
-Qwen2.5-7B-AWQ deployment (28 layers, A10G, autoresearch namespace)
+Qwen2.5-7B-AWQ deployment (28 layers, A10G)
 by logging per-layer K-vector norms across 30 semantically similar
 prompt pairs. The measured norm profile follows the expected funnel
 pattern: $\|K\|_2 \approx 134\text{K}$ at layer~0,
@@ -1898,8 +1889,7 @@ recomputation) with a typical match having 80\% reuse positions:
 with RoPE delta correction (\S\ref{sec:rope-correction}) applied.
 In practice, the correction adds ${\sim}7\,\mu$s per layer for
 8K tokens---negligible overhead that preserves the savings.
-The three Triton kernels are implemented, unit-tested, and
-deployable on all RoPE-based models.
+The three Triton kernels are deployable on all RoPE-based models.
 
 \subsubsection{Embedding vs.\ Jaccard Ablation}
 \label{sec:analysis:embedding}
@@ -1968,7 +1958,7 @@ RoPE correction depending on $\Delta$.
 Direct empirical validation for $\Delta {\neq} 0$ scenarios (sub-chunk
 or sentence-level injection) requires future benchmarking.
 Mathematical correctness of RoPE delta correction for $\Delta {\neq} 0$
-is verified by 165 unit tests against ground-truth RoPE recomputation.
+is verified against ground-truth RoPE recomputation.
 
 \subsubsection{When Competitors Are Better}
 
@@ -2053,10 +2043,10 @@ KVShare warm path & 21 & DHD semantic \\
 KV transfer (CPU$\to$GPU) & ${\sim}$35 & 8K tok, 28 layers, FP16 \\
 \midrule
 \multicolumn{3}{@{}l}{\textit{Cold TTFT baselines (tokenizer-verified, $n{=}5$):}} \\
-Qwen2.5-7B @ 8K tokens (A10G) & 3{,}473 & per-length pod restart \\
-Qwen2.5-7B @ 16K tokens (A10G) & 6{,}604 & per-length pod restart \\
-LLaMA-3.1-8B @ 8K tokens (A10G) & 3{,}416 & per-length pod restart \\
-LLaMA-3.1-8B @ 16K tokens (A10G) & 6{,}377 & per-length pod restart \\
+Qwen2.5-7B @ 8K tokens (A10G) & 3{,}473 & per-length server restart \\
+Qwen2.5-7B @ 16K tokens (A10G) & 6{,}604 & per-length server restart \\
+LLaMA-3.1-8B @ 8K tokens (A10G) & 3{,}416 & per-length server restart \\
+LLaMA-3.1-8B @ 16K tokens (A10G) & 6{,}377 & per-length server restart \\
 \bottomrule
 \end{tabular}\\[2pt]
 {\footnotesize \semblend's 6\,ms pipeline is $3.8\times$ faster than both
@@ -2115,11 +2105,9 @@ semantic routing), while KV injection with RoPE correction enables reuse
 once the request arrives.
 
 \paragraph{PartialAttention integration.}
-The three Triton CUDA kernels (\S\ref{sec:triton}) are implemented,
-unit-tested, and integrated with vLLM's
-model runner is achieved via a \texttt{patch\_model\_runner()} hook
-that wraps \texttt{execute\_model()} to intercept prefill when a
-PartialAttention plan is active. \textbf{RoPE delta correction}
+The three Triton CUDA kernels (\S\ref{sec:triton}) integrate with vLLM's
+model runner via a \texttt{patch\_model\_runner()} hook
+that intercepts prefill when a PartialAttention plan is active. \textbf{RoPE delta correction}
 (\S\ref{sec:rope-correction}) enables deployment on all RoPE-based
 models: after donor K is scattered to target positions, the correction
 kernel applies $\text{RoPE}(\Delta)$ in-place at ${\sim}7\,\mu$s
@@ -2177,7 +2165,7 @@ where the same document is queried with variations.
 (4)~Single-GPU experiments; multi-GPU tensor-parallel serving with
 sharded KV caches may change the overhead profile.
 (5)~KV-tensor results use $n{=}5$--$8$ per prompt length with per-length
-pod restarts, providing clean measurements but limiting total sample
+server restarts, providing clean measurements but limiting total sample
 size per configuration.
 
 \paragraph{Limitations.}\label{sec:limitations}
