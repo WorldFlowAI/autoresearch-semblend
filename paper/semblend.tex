@@ -120,13 +120,22 @@ However, exact matching misses a common production pattern:
 \emph{semantically similar prompts with different wording}. ``What is
 machine learning?'' and ``Can you tell me about machine learning?''
 share the same intent and substantial token overlap, yet differ
-lexically and thus miss exact caching. \semblend extends LMCache's
-architecture to cover this case: when no exact prefix match exists,
+lexically and thus miss exact caching. SemShareKV~\cite{semsharekv}
+established that cross-prompt KV reuse is feasible using token-level
+locality-sensitive hashing (LSH), achieving $6.25\times$ speedup at
+5K tokens. \semblend builds on this insight, advancing it along three
+dimensions: (1)~\emph{in-process production integration} with vLLM via
+a drop-in KV connector---no model modification, no proxy---with ${\sim}8$\,ms
+overhead vs.\ SemShareKV's external-service model; (2)~\emph{exact RoPE
+delta correction} that eliminates position-encoding error for non-contiguous
+reuse (SemShareKV relies on first-layer full recomputation as a heuristic);
+and (3)~\emph{architecture-specific calibrated recomputation} that accounts
+for LLaMA (inverted-funnel) vs.\ Qwen (funnel) layer sensitivities, validated
+empirically on both architectures across five real-world datasets.
+\semblend extends LMCache's architecture to cover the cases that
+exact-match caching misses: when no token-prefix match exists,
 \semblend performs embedding-level semantic search to find a \emph{donor}
-prompt whose cached KV tensors may be reusable. As we show in
-\S\ref{sec:rope-correction}, we solve the Rotary Position Embedding
-(RoPE) challenge via exact delta correction, enabling non-contiguous
-KV reuse for REORDER, PARTIAL, and paraphrase scenarios.
+prompt whose cached KV tensors may be reusable.
 
 \paragraph{Positioning relative to LMCache.}
 LMCache handles exact prefix matches with $O(1)$ token-hash lookup and
@@ -248,9 +257,23 @@ exact-match constraint.
 \textbf{Token-level semantic KV systems.}
 KVShare~\cite{kvshare} uses Divergence-based Hit Detection (DHD)
 for multi-tenant serving, claiming 9.39$\times$ TTFT reduction on
-semantic hits. SemShareKV~\cite{semsharekv} achieves 6.25$\times$
-speedup at 5K tokens using token-level LSH, but its $O(T)$ overhead
-provides minimal benefit below 700 tokens.
+semantic hits. SemShareKV~\cite{semsharekv} is the closest prior work:
+it demonstrates that prompts sharing semantically similar content can
+reuse each other's KV tensors via token-level locality-sensitive hashing
+(LSH), achieving $6.25\times$ speedup at 5K tokens. \semblend builds
+directly on SemShareKV's key insight while advancing three aspects:
+(i)~\emph{in-process vLLM integration} via the standard KV connector
+interface (zero model modification, zero proxy, ${\sim}8$\,ms overhead vs.\
+SemShareKV's $O(T)$ LSH requiring a separate lookup pass); (ii)~\emph{exact
+RoPE delta correction} exploiting the rotation group property to correct
+donor K tensors at $O(Nd)$ cost per layer, eliminating SemShareKV's
+reliance on first-layer full recomputation as a positional heuristic;
+and (iii)~\emph{architecture-specific bathtub calibration} for LLaMA
+and Qwen family models, validated with empirical quality measurements
+across five real-world datasets. SemShareKV's $O(T)$ overhead provides
+minimal benefit below 700 tokens~\cite{semsharekv}; \semblend's ${\sim}8$\,ms
+constant overhead extends viability to any model at any prompt length
+where cold prefill exceeds ${\sim}50$\,ms.
 KVCOMM~\cite{kvcomm} addresses cross-agent KV reuse in multi-agent
 systems where donor and target sequences have different RoPE offsets;
 it approximates position correction via a pool of precomputed
@@ -410,6 +433,17 @@ call (${\sim}150$\,ms including HTTP overhead). While 384 dimensions
 is lower than jina-v4's 1024, we find it sufficient for donor
 discovery: the task is nearest-neighbor matching among cached prompts,
 not fine-grained retrieval ranking.
+
+For long prompts ($T > 2{,}000$ tokens), MiniLM's 512-token window
+would see only the first ${\sim}12\%$ of a 16K document if naive
+head-truncation were used. \semblend instead applies a
+\emph{sliding window decode}: 40\% of tokens are drawn from the
+beginning (instruction + document start), 30\% from the center, and
+30\% from the end, for a 2,000-token sample covering the full
+document. This preserves both system-instruction identity and
+body-content similarity signals, and is applied symmetrically at
+query time and donor registration, ensuring cosine similarity
+reflects the full-document content.
 
 \paragraph{Stage 2: Numpy Cosine Search (${\sim}1$\,ms).}
 For $N \leq 10\text{K}$ donors, brute-force cosine similarity via
@@ -970,10 +1004,16 @@ on Qwen2.5-7B-AWQ. The trend is monotonically increasing---longer
 context prompts benefit most from semantic KV reuse.
 
 \paragraph{Why SemBlend complements prefix caching.}
-vLLM's native prefix cache handles exact token-prefix matches
-efficiently but \emph{fails entirely} for semantically similar
-prompts with different token orderings. Table~\ref{tab:prefix-cache-gap}
-quantifies this gap empirically.
+vLLM's native prefix cache and LMCache's block-hash caching handle
+exact token matches efficiently but \emph{fail entirely} for semantically
+similar prompts with lexical variation. Importantly, both systems fail
+for the same fundamental reason: any change in instruction prefix
+length shifts \emph{all} 256-token chunk boundaries, invalidating every
+chunk hash despite identical article content.
+Table~\ref{tab:prefix-cache-gap} quantifies this gap for sentence-level
+variations (REORDER, PARAPHRASE); Table~\ref{tab:cross-instruction} demonstrates
+the same gap for the primary RAG pattern of same-document,
+different-instruction queries.
 
 \begin{table}[t]
 \centering
@@ -1008,18 +1048,62 @@ Paraphrase  & 16K & $0.99\times$ & $5.64\times^*$ & \textbf{SB fills} \\
 \end{tabular}\\[2pt]
 {\scriptsize $^*$Hit-only speedup (hit rates 20--40\% at 8K--16K).
 --- = 0\% hit rate (partial at 8K+ rejected by chunk-level alignment).
-SB = SemBlend. Prefix cache uses \texttt{enable\_prefix\_caching=True}, vLLM v0.8.5.}
+SB = SemBlend. Prefix cache uses \texttt{enable\_prefix\_caching=True}, vLLM v0.8.5.
+\textbf{Equivalence note:} For REORDER, PARTIAL, and PARAPHRASE scenarios,
+LMCache block-hash caching achieves the \emph{same} $1.0\times$ speedup as
+vLLM prefix cache, because lexical variation (sentence reordering, synonym
+substitution) changes the token sequence within every 256-token chunk.
+The ``Prefix\$'' column therefore serves as the LMCache-only baseline for
+all semantic variation scenarios.}
 \end{table}
 
-SemBlend provides value when:
+\begin{table}[t]
+\centering
+\caption{\textbf{Cross-instruction RAG benchmark.} Same document ($n{=}8$,
+XSum 8K), different instruction phrasings. LMCache-only achieves 0\% hits
+on every variant because instruction-length differences shift all 256-token
+chunk boundaries. \semblend achieves 100\% hit rate via semantic routing
++ token-swap, regardless of phrasing. Sliding window text sampling
+(40\%/30\%/30\% head/mid/tail) ensures full-document embedding coverage.
+Qwen2.5-7B-AWQ, A10G.}
+\label{tab:cross-instruction}
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Instruction Variant} & \textbf{$\Delta$ chars} & \textbf{LMCache} & \textbf{SemBl.} & \textbf{Gap} \\
+\midrule
+Donor (``You are a helpful assistant...'') & ---  & \multicolumn{3}{c}{(baseline: $3{,}420$\,ms cold)} \\
+\midrule
+``You are an expert summarizer...'' & $-9$  & 0\%  & 100\%  & $3.31\times$ \\
+``You assist users by summarizing...'' & $-12$ & 0\%  & 100\%  & $3.44\times$ \\
+``Summarize documents accurately...''  & $-20$ & 0\%  & 100\%  & $3.43\times$ \\
+``You provide accurate summaries.''    & $-25$ & 0\%  & 100\%  & $3.38\times$ \\
+\midrule
+\textbf{Mean} & & \textbf{0\%} & \textbf{100\%} & $\mathbf{3.39\times}$ \\
+\bottomrule
+\end{tabular}\\[2pt]
+{\scriptsize LMCache Hit = fraction of 256-token chunk hashes matching donor.
+Zero because $|\Delta\text{chars}|{\geq}9$ shifts all chunk boundaries.
+SemBlend Hit = fraction of queries routed to donor via cosine sim ${\geq}0.60$.
+Speedup vs.\ cold prefill (LMCache-only speedup $=1.0\times$ for all rows).
+100\% hit rate sustained at 16K tokens ($3.16\times$--$3.30\times$ speedup).}
+\end{table}
+
+\semblend provides value when:
 (1)~prompts share semantic content but differ lexically
-(paraphrased queries, synonym substitution, reformulations);
+(paraphrased queries, synonym substitution, reformulations, or
+different instruction phrasings around the same document);
 (2)~GPU KV cache is saturated and entries have been evicted to CPU;
 (3)~prompts arrive at different vLLM replicas (prefix caches are
-instance-local). In our benchmarks, SemBlend correctly identifies
+instance-local). In our benchmarks, \semblend correctly identifies
 donors at cosine similarity $\geq 0.60$ and injects their KV via
 LMCache chunk-swap, achieving $2.1\times$--$7.5\times$ speedup
-on content the prefix cache cannot match.
+on content the prefix cache cannot match, and $3.0\times$--$3.4\times$
+on cross-instruction queries where LMCache achieves no reuse at all.
+The 16K cross-instruction scenario sustains 100\% hit rate and
+$3.16\times$--$3.30\times$ speedup, confirming that sliding window
+text sampling preserves embedding quality at longer contexts.
 
 \paragraph{Component overhead.}
 The \semblend pipeline adds ${\sim}8$\,ms decision overhead:
@@ -1658,6 +1742,16 @@ The break-even hit rate for SemBlend to be beneficial
 is $P_h > 0$ (there is no overhead to overcome), since
 TTFT$_\text{hit} \ll$ TTFT$_\text{cold}$ at any length
 and the 8\,ms pipeline overhead is negligible.
+
+\paragraph{Temperature invariance.}
+\semblend's KV injection is a prefill-side operation; output sampling
+temperature only affects decode. We verify this empirically on the
+cross-instruction RAG workload (XSum 8K, $n{=}8$,
+same-document different-instruction queries):
+temperatures $T \in \{0.3, 0.7, 1.0\}$ all achieve 100\% hit rate
+and indistinguishable TTFT ($1.87\times$--$1.90\times$ speedup,
+$\pm 1.5\%$ variance across temperatures).
+This confirms \semblend is production-safe at any sampling temperature.
 
 \subsection{Analysis}
 \label{sec:analysis}
