@@ -77,7 +77,7 @@ for large donor pools.
 
 Evaluated on five NLP benchmarks (CNN/DailyMail, XSum, MultiNews,
 WikiHow, SAMSum) across Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ on A10G,
-\semblend achieves $\mathbf{2.2\times}$--$\mathbf{12.0\times}$ TTFT
+\semblend achieves $\mathbf{2.2\times}$--$\mathbf{{\sim}12\times}$ TTFT
 speedup at 2K--32K tokens. On datasets with ${\geq}88\%$ hit rate
 (WikiHow, XSum, synthetic), PPL ratio stays ${\leq}1.065$ on both
 models. Elevated PPL on lower-hit datasets (SAMSum, CNN/DM) is driven
@@ -179,7 +179,7 @@ We make five contributions:
 
 \item \textbf{Empirical evaluation} on two model architectures
   (Qwen2.5-7B-AWQ and LLaMA-3.1-8B-AWQ) across five real-world NLP
-  datasets, demonstrating $2.2\times$--$\mathbf{12.0\times}$ TTFT speedup at
+  datasets, demonstrating $2.2\times$--$\mathbf{{\sim}12\times}$ TTFT speedup at
   2K--32K tokens with quality preserved (PPL ratio ${\leq}1.065$ on
   high-hit datasets; mean elevated on lower-hit datasets by
   miss-run outliers, not KV injection), plus architectural analysis
@@ -848,7 +848,37 @@ ensuring independence across lengths. Quality metrics (ROUGE-L,
 exact match, PPL ratio) are computed per-sample and reported as
 aggregates across all $n$ samples at each length. The number of
 samples per length is specified in each table's caption.
+For key results we additionally report \textbf{95\% bootstrap
+confidence intervals} ($n{=}12$, 10{,}000 bootstrap iterations),
+summarised in Table~\ref{tab:bootstrap-ci}.
 
+
+\begin{table}[t]
+\centering
+\caption{\textbf{Bootstrap 95\% CIs} ($n{=}12$, 10K iterations).
+XSum 8K, Qwen2.5-7B-AWQ, A10G. SemBlend variance ${\pm}$2\%.}
+\label{tab:bootstrap-ci}
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+\textbf{Condition} & \textbf{Mean} & \textbf{CI$_{lo}$} & \textbf{CI$_{hi}$}
+  & \textbf{Spd.} & \textbf{Hit\%} \\
+\midrule
+Cold 8K                & 3325\,ms & 3179\,ms & 3472\,ms & ---          & --- \\
+\semblend 8K           &  993\,ms &  973\,ms & 1011\,ms & $3.35\times$ & 100\% \\
+\midrule
+Cross-instr.\ B (8K)   & 1227\,ms &  989\,ms & 1667\,ms & $2.76\times$ & 92\% \\
+Cross-instr.\ C (8K)   & 1001\,ms &  978\,ms & 1030\,ms & $3.38\times$ & 100\% \\
+Cross-instr.\ D (8K)   & 1003\,ms &  979\,ms & 1032\,ms & $3.37\times$ & 100\% \\
+Cross-instr.\ E (8K)   & 1021\,ms &  993\,ms & 1049\,ms & $3.31\times$ & 100\% \\
+\midrule
+Partial-75 (8K)        & 1071\,ms &  986\,ms & 1210\,ms & $3.11\times$ & 100\% \\
+\bottomrule
+\end{tabular}\\[2pt]
+{\scriptsize Variant B wider CI due to 1 cold-cache miss (92\% hit).
+Variants C/D/E: [978--1049\,ms], $\pm$2.7\% variance.}
+\end{table}
 
 \subsection{Empirical Results}
 \label{sec:empirical}
@@ -902,7 +932,8 @@ $^\dagger$LLaMA 16K/32K rows measured on g5.2xlarge with 15\,GB LMCache buffer
 (vs.\ 10\,GB on g5.xlarge), enabling 88\% hit rate at 16K and 75\% at 32K.
 LLaMA's larger KV footprint (8 KV heads $\times$ 32 layers $= 2\times$ vs.\ Qwen's
 4 KV heads $\times$ 28 layers) fills the CPU buffer faster. On real NLP datasets
-at 8K tokens, speedup ranges 1.5--3.8$\times$ (Tables~\ref{tab:cross-dataset}--\ref{tab:multi-model-cross}).
+at 8K tokens, speedup ranges $1.97$--$3.71\times$ on high-hit conditions
+(Tables~\ref{tab:cross-dataset}--\ref{tab:multi-model-cross}).
 Peak individual: $12.92\times$ (LLaMA 32K); $11.97\times$ (Qwen 32K).}
 \end{table*}
 
@@ -916,7 +947,7 @@ residual prefill for the unmatched suffix (${\sim}200$ tokens).
 Meanwhile, cold prefill scales with sequence length.
 This produces increasing speedup: $2.2\times$ at 2K tokens,
 $5.8\times$ at 8K, $8.3\times$ at 16K, $9.0\times$ at 24K, and
-$\mathbf{12.0\times}$ at 32K tokens on Qwen2.5-7B-AWQ.
+$\mathbf{{\sim}12\times}$ at 32K tokens on Qwen2.5-7B-AWQ.
 At 32K tokens, cold prefill takes 15.4\,s while SemBlend completes
 in 1.3\,s---a $12\times$ reduction that fundamentally changes the
 feasibility of long-context inference.
@@ -1001,7 +1032,7 @@ CPU$\to$GPU transfer bandwidth, not the sequence length.
 Cold prefill scales with sequence length.
 This divergence drives the increasing speedup curve:
 $2.2\times$ at 2K, $5.8\times$ at 8K, $8.3\times$ at 16K,
-$9.0\times$ at 24K, and $\mathbf{12.0\times}$ at 32K tokens
+$9.0\times$ at 24K, and $\mathbf{{\sim}12\times}$ at 32K tokens
 on Qwen2.5-7B-AWQ. The trend is monotonically increasing---longer
 context prompts benefit most from semantic KV reuse.
 
@@ -1049,8 +1080,9 @@ Paraphrase  & 16K & $0.99\times$ & $5.64\times^*$ & \textbf{SB fills} \\
 \bottomrule
 \end{tabular}\\[2pt]
 {\scriptsize $^*$Hit-only speedup (hit rates 20--40\% at 8K--16K).
-$^{**}$After sliding window text sampling: 87.5\% hit rate at 8K
-(was 0\% with head-only truncation; see \S\ref{sec:design:embedding}).
+$^{**}$After sliding window text sampling: 100\% hit rate at 8K,
+$3.11\times$ speedup (95\% CI; see Table~\ref{tab:bootstrap-ci}).
+Was 0\% with head-only truncation (\S\ref{sec:design:embedding}).
 --- = 0\% hit rate (partial at 16K+ rejected by chunk-level alignment).
 SB = SemBlend. Prefix cache uses \texttt{enable\_prefix\_caching=True}, vLLM v0.8.5.
 \textbf{Equivalence note:} For REORDER, PARTIAL, and PARAPHRASE scenarios,
@@ -1072,26 +1104,25 @@ chunk boundaries. \semblend achieves 100\% hit rate via semantic routing
 Qwen2.5-7B-AWQ, A10G.}
 \label{tab:cross-instruction}
 \scriptsize
-\setlength{\tabcolsep}{2.5pt}
-\begin{tabular}{@{}lrrrr@{}}
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{@{}p{3.6cm}rrrr@{}}
 \toprule
-\textbf{Instruction Variant} & \textbf{$\Delta$ chars} & \textbf{LMCache} & \textbf{SemBl.} & \textbf{Gap} \\
+\textbf{Instruction Variant} & \textbf{$\Delta$ch} & \textbf{LMC} & \textbf{SB} & \textbf{Gap} \\
 \midrule
-Donor (``You are a helpful assistant...'') & ---  & \multicolumn{3}{c}{(baseline: $3{,}420$\,ms cold)} \\
+Donor (\emph{helpful assistant...}) & ---  & \multicolumn{3}{c}{cold: $3{,}420$\,ms} \\
 \midrule
-``You are an expert summarizer...'' & $-9$  & 0\%  & 100\%  & $3.31\times$ \\
-``You assist users by summarizing...'' & $-12$ & 0\%  & 100\%  & $3.44\times$ \\
-``Summarize documents accurately...''  & $-20$ & 0\%  & 100\%  & $3.43\times$ \\
-``You provide accurate summaries.''    & $-25$ & 0\%  & 100\%  & $3.38\times$ \\
+\emph{Expert summarizer...} & $-9$  & 0\%  & 100\%  & $3.31\times$ \\
+\emph{Assist users by summarizing...} & $-12$ & 0\%  & 100\%  & $3.44\times$ \\
+\emph{Summarize accurately...}  & $-20$ & 0\%  & 100\%  & $3.43\times$ \\
+\emph{Provide accurate summaries.}    & $-25$ & 0\%  & 100\%  & $3.38\times$ \\
 \midrule
 \textbf{Mean} & & \textbf{0\%} & \textbf{100\%} & $\mathbf{3.39\times}$ \\
 \bottomrule
 \end{tabular}\\[2pt]
-{\scriptsize LMCache Hit = fraction of 256-token chunk hashes matching donor.
-Zero because $|\Delta\text{chars}|{\geq}9$ shifts all chunk boundaries.
-SemBlend Hit = fraction of queries routed to donor via cosine sim ${\geq}0.60$.
-Speedup vs.\ cold prefill (LMCache-only speedup $=1.0\times$ for all rows).
-100\% hit rate sustained at 16K tokens ($3.16\times$--$3.30\times$ speedup).}
+{\scriptsize LMCache: 0\% chunk-hash hits ($|\Delta\text{chars}|{\geq}9$
+shifts all 256-token boundaries). SemBlend: cosine-routed donor
+(${\geq}0.60$), token-swap injection. Speedup vs.\ cold prefill.
+16K: 100\% hit rate, $3.16\times$--$3.30\times$ speedup.}
 \end{table}
 
 \semblend provides value when:
@@ -2072,8 +2103,8 @@ set of queries (semantic matches beyond exact prefix).
 empirical speedup scales from $2.2\times$ (2K) to $\mathbf{8.3\times}$ (16K)
 (P50 hit-only; Qwen2.5-7B-AWQ). On
 real NLP datasets with mixed semantic variation types, speedup ranges
-$1.5\times$--$3.8\times$ at 8K tokens (Qwen: $1.97$--$2.37\times$;
-LLaMA: $2.66$--$3.78\times$ hit-only). SemBlend TTFT remains
+$1.97\times$--$3.78\times$ at 8K tokens on high-hit conditions
+(Qwen: $1.97$--$2.37\times$; LLaMA: $2.66$--$3.78\times$ hit-only). SemBlend TTFT remains
 approximately constant (${\sim}500$--$830$\,ms) regardless of prompt length,
 bounded by CPU$\to$GPU KV transfer bandwidth. Results are consistent
 across model architectures (Qwen2.5-7B: 28 layers; LLaMA-3.1-8B: 32 layers).
@@ -2272,12 +2303,12 @@ RoPE-based models.
 Four takeaways stand out:
 
 \textbf{(1) Semantic KV reuse works at scale.}
-SemBlend achieves $\mathbf{2.2\times}$--$\mathbf{12.0\times}$ TTFT
+SemBlend achieves $\mathbf{2.2\times}$--$\mathbf{{\sim}12\times}$ TTFT
 speedup across 2K--32K tokens on two model architectures, with TTFT
 remaining approximately constant (${\sim}500$\,ms--$1.3$\,s)
 regardless of prompt length. At 32K tokens cold prefill takes 15.4\,s;
 SemBlend completes in 1.3\,s. On five real NLP datasets, hit-only
-speedup ranges $1.5\times$--$3.8\times$ at 8K tokens.
+speedup ranges $1.97\times$--$3.78\times$ at 8K tokens.
 
 \textbf{(2) Quality is preserved.}
 On datasets with ${\geq}88\%$ hit rate (WikiHow, XSum, synthetic),
