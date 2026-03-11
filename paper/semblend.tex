@@ -640,10 +640,29 @@ tensors to target positions across all layers and heads in parallel;
 placeholder positions via tiled GEMM with per-row masking; and
 (3)~\texttt{partial\_prefill\_attn} computes causal attention at
 compute positions using the online softmax algorithm~\cite{flashattention},
-attending over the merged donor+fresh KV cache. The three kernels are
-chained in a single CUDA stream with a PyTorch CPU fallback, and
-validated for plan construction, attention mask computation, and
-per-layer reuse decisions.
+attending over the merged donor+fresh KV cache. The three kernels are chained in a single CUDA stream with a PyTorch
+CPU fallback. Table~\ref{app:tab:kernels} summarises grid and block
+configurations.
+
+\begin{table}[h]
+\centering
+\caption{Triton kernel configurations for PartialAttention.}
+\label{app:tab:kernels}
+\footnotesize
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Kernel} & \textbf{Grid} & \textbf{Block} & \textbf{Complexity} \\
+\midrule
+scatter\_donor\_kv & $(P, 2LH)$ & $D$ & $O(P \cdot L \cdot H \cdot D)$ \\
+masked\_qkv\_proj & $(T, 1)$ & M$\times$K & $O(T \cdot 3HD \cdot D_m)$ \\
+partial\_prefill & $(C, H)$ & K & $O(C \cdot T \cdot D)$ \\
+\bottomrule
+\end{tabular}}\\[2pt]
+{\footnotesize $P$ = copy pairs, $L$ = layers, $H$ = heads,
+$D$ = head dim, $T$ = seq len, $C$ = compute positions,
+$D_m$ = model dim.}
+\end{table}
 
 \subsection{RoPE Delta Correction for Non-Contiguous KV Reuse}
 \label{sec:rope-correction}
@@ -2210,43 +2229,9 @@ architecture-specific layer criticality findings~\cite{kvphysics,droidspeak}.
 \semblend is, to our knowledge, the first system combining exact RoPE
 correction with calibrated layer-level recomputation to enable fully
 non-contiguous semantic KV reuse on production transformers.
-
-% ============================================================================
-\clearpage
-\appendix
-\section{PartialAttention Kernel Specifications}
-\label{app:kernels}
-
-The three Triton kernels use the following grid and block configurations:
-
-\begin{table}[t]
-\centering
-\caption{Triton kernel configurations for PartialAttention.}
-\footnotesize
-\resizebox{\columnwidth}{!}{%
-\begin{tabular}{@{}llll@{}}
-\toprule
-\textbf{Kernel} & \textbf{Grid} & \textbf{Block} & \textbf{Complexity} \\
-\midrule
-scatter\_donor\_kv & $(P, 2LH)$ & $D$ & $O(P \cdot L \cdot H \cdot D)$ \\
-masked\_qkv\_proj & $(T, 1)$ & M$\times$K & $O(T \cdot 3HD \cdot D_m)$ \\
-partial\_prefill & $(C, H)$ & K & $O(C \cdot T \cdot D)$ \\
-\bottomrule
-\end{tabular}}\\[2pt]
-{\footnotesize $P$ = copy pairs, $L$ = layers, $H$ = heads,
-$D$ = head dim, $T$ = seq len, $C$ = compute positions,
-$D_m$ = model dim.}
-\end{table}
-
-\section{Reproduction}
-\label{app:reproduction}
-
-All code, datasets, and benchmark scripts are available in the
-project repository. The benchmark CLI accepts dataset selection,
-endpoint configuration, and output directory parameters. Results
-are stored as JSON with per-query metrics for independent analysis.
-Bootstrap confidence intervals use 10,000 resamples with the
-\texttt{scipy.stats.bootstrap} API.
+All code, datasets, and benchmark scripts will be released with the
+camera-ready version; bootstrap confidence intervals use 10,000
+resamples (\texttt{scipy.stats.bootstrap}).
 
 % ============================================================================
 \clearpage
