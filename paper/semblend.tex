@@ -508,9 +508,9 @@ at $N{=}100\text{K}$ and is optimal for co-located
 deployments below that threshold.
 
 \paragraph{Fleet-scale deployment.}
-On an 8-worker fleet (LLaMA-3.1-8B-AWQ-INT4), 100\% of queries route
-to a semantically matching worker, achieving $2.6\times$ TTFT speedup
-on exact-match pairs and $3.8\times$ at 16K tokens
+On an 8-worker fleet (LLaMA-3.1-8B-AWQ-INT4) with controlled
+exact-match pairs, queries route to a semantically matching worker
+achieving $2.6\times$ TTFT speedup; at 16K tokens, $3.8\times$
 ($3{,}222\,\text{ms} \to 850\,\text{ms}$) with negligible routing overhead.
 
 \subsection{Token Alignment}
@@ -2136,9 +2136,11 @@ principled per-request calibration could further improve quality. The
 bathtub presets are calibrated for Qwen2.5-7B and LLaMA-3.1-8B; GQA,
 MoE, and very deep models ($>$80 layers) may require recalibration.
 Cross-instance donor discovery via the optional CAGRA tier is validated on
-an 8-worker fleet (\S\ref{sec:scaled}), achieving 100\% semantic routing
-and $2.4$--$3.8\times$ speedup; empirical per-instance isolation is
-confounded by vLLM's internal RadixAttention prefix cache.
+a controlled 8-worker fleet (\S\ref{sec:scaled}), achieving $2.4$--$3.8\times$
+speedup on exact-match pairs; routing accuracy on diverse production
+workloads will depend on the semantic overlap distribution of incoming
+traffic. Empirical per-instance isolation is additionally confounded
+by vLLM's internal RadixAttention prefix cache.
 Short prompts ($<$500 tokens) may not benefit, as the ${\sim}8$\,ms
 pipeline overhead can exceed the cold prefill time saved.
 \textbf{Benchmark scope.} Current evaluations use NLP summarization
