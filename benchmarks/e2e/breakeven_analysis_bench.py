@@ -183,23 +183,42 @@ def _build_miss_context(target_chars: int, seed: int) -> str:
     return "".join(parts)[:target_chars]
 
 
+def _compute_batch_size(token_length: int, buffer_gb: float = 15.0) -> int:
+    """Max donors that fit in the LMCache CPU buffer at given token length.
+
+    KV per token per donor ≈ 28 layers × 2 (K+V) × 128 (head_dim) × 2 (fp16)
+    = 14,336 bytes.  With 70% safety margin to avoid OOMKill.
+    """
+    kv_bytes_per_token = 28 * 2 * 128 * 2  # 14,336
+    kv_per_donor = token_length * kv_bytes_per_token
+    max_donors = int(buffer_gb * 1e9 * 0.70 / kv_per_donor)
+    return max(10, min(max_donors, 500))
+
+
 def run_length(
     token_length: int,
     endpoint: str,
     model: str,
     n_samples: int,
 ) -> dict:
-    """Run the full three-condition measurement for one context length."""
+    """Run the full three-condition measurement for one context length.
+
+    Processes in batches that fit within the LMCache buffer to avoid OOMKill.
+    For each batch: cold → register donors → hit → miss, then aggregate.
+    """
     target_chars = token_length * 4  # ~4 chars per token
     context_body = _build_synthetic_context(target_chars)
 
-    # --- Generate unique prompts ---
-    # Group A: used for cold measurement + donor registration + hit measurement
+    batch_size = _compute_batch_size(token_length)
+    n_batches = (n_samples + batch_size - 1) // batch_size
+
+    print(f"  LMCache batch size: {batch_size} donors "
+          f"({n_batches} batches for {n_samples} samples)")
+
+    # --- Generate ALL unique prompts up front ---
     uids_a = [f"brk-a-{uuid.uuid4().hex[:12]}" for _ in range(n_samples)]
     prompts_a = [_build_prompt(uid, context_body) for uid in uids_a]
 
-    # Group B: TOPICALLY DIFFERENT content — SemBlend should NOT find a donor
-    # because the document body is entirely different (not just a UUID change)
     prompts_b = []
     for i in range(n_samples):
         uid = f"brk-b-{uuid.uuid4().hex[:12]}"
@@ -209,28 +228,44 @@ def run_length(
     print(f"  Prompt length: ~{len(prompts_a[0])} chars "
           f"(~{len(prompts_a[0]) // 4} tokens)")
 
-    # Phase 1: Cold TTFT — first time seeing these prompts
-    print(f"  Phase 1: Cold TTFT (n={n_samples})")
-    cold_latencies = run_condition("cold", endpoint, model, prompts_a)
+    all_cold: list[float] = []
+    all_hit: list[float] = []
+    all_miss: list[float] = []
 
-    # Phase 2: Register donors — re-send group A prompts with longer generation
-    # to ensure the KV cache is populated in LMCache
-    print(f"  Phase 2: Register donors (n={n_samples})")
-    run_condition("donor", endpoint, model, prompts_a, max_tokens=50)
+    for batch_idx in range(n_batches):
+        start = batch_idx * batch_size
+        end = min(start + batch_size, n_samples)
+        batch_a = prompts_a[start:end]
+        batch_b = prompts_b[start:end]
+        batch_n = end - start
 
-    # Phase 3: Hit TTFT — re-send group A prompts (should match donors)
-    print(f"  Phase 3: Hit TTFT (n={n_samples})")
-    hit_latencies = run_condition("hit", endpoint, model, prompts_a)
+        print(f"\n  --- Batch {batch_idx + 1}/{n_batches} "
+              f"(samples {start + 1}-{end}) ---")
 
-    # Phase 4: Miss TTFT — send group B prompts (no matching donor)
-    print(f"  Phase 4: Miss TTFT (n={n_samples})")
-    miss_latencies = run_condition("miss", endpoint, model, prompts_b)
+        # Phase 1: Cold TTFT
+        print(f"  Phase 1: Cold TTFT (n={batch_n})")
+        cold_lat = run_condition("cold", endpoint, model, batch_a)
+        all_cold.extend(cold_lat)
 
-    result = analyze_breakeven(cold_latencies, hit_latencies, miss_latencies)
+        # Phase 2: Register donors
+        print(f"  Phase 2: Register donors (n={batch_n})")
+        run_condition("donor", endpoint, model, batch_a, max_tokens=50)
+
+        # Phase 3: Hit TTFT — re-send same batch (should match in LMCache)
+        print(f"  Phase 3: Hit TTFT (n={batch_n})")
+        hit_lat = run_condition("hit", endpoint, model, batch_a)
+        all_hit.extend(hit_lat)
+
+        # Phase 4: Miss TTFT — topically different content
+        print(f"  Phase 4: Miss TTFT (n={batch_n})")
+        miss_lat = run_condition("miss", endpoint, model, batch_b)
+        all_miss.extend(miss_lat)
+
+    result = analyze_breakeven(all_cold, all_hit, all_miss)
     result["token_length"] = token_length
-    result["_raw_cold"] = cold_latencies
-    result["_raw_hit"] = hit_latencies
-    result["_raw_miss"] = miss_latencies
+    result["_raw_cold"] = all_cold
+    result["_raw_hit"] = all_hit
+    result["_raw_miss"] = all_miss
     return result
 
 
