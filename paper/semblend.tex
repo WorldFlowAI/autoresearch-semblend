@@ -418,6 +418,7 @@ the operating envelope where semantic KV reuse is beneficial.
 
 
 \subsection{In-Process Donor Discovery}
+\label{sec:design:embedding}
 \label{sec:pipeline}
 
 The local tier performs donor discovery entirely within the vLLM
@@ -434,16 +435,17 @@ is lower than jina-v4's 1024, we find it sufficient for donor
 discovery: the task is nearest-neighbor matching among cached prompts,
 not fine-grained retrieval ranking.
 
-For long prompts ($T > 2{,}000$ tokens), MiniLM's 512-token window
-would see only the first ${\sim}12\%$ of a 16K document if naive
-head-truncation were used. \semblend instead applies a
-\emph{sliding window decode}: 40\% of tokens are drawn from the
-beginning (instruction + document start), 30\% from the center, and
-30\% from the end, for a 2,000-token sample covering the full
-document. This preserves both system-instruction identity and
-body-content similarity signals, and is applied symmetrically at
-query time and donor registration, ensuring cosine similarity
-reflects the full-document content.
+For long prompts ($T > 2{,}000$ tokens), MiniLM's 512-token input
+limit means that head-only truncation would see only the first
+${\sim}12\%$ of a 16K document, degrading recall for content-heavy
+RAG prompts. \semblend instead decodes a 2{,}000-token
+sample spanning the beginning (40\%), center (30\%), and end (30\%)
+of the token sequence before feeding it to MiniLM. This sampling is
+applied symmetrically at query time and donor registration.
+Empirically, this improves partial-content (75\% overlap) hit rate
+from 0\% to 87.5\% at 8K tokens, with $1.95\times$ speedup,
+demonstrating that coverage of body content---not just the instruction
+prefix---is critical for donor recall.
 
 \paragraph{Stage 2: Numpy Cosine Search (${\sim}1$\,ms).}
 For $N \leq 10\text{K}$ donors, brute-force cosine similarity via
@@ -1038,7 +1040,7 @@ Reorder     & 8K  & $1.00\times$ & $2.57\times^*$ & \textbf{SB fills} \\
 Reorder     & 16K & $1.13\times$ & $5.58\times^*$ & \textbf{SB fills} \\
 \midrule
 Partial-75  & 2K  & $1.11\times$ & $1.68\times$ & \textbf{SB fills} \\
-Partial-75  & 8K  & $1.01\times$ & --- & Neither \\
+Partial-75  & 8K  & $1.01\times$ & $1.95\times^{**}$ & \textbf{SB fills} \\
 Partial-75  & 16K & $1.01\times$ & --- & Neither \\
 \midrule
 Paraphrase  & 2K  & $1.00\times$ & $1.56\times$ & \textbf{SB fills} \\
@@ -1047,7 +1049,9 @@ Paraphrase  & 16K & $0.99\times$ & $5.64\times^*$ & \textbf{SB fills} \\
 \bottomrule
 \end{tabular}\\[2pt]
 {\scriptsize $^*$Hit-only speedup (hit rates 20--40\% at 8K--16K).
---- = 0\% hit rate (partial at 8K+ rejected by chunk-level alignment).
+$^{**}$After sliding window text sampling: 87.5\% hit rate at 8K
+(was 0\% with head-only truncation; see \S\ref{sec:design:embedding}).
+--- = 0\% hit rate (partial at 16K+ rejected by chunk-level alignment).
 SB = SemBlend. Prefix cache uses \texttt{enable\_prefix\_caching=True}, vLLM v0.8.5.
 \textbf{Equivalence note:} For REORDER, PARTIAL, and PARAPHRASE scenarios,
 LMCache block-hash caching achieves the \emph{same} $1.0\times$ speedup as
