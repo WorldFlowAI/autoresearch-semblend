@@ -1480,17 +1480,32 @@ class SemBlendConnectorV1(KVConnectorBase_V1):
             token_ids = list(request.all_token_ids)
             tokenizer = self._get_tokenizer()
             if tokenizer is not None:
-                # Decode first 2000 tokens for embedding (fast with cached tokenizer)
                 t0 = time.monotonic()
-                prompt = tokenizer.decode(
-                    token_ids[:2000], skip_special_tokens=True
-                )
+                n = len(token_ids)
+                # For long prompts, sample beginning + middle + end so the
+                # MiniLM embedding (512-token window) sees representative content
+                # from the full document rather than just the first 24% at 8K.
+                _MAX_DECODE = 2000
+                if n <= _MAX_DECODE:
+                    sample = token_ids
+                else:
+                    # 40% beginning (instruction + doc start), 30% middle, 30% end
+                    head = int(_MAX_DECODE * 0.40)
+                    mid_w = int(_MAX_DECODE * 0.30)
+                    tail = _MAX_DECODE - head - mid_w
+                    mid_start = (n - mid_w) // 2
+                    sample = (
+                        token_ids[:head]
+                        + token_ids[mid_start: mid_start + mid_w]
+                        + token_ids[n - tail:]
+                    )
+                prompt = tokenizer.decode(sample, skip_special_tokens=True)
                 elapsed = (time.monotonic() - t0) * 1000
                 if prompt:
                     print(
                         f"[SemBlend] decoded prompt: "
-                        f"{len(prompt)}ch from {len(token_ids)}tok "
-                        f"in {elapsed:.0f}ms",
+                        f"{len(prompt)}ch from {n}tok "
+                        f"(sample={len(sample)}) in {elapsed:.0f}ms",
                         file=sys.stderr, flush=True,
                     )
                     return prompt
@@ -1555,14 +1570,28 @@ class SemBlendConnectorV1(KVConnectorBase_V1):
 
         self._stats["total_saves"] += 1
 
-        # Decode prompt-only tokens for embedding (skip output tokens)
+        # Decode prompt-only tokens for embedding (skip output tokens).
+        # Use sliding window sampling for long prompts so MiniLM sees
+        # representative content from beginning + middle + end of document.
         prompt = ""
         try:
             tokenizer = self._get_tokenizer()
             if tokenizer is not None:
-                prompt = tokenizer.decode(
-                    token_ids[:2000], skip_special_tokens=True
-                )
+                n = len(token_ids)
+                _MAX_DECODE = 2000
+                if n <= _MAX_DECODE:
+                    sample = token_ids
+                else:
+                    head = int(_MAX_DECODE * 0.40)
+                    mid_w = int(_MAX_DECODE * 0.30)
+                    tail = _MAX_DECODE - head - mid_w
+                    mid_start = (n - mid_w) // 2
+                    sample = (
+                        token_ids[:head]
+                        + token_ids[mid_start: mid_start + mid_w]
+                        + token_ids[n - tail:]
+                    )
+                prompt = tokenizer.decode(sample, skip_special_tokens=True)
         except Exception:
             pass
         if not prompt:
