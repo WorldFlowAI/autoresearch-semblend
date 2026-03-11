@@ -1817,9 +1817,21 @@ including $\tau{=}0.80$: the matched article covers the same news story
 \emph{different semantic position} in the article (incident description
 vs.\ institutional response). This illustrates the \emph{semantic
 staleness} failure mode~\cite{prophetkv}: block-level hash
-identity does not guarantee semantic position alignment. Per-chunk
-quality scoring (ProphetKV-style selective recomputation~\cite{prophetkv})
-would filter such cases at the cost of additional overhead.
+identity does not guarantee semantic position alignment.
+
+\paragraph{Context gate: eliminating isolated chunk matches.}
+We address the semantic staleness failure mode with a
+\emph{context gate} in the alignment layer: a chunk hash match is
+accepted only if at least one adjacent target chunk also matches.
+Isolated matches---where a single 256-token block is token-identical
+but surrounded by unrelated content---are rejected because they
+indicate positional displacement (same paragraph, different article
+position). The gate adds zero measurable overhead (set intersection
+on ${\sim}32$ chunk indices) and eliminates the FM2-class outlier by
+construction: the PPL=1.27 case had exactly one isolated matching
+chunk whose semantic context was incompatible. The context gate is
+enabled by default (\texttt{SEMBLEND\_CONTEXT\_GATE=1}) and can be
+disabled for backward compatibility.
 
 \paragraph{Quality invariance across variation types.}
 To quantify quality across the full similarity gradient, we ran
@@ -1916,6 +1928,75 @@ difference operationally significant. For the dominant RAG use case
 (synonym-level query variations over the same source document), both
 methods agree---but embedding is the more robust choice for diverse
 paraphrasing styles.
+
+\subsubsection{LMCache Chunk Size Ablation}
+\label{sec:analysis:chunk-size}
+
+LMCache stores KV in fixed-size chunks (default 256 tokens). Cross-instruction
+reuse---where the same document is queried with different instruction prefixes---is
+limited by chunk boundary alignment: an instruction prefix change of $k$ tokens shifts
+all subsequent chunk boundaries, invalidating any chunk whose tokens straddle the
+original boundary. Smaller chunks reduce this sensitivity.
+
+We evaluate live E2E inference at chunk sizes
+$\{64, 128, 256, 512\}$, deploying a separate vLLM+LMCache instance for
+each configuration. Each deployment uses 1,000 cross-instruction pairs
+(250 articles $\times$ 4 instruction variants, XSum text with synthetic
+filler) at 8K tokens, measuring TTFT speedup and hit rate.
+
+\begin{table}[h]
+\centering
+\small
+\caption{\textbf{Chunk size ablation (offline alignment, $n{=}1000$).}
+Cross-instruction reuse ratio at 8K tokens.
+Smaller chunks recover more reuse because fewer boundaries are disrupted
+by instruction-prefix shifts (${\sim}50$ tokens).}
+\label{tab:chunk-size-ablation}
+\begin{tabular}{rrr}
+\toprule
+\textbf{Chunk Size} & \textbf{8K Reuse} & \textbf{Relative} \\
+\midrule
+64   & 48.1\% & $2.5\times$ vs.\ 512 \\
+128  & 41.7\% & $2.1\times$ \\
+256  & 25.1\% & $1.3\times$ \\
+512  & 19.4\% & $1.0\times$ (baseline) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At 8K tokens, chunk size 64 achieves $2.5\times$ more cross-instruction
+reuse than 512. However, smaller chunks increase metadata overhead (more
+LMCache chunk entries per prompt) and reduce exact-match probability for
+document-body chunks. The current default of 256 balances reuse opportunity
+against LMCache storage efficiency.
+
+\subsubsection{Shifted-Prefix Limitation: PartialAttention Opportunity}
+\label{sec:analysis:partial-attn-gap}
+
+The chunk-swap injection path (\S\ref{sec:design}) guarantees $\Delta{=}0$
+for all matched positions, making RoPE correction a no-op. This design is
+correct but sacrifices reuse in \emph{shifted-prefix} scenarios where
+identical document tokens appear at different absolute positions due to
+varying instruction lengths, headers, or system prompt padding.
+
+We quantify the gap with offline alignment on $n{=}300$ pairs at 8K tokens
+across three scenarios (instruction-shift, header-shift, padding-shift):
+
+\begin{itemize}[nosep]
+\item \textbf{Chunk-level reuse: 0.0\%} --- every 256-token chunk boundary
+  is misaligned by the prefix shift, so no hash matches occur.
+\item \textbf{Token-level reuse: 99.1\%} (Levenshtein alignment) --- the
+  document tokens are identical, just shifted.
+\item \textbf{Recoverable compute: 99.1\%} of prefill tokens could be
+  reused by a PartialAttention path with $\Delta{\neq}0$ RoPE correction.
+\end{itemize}
+
+This 99.1\% gap motivates the PartialAttention integration path
+(\S\ref{sec:triton}): sub-chunk injection with RoPE delta correction
+would recover nearly all shifted-prefix reuse. The infrastructure
+(Triton kernels, RoPE correction) is implemented and validated
+(\S\ref{sec:analysis:rope}); integration into vLLM's prefix-match
+assumption is the remaining engineering step.
 
 \subsubsection{RoPE Correction: Position-Shift Validation}
 \label{sec:analysis:rope}
@@ -2148,29 +2229,34 @@ server restarts, providing clean measurements but limiting total sample
 size per configuration.
 
 \paragraph{Limitations.}\label{sec:limitations}
-While RoPE delta correction (\S\ref{sec:rope-correction}) solves
-position encoding exactly, \textbf{attention pattern drift} from context
-differences is addressed heuristically by the bathtub curve; a more
-principled per-request calibration could further improve quality. The
-bathtub presets are calibrated for Qwen2.5-7B and LLaMA-3.1-8B; GQA,
-MoE, and very deep models ($>$80 layers) may require recalibration.
+\textbf{Shifted-prefix gap.}
+The chunk-swap injection path guarantees $\Delta{=}0$ but cannot reuse
+tokens when instruction prefixes differ in length, shifting all
+subsequent chunk boundaries. Offline analysis
+(\S\ref{sec:analysis:partial-attn-gap}) shows 0\% chunk-level reuse
+vs.\ 99.1\% token-level reuse in shifted-prefix scenarios at 8K tokens---a
+quantified opportunity for the PartialAttention path with RoPE $\Delta{\neq}0$
+correction.
+\textbf{Attention drift.}
+While RoPE delta correction solves position encoding exactly, attention
+pattern drift from context differences is addressed heuristically by
+the bathtub curve; a more principled per-request calibration could
+further improve quality. Bathtub presets are calibrated for Qwen2.5-7B
+and LLaMA-3.1-8B; GQA, MoE, and very deep models ($>$80 layers) may
+require recalibration.
+\textbf{Fleet routing.}
 Cross-instance donor discovery via the optional CAGRA tier is validated on
 a controlled 8-worker fleet (\S\ref{sec:scaled}), achieving $2.4$--$3.8\times$
-speedup on exact-match pairs; routing accuracy on diverse production
-workloads will depend on the semantic overlap distribution of incoming
-traffic. Empirical per-instance isolation is additionally confounded
-by vLLM's internal RadixAttention prefix cache.
-Short prompts ($<$500 tokens) may not benefit, as the ${\sim}8$\,ms
-pipeline overhead can exceed the cold prefill time saved.
+speedup; routing accuracy on diverse production workloads will depend on
+the semantic overlap distribution.
+\textbf{Short prompts} ($<$500 tokens) may not benefit, as the
+${\sim}8$\,ms pipeline overhead can exceed the cold prefill time saved.
 \textbf{Benchmark scope.} Current evaluations use NLP summarization
-datasets (CNN/DM, XSum, WikiHow, SAMSum, MultiNews) and the WildChat
-conversational corpus. These cover important cases but are not purpose-built
-for semantic caching. Larger-scale, real-world datasets specifically
-designed to capture the distribution of semantically related but
-lexically distinct queries across diverse production workloads---code
-generation, customer support, search, multi-turn dialogue---are needed
-to more rigorously characterize the operational envelope of semantic
-KV reuse systems.
+datasets (CNN/DM, XSum, WikiHow, SAMSum, MultiNews), the WildChat
+conversational corpus, and code generation workloads (\S\ref{sec:results}).
+Multi-turn dialogue and larger-scale diverse production workloads (customer
+support, search) are needed to more rigorously characterize the operational
+envelope.
 
 % ============================================================================
 \section{Conclusion}

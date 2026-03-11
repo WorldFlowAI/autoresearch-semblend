@@ -122,6 +122,145 @@ def test_fallback_alignment():
 
 
 # ---------------------------------------------------------------------------
+# Context gate tests
+# ---------------------------------------------------------------------------
+
+
+def test_context_gate_rejects_isolated_match():
+    """A single isolated chunk match should be rejected by the context gate."""
+    from synapse_kv_connector.alignment import (
+        LMCACHE_CHUNK_SIZE as CS,
+        SlotActionType,
+        compute_chunk_alignment,
+    )
+
+    # Donor: [A][B][C]  (3 full chunks, each 256 tokens)
+    # Target: [X][B][Y]  (chunk B matches but X and Y differ)
+    # Context gate should reject chunk B because neither neighbor matches.
+    chunk_a = list(range(1, CS + 1))
+    chunk_b = list(range(CS + 1, 2 * CS + 1))
+    chunk_c = list(range(2 * CS + 1, 3 * CS + 1))
+    chunk_x = list(range(10001, 10001 + CS))
+    chunk_y = list(range(20001, 20001 + CS))
+
+    donor = chunk_a + chunk_b + chunk_c
+    target = chunk_x + chunk_b + chunk_y
+
+    result = compute_chunk_alignment(donor, target, context_gate=True)
+    assert result.reuse_ratio == 0.0, (
+        f"Isolated chunk match should be rejected, got reuse={result.reuse_ratio}"
+    )
+    assert all(sa.action == SlotActionType.RECOMPUTE for sa in result.slot_actions)
+
+
+def test_context_gate_accepts_contiguous_matches():
+    """Two or more contiguous matching chunks should pass the context gate."""
+    from synapse_kv_connector.alignment import (
+        LMCACHE_CHUNK_SIZE as CS,
+        SlotActionType,
+        compute_chunk_alignment,
+    )
+
+    # Donor: [A][B][C]  Target: [A][B][X]
+    # Chunks A and B match → each has a matching neighbor → both accepted.
+    chunk_a = list(range(1, CS + 1))
+    chunk_b = list(range(CS + 1, 2 * CS + 1))
+    chunk_c = list(range(2 * CS + 1, 3 * CS + 1))
+    chunk_x = list(range(10001, 10001 + CS))
+
+    donor = chunk_a + chunk_b + chunk_c
+    target = chunk_a + chunk_b + chunk_x
+
+    result = compute_chunk_alignment(donor, target, context_gate=True)
+    expected_reuse = (2 * CS) / (3 * CS)
+    assert abs(result.reuse_ratio - expected_reuse) < 0.01, (
+        f"Expected reuse ~{expected_reuse:.3f}, got {result.reuse_ratio:.3f}"
+    )
+
+
+def test_context_gate_disabled_accepts_isolated():
+    """With context gate disabled, isolated matches should be accepted."""
+    from synapse_kv_connector.alignment import (
+        LMCACHE_CHUNK_SIZE as CS,
+        compute_chunk_alignment,
+    )
+
+    chunk_a = list(range(1, CS + 1))
+    chunk_b = list(range(CS + 1, 2 * CS + 1))
+    chunk_c = list(range(2 * CS + 1, 3 * CS + 1))
+    chunk_x = list(range(10001, 10001 + CS))
+    chunk_y = list(range(20001, 20001 + CS))
+
+    donor = chunk_a + chunk_b + chunk_c
+    target = chunk_x + chunk_b + chunk_y
+
+    result = compute_chunk_alignment(donor, target, context_gate=False)
+    expected_reuse = CS / (3 * CS)
+    assert abs(result.reuse_ratio - expected_reuse) < 0.01, (
+        f"Without gate, expected reuse ~{expected_reuse:.3f}, got {result.reuse_ratio:.3f}"
+    )
+
+
+def test_context_gate_full_match_accepted():
+    """All chunks matching should all pass the context gate."""
+    from synapse_kv_connector.alignment import (
+        LMCACHE_CHUNK_SIZE as CS,
+        compute_chunk_alignment,
+    )
+
+    tokens = list(range(4 * CS))
+    result = compute_chunk_alignment(tokens, tokens, context_gate=True)
+    assert result.reuse_ratio == 1.0
+
+
+def test_context_gate_reorder_with_contiguous():
+    """REORDER scenario: swapped paragraph blocks should pass gate if contiguous."""
+    from synapse_kv_connector.alignment import (
+        LMCACHE_CHUNK_SIZE as CS,
+        compute_chunk_alignment,
+    )
+
+    # Donor: [A][B][C][D]  Target: [C][D][A][B]
+    # All 4 chunks match. C and D are adjacent (pass). A and B are adjacent (pass).
+    chunk_a = list(range(1, CS + 1))
+    chunk_b = list(range(CS + 1, 2 * CS + 1))
+    chunk_c = list(range(2 * CS + 1, 3 * CS + 1))
+    chunk_d = list(range(3 * CS + 1, 4 * CS + 1))
+
+    donor = chunk_a + chunk_b + chunk_c + chunk_d
+    target = chunk_c + chunk_d + chunk_a + chunk_b
+
+    result = compute_chunk_alignment(donor, target, context_gate=True)
+    assert result.reuse_ratio == 1.0
+
+
+def test_context_gate_scattered_isolated_all_rejected():
+    """Multiple isolated matches (no two adjacent) should all be rejected."""
+    from synapse_kv_connector.alignment import (
+        LMCACHE_CHUNK_SIZE as CS,
+        compute_chunk_alignment,
+    )
+
+    # Donor: [A][B][C][D][E]
+    # Target: [A][X][C][Y][E]  — A, C, E match but none are adjacent
+    chunk_a = list(range(1, CS + 1))
+    chunk_b = list(range(CS + 1, 2 * CS + 1))
+    chunk_c = list(range(2 * CS + 1, 3 * CS + 1))
+    chunk_d = list(range(3 * CS + 1, 4 * CS + 1))
+    chunk_e = list(range(4 * CS + 1, 5 * CS + 1))
+    chunk_x = list(range(10001, 10001 + CS))
+    chunk_y = list(range(20001, 20001 + CS))
+
+    donor = chunk_a + chunk_b + chunk_c + chunk_d + chunk_e
+    target = chunk_a + chunk_x + chunk_c + chunk_y + chunk_e
+
+    result = compute_chunk_alignment(donor, target, context_gate=True)
+    assert result.reuse_ratio == 0.0, (
+        f"Scattered isolated matches should all be rejected, got {result.reuse_ratio}"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Bathtub curve tests
 # ---------------------------------------------------------------------------
 

@@ -113,16 +113,16 @@ helm upgrade --install autoresearch \
 
 # Step 5: Wait for vLLM pod readiness
 echo "--- Step 5: Wait for vLLM pod ---"
-kubectl rollout status deployment/autoresearch-vllm -n "$NAMESPACE" --timeout=600s 2>/dev/null || \
-  kubectl wait --for=condition=Ready pod -l "app.kubernetes.io/component=vllm" -n "$NAMESPACE" --timeout=600s
+kubectl rollout status deployment/autoresearch-synapse-vllm -n "$NAMESPACE" --timeout=600s 2>/dev/null || \
+  kubectl wait --for=condition=Ready pod -l "app=vllm" -n "$NAMESPACE" --timeout=600s
 
 # Step 6: Port-forward
 echo "--- Step 6: Port-forward ---"
 # Kill any existing port-forward for autoresearch
 pkill -f "kubectl port-forward.*-n $NAMESPACE" 2>/dev/null || true
 
-VLLM_SVC=$(kubectl get svc -n "$NAMESPACE" -l "app.kubernetes.io/component=vllm" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "autoresearch-vllm")
-kubectl port-forward "svc/$VLLM_SVC" 8100:8000 -n "$NAMESPACE" &
+POD=$(kubectl get pods -n "$NAMESPACE" -l app=vllm --no-headers | awk '{print $1}' | head -1)
+kubectl port-forward -n "$NAMESPACE" "pod/$POD" 8100:8000 &
 PORT_FWD_PID=$!
 echo "Port-forward PID: $PORT_FWD_PID (localhost:8100 -> vLLM in $NAMESPACE)"
 

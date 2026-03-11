@@ -1017,7 +1017,8 @@ class SemBlendConnectorV1(KVConnectorBase_V1):
             # 256-token chunks; requesting a non-aligned count causes
             # "retrieved tokens < expected" errors and falls back to
             # full recomputation.
-            chunk_size = 256
+            from synapse_kv_connector.alignment import LMCACHE_CHUNK_SIZE
+            chunk_size = LMCACHE_CHUNK_SIZE
             # Leave at least one full chunk (256 tokens) for the model to
             # process fresh. Injecting right up to the prompt boundary causes
             # EOS-collapse: the model sees the donor's sentence-ending KV as

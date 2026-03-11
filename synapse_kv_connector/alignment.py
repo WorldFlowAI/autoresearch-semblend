@@ -14,13 +14,21 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 from dataclasses import dataclass
 from enum import Enum
 
 logger = logging.getLogger(__name__)
 
-# LMCache chunk size — KV is stored in blocks of this many tokens
-LMCACHE_CHUNK_SIZE = 256
+# Context gate: reject isolated chunk matches where no adjacent chunk also
+# matches. Prevents semantic staleness (PPL=1.27 outlier) from token-identical
+# chunks appearing at wrong semantic positions in the document.
+# Disable with SEMBLEND_CONTEXT_GATE=0 for backward compatibility.
+_CONTEXT_GATE_ENABLED = os.environ.get("SEMBLEND_CONTEXT_GATE", "1") != "0"
+
+# LMCache chunk size — KV is stored in blocks of this many tokens.
+# Override via LMCACHE_CHUNK_SIZE env var for chunk size ablation.
+LMCACHE_CHUNK_SIZE = int(os.environ.get("LMCACHE_CHUNK_SIZE", "256"))
 
 try:
     from rapidfuzz.distance import Opcodes
@@ -63,25 +71,34 @@ def compute_chunk_alignment(
     donor_tokens: list[int],
     target_tokens: list[int],
     chunk_size: int = LMCACHE_CHUNK_SIZE,
+    context_gate: bool | None = None,
 ) -> AlignmentResult:
     """Chunk-level alignment for LMCache KV reuse.
 
     Splits both sequences into fixed-size chunks (matching LMCache's storage
-    granularity) and matches by content. Handles REORDER scenarios where
+    granularity) and matches by content hash. Handles REORDER scenarios where
     identical chunks appear at different positions.
 
-    For each target chunk:
-      - If an identical donor chunk exists: COPY (reuse donor KV)
-      - Otherwise: RECOMPUTE
+    Two-phase approach:
+      Phase 1: Identify all hash matches between donor and target chunks.
+      Phase 2 (context gate): Reject isolated matches — a chunk match is
+        accepted only if at least one adjacent target chunk also matches.
+        This prevents semantic staleness where a token-identical chunk from
+        a different document position gets incorrectly reused.
 
     Args:
         donor_tokens: Donor token sequence.
         target_tokens: Target token sequence.
         chunk_size: Chunk size (must match LMCache config, default 256).
+        context_gate: Override for context gate. None uses env var default.
 
     Returns:
         AlignmentResult with chunk-aligned slot actions.
     """
+    use_context_gate = (
+        context_gate if context_gate is not None else _CONTEXT_GATE_ENABLED
+    )
+
     # Split into chunks
     donor_chunks = []
     for i in range(0, len(donor_tokens), chunk_size):
@@ -91,7 +108,7 @@ def compute_chunk_alignment(
     for i in range(0, len(target_tokens), chunk_size):
         target_chunks.append(target_tokens[i:i + chunk_size])
 
-    # Build donor chunk hash → (chunk_index, used) map
+    # Build donor chunk hash → list of chunk indices
     # Only full-size chunks can match (partial trailing chunks can't)
     donor_hash_map: dict[str, list[int]] = {}
     for idx, chunk in enumerate(donor_chunks):
@@ -99,47 +116,75 @@ def compute_chunk_alignment(
             h = _chunk_hash(chunk)
             donor_hash_map.setdefault(h, []).append(idx)
 
-    slot_actions: list[SlotAction] = []
-    num_reused = 0
+    # Phase 1: identify all hash matches
+    chunk_matches: dict[int, int] = {}  # target_idx -> donor_idx
     used_donor_chunks: set[int] = set()
 
     for t_idx, t_chunk in enumerate(target_chunks):
-        t_start = t_idx * chunk_size
-
         if len(t_chunk) == chunk_size:
             h = _chunk_hash(t_chunk)
             candidates = donor_hash_map.get(h, [])
-            # Find first unused donor chunk with this hash
-            matched_d_idx = None
             for d_idx in candidates:
                 if d_idx not in used_donor_chunks:
-                    matched_d_idx = d_idx
+                    chunk_matches[t_idx] = d_idx
+                    used_donor_chunks.add(d_idx)
                     break
 
-            if matched_d_idx is not None:
-                used_donor_chunks.add(matched_d_idx)
-                d_start = matched_d_idx * chunk_size
-                for i in range(chunk_size):
-                    slot_actions.append(SlotAction(
-                        action=SlotActionType.COPY_FROM_DONOR,
-                        target_pos=t_start + i,
-                        donor_pos=d_start + i,
-                    ))
-                    num_reused += 1
-                continue
+    # Phase 2: context gate — reject isolated matches
+    if use_context_gate and chunk_matches:
+        matched_set = set(chunk_matches.keys())
+        validated: dict[int, int] = {}
+        rejected_count = 0
+        for t_idx, d_idx in chunk_matches.items():
+            has_neighbor = (
+                (t_idx - 1) in matched_set
+                or (t_idx + 1) in matched_set
+            )
+            if has_neighbor:
+                validated[t_idx] = d_idx
+            else:
+                rejected_count += 1
+                logger.info(
+                    "context_gate: rejected isolated chunk match "
+                    "target[%d] -> donor[%d]",
+                    t_idx, d_idx,
+                )
+        if rejected_count > 0:
+            logger.info(
+                "context_gate: rejected %d/%d isolated chunk matches",
+                rejected_count, len(chunk_matches),
+            )
+        chunk_matches = validated
 
-        # No match — recompute this chunk
-        for i in range(len(t_chunk)):
-            slot_actions.append(SlotAction(
-                action=SlotActionType.RECOMPUTE,
-                target_pos=t_start + i,
-            ))
+    # Phase 3: build slot actions from validated matches
+    slot_actions: list[SlotAction] = []
+    num_reused = 0
+
+    for t_idx, t_chunk in enumerate(target_chunks):
+        t_start = t_idx * chunk_size
+        d_idx = chunk_matches.get(t_idx)
+
+        if d_idx is not None:
+            d_start = d_idx * chunk_size
+            for i in range(chunk_size):
+                slot_actions.append(SlotAction(
+                    action=SlotActionType.COPY_FROM_DONOR,
+                    target_pos=t_start + i,
+                    donor_pos=d_start + i,
+                ))
+                num_reused += 1
+        else:
+            for i in range(len(t_chunk)):
+                slot_actions.append(SlotAction(
+                    action=SlotActionType.RECOMPUTE,
+                    target_pos=t_start + i,
+                ))
 
     target_len = len(target_tokens)
     reuse_ratio = num_reused / max(target_len, 1)
     edit_dist = target_len - num_reused
 
-    matched_chunks = len(used_donor_chunks)
+    matched_chunks = len(chunk_matches)
     total_target_chunks = sum(1 for c in target_chunks if len(c) == chunk_size)
     logger.info(
         "chunk_alignment: %d/%d chunks matched (reuse=%.2f), "
