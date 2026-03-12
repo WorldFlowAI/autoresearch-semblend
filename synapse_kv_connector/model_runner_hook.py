@@ -456,7 +456,8 @@ class RoPECorrectionHook:
 
         Args:
             kv_caches: List of per-layer KV cache tensors.
-                Shape per layer: [num_blocks, 2, num_heads, block_size, head_dim]
+                Shape per layer: [2, num_blocks, block_size, num_kv_heads, head_dim]
+                (vLLM v0.14.1 flash_attn layout)
             block_table: Block table for this request [num_blocks_per_seq].
 
         Returns:
@@ -554,11 +555,22 @@ class RoPECorrectionHook:
                     "pairs": len(correction_pairs),
                 })
             except Exception as exc:
+                import sys
+                import traceback as _tb
                 layer_results.append({
                     "layer": layer_idx,
                     "action": "error",
                     "error": str(exc),
                 })
+                if layer_idx == 0:
+                    print(
+                        f"[SemBlend] RoPE layer 0 FAILED: {exc}\n"
+                        f"  kv shape={kv_cache.shape} dtype={kv_cache.dtype}\n"
+                        f"  bt shape={getattr(block_table, 'shape', '?')}\n"
+                        f"  pairs={len(correction_pairs)}\n"
+                        f"  tb={_tb.format_exc()}",
+                        file=sys.stderr, flush=True,
+                    )
 
         elapsed = (time.perf_counter() - start) * 1000.0
         self._executed = True
@@ -617,74 +629,42 @@ def patch_model_runner(
         )
         return False
 
+    # Store model_runner ref on connector for _apply_rope_after_load
+    connector._model_runner_ref = model_runner
+
     original_execute = model_runner.execute_model
 
+    _call_count = [0]
+
     def _patched_execute_model(*args, **kwargs):
-        """Wrapper that applies RoPE correction before standard prefill."""
-        hook = getattr(connector, "_active_hook", None)
+        """Wrapper with diagnostic logging.
 
-        if hook is not None and not hook.executed:
-            try:
-                if isinstance(hook, RoPECorrectionHook):
-                    # Lightweight RoPE correction path
-                    kv_caches = getattr(model_runner, "kv_caches", None)
-                    block_table = None
+        RoPE correction is applied in start_load_kv (worker side) AFTER
+        LMCache loads donor KV, not here. The pre-execute path was disabled
+        because: (1) it runs before LMCache loads, and (2) kv_caches may
+        be a dict (layer names as keys) which apply_rope_correction can't
+        iterate correctly.
+        """
+        import sys
+        import time as _time
+        _call_count[0] += 1
 
-                    # Try to get block table from input_batch
-                    input_batch = getattr(model_runner, "input_batch", None)
-                    if input_batch is not None:
-                        bt = getattr(input_batch, "block_table", None)
-                        if bt is not None:
-                            # block_table may be a BatchedBlockTable or tensor
-                            # Try to get the first request's block table
-                            if hasattr(bt, "__getitem__"):
-                                try:
-                                    block_table = bt[0]
-                                except (IndexError, KeyError):
-                                    pass
-                            elif isinstance(bt, torch.Tensor):
-                                block_table = bt
+        sched = args[0] if args else kwargs.get("scheduler_output")
+        num_sched = getattr(sched, "total_num_scheduled_tokens", "?") if sched else "?"
+        t0 = _time.monotonic()
 
-                    if kv_caches is not None:
-                        result = hook.apply_rope_correction(
-                            kv_caches, block_table
-                        )
-                        if result.get("corrected"):
-                            logger.info(
-                                "RoPE correction: %d/%d layers, "
-                                "%d pairs, %.1fms",
-                                result["layers_corrected"],
-                                result["layers_corrected"]
-                                + result["layers_skipped_recompute"],
-                                result["correction_pairs"],
-                                result["time_ms"],
-                            )
+        result = original_execute(*args, **kwargs)
 
-                elif isinstance(hook, PartialAttentionHook):
-                    # Full PartialAttention path (scatter + attention)
-                    kv_caches = getattr(model_runner, "kv_caches", None)
-                    if kv_caches is not None and len(kv_caches) > 0:
-                        result = hook.apply_to_kv_cache(kv_caches[0])
-                        logger.info(
-                            "PartialAttention: %d partial + %d full layers, "
-                            "comp_ratio=%.2f, time=%.1fms",
-                            result.num_layers_partial,
-                            result.num_layers_full,
-                            result.overall_computation_ratio,
-                            result.total_time_ms,
-                        )
+        elapsed = (_time.monotonic() - t0) * 1000
+        if elapsed > 100 or _call_count[0] % 200 == 1:
+            print(
+                f"[SemBlend] execute_model #{_call_count[0]}: "
+                f"sched_tokens={num_sched}, elapsed={elapsed:.0f}ms",
+                file=sys.stderr, flush=True,
+            )
 
-            except Exception:
-                logger.warning(
-                    "Hook failed, falling back to standard prefill",
-                    exc_info=True,
-                )
-            finally:
-                # Clear hook after execution attempt
-                connector._active_hook = None
-
-        return original_execute(*args, **kwargs)
+        return result
 
     model_runner.execute_model = _patched_execute_model
-    logger.info("PartialAttention: patched model_runner.execute_model")
+    logger.info("PartialAttention: patched model_runner.execute_model (diagnostics only)")
     return True

@@ -281,7 +281,35 @@ class SemBlendDonorStore:
 
         except Exception as e:
             print(
-                f"[SemBlend] embedding ERROR: {e}",
+                f"[SemBlend] embedding ERROR (remote): {e}",
+                file=sys.stderr, flush=True,
+            )
+
+        # Fallback: local MiniLM via sentence-transformers
+        try:
+            if not hasattr(self, "_local_model"):
+                from sentence_transformers import SentenceTransformer
+                self._local_model = SentenceTransformer(
+                    "sentence-transformers/all-MiniLM-L6-v2"
+                )
+                print(
+                    "[SemBlend] loaded local MiniLM-L6-v2 for embeddings",
+                    file=sys.stderr, flush=True,
+                )
+            t0 = time.monotonic()
+            emb = self._local_model.encode(
+                text[:2000], convert_to_numpy=True
+            ).tolist()
+            elapsed_ms = (time.monotonic() - t0) * 1000
+            print(
+                f"[SemBlend] embedding OK (local MiniLM): dim={len(emb)}, "
+                f"time={elapsed_ms:.0f}ms",
+                file=sys.stderr, flush=True,
+            )
+            return emb
+        except Exception as e2:
+            print(
+                f"[SemBlend] embedding ERROR (local fallback): {e2}",
                 file=sys.stderr, flush=True,
             )
         return None
@@ -329,7 +357,7 @@ class SemBlendConnectorV1(KVConnectorBase_V1):
         )
         if self._use_pipeline:
             try:
-                from synapse_kv_connector.pipeline import SemBlendPipeline
+                from synapse_kv_connector.pipeline import create_vllm_pipeline
                 model_name = None
                 try:
                     mc = getattr(vllm_config, "model_config", None)
@@ -337,7 +365,7 @@ class SemBlendConnectorV1(KVConnectorBase_V1):
                         model_name = getattr(mc, "model", None)
                 except Exception:
                     pass
-                self._pipeline = SemBlendPipeline(
+                self._pipeline = create_vllm_pipeline(
                     max_donors=int(
                         os.environ.get("SEMBLEND_MAX_DONORS", "10000")
                     ),
@@ -522,6 +550,128 @@ class SemBlendConnectorV1(KVConnectorBase_V1):
                 f"[SemBlend] WORKER start_load_kv took {elapsed:.0f}ms",
                 file=sys.stderr, flush=True,
             )
+        # Apply RoPE correction AFTER LMCache loads donor KV.
+        import synapse_kv_connector.semblend_connector as _mod_rope
+        hook = getattr(_mod_rope, "_semblend_active_hook", None)
+        if hook is not None and not hook.executed:
+            self._apply_rope_after_load(hook, forward_context)
+
+    def _apply_rope_after_load(self, hook, forward_context):
+        """Apply RoPE correction after LMCache loads donor KV."""
+        try:
+            import time as _t
+            t0 = _t.monotonic()
+            mr = getattr(self, '_model_runner_ref', None)
+            kv_caches = getattr(mr, 'kv_caches', None) if mr else None
+            if kv_caches is None:
+                print("[SemBlend] RoPE: no kv_caches", file=sys.stderr, flush=True)
+                return
+            num_layers = len(kv_caches)
+            for li in range(num_layers):
+                try:
+                    self._lmcache.wait_for_layer_load(f"model.layers.{li}.self_attn")
+                except Exception:
+                    pass
+            wait_ms = (_t.monotonic() - t0) * 1000
+            block_table = None
+            attn_meta = getattr(forward_context, "attn_metadata", None)
+            if isinstance(attn_meta, dict):
+                for _, meta in attn_meta.items():
+                    bt = getattr(meta, "block_table", None)
+                    if bt is None:
+                        bt = getattr(meta, "block_table_tensor", None)
+                    if bt is not None and isinstance(bt, torch.Tensor):
+                        block_table = bt[0] if bt.dim() > 1 else bt
+                        break
+            if block_table is None and mr is not None:
+                ib = getattr(mr, 'input_batch', None)
+                if ib is not None:
+                    bt = getattr(ib, 'block_table', None)
+                    if bt is not None:
+                        try:
+                            block_table = bt[0]
+                        except (IndexError, KeyError, TypeError):
+                            if isinstance(bt, torch.Tensor):
+                                block_table = bt
+            if block_table is None:
+                print("[SemBlend] RoPE: no block_table", file=sys.stderr, flush=True)
+                return
+            kv_list = []
+            if isinstance(kv_caches, dict):
+                fk = next(iter(kv_caches), "")
+                fmt = "model.layers.{}.self_attn.attn" if "self_attn.attn" in fk else "model.layers.{}.self_attn"
+                for li in range(num_layers):
+                    k = fmt.format(li)
+                    if k in kv_caches:
+                        kv_list.append(kv_caches[k])
+                    else:
+                        break
+            else:
+                kv_list = list(kv_caches)
+            if not kv_list:
+                print("[SemBlend] RoPE: empty kv_list", file=sys.stderr, flush=True)
+                return
+            print(
+                f"[SemBlend] RoPE: applying, bt={block_table.shape}, "
+                f"layers={len(kv_list)}, kv={kv_list[0].shape}, wait={wait_ms:.0f}ms",
+                file=sys.stderr, flush=True,
+            )
+            result = hook.apply_rope_correction(kv_list, block_table)
+            total = (_t.monotonic() - t0) * 1000
+            if result.get("corrected"):
+                print(
+                    f"[SemBlend] RoPE APPLIED: {result['layers_corrected']}/{len(kv_list)} layers, "
+                    f"{result['correction_pairs']} pairs, {result['time_ms']:.1f}ms, total={total:.0f}ms",
+                    file=sys.stderr, flush=True,
+                )
+            else:
+                print(f"[SemBlend] RoPE skip: {result.get('reason')}", file=sys.stderr, flush=True)
+
+            # SEMBLEND_FORCE_DELTA: artificially corrupt K positions to
+            # simulate Δ≠0 for E2E validation of RoPE correction.
+            # Reads from /tmp/semblend_force_delta.json at runtime so
+            # conditions can change between requests without restart.
+            force_delta = int(os.environ.get("SEMBLEND_FORCE_DELTA", "0"))
+            force_correct = os.environ.get("SEMBLEND_FORCE_DELTA_CORRECT", "0").strip() == "1"
+            _fd_cfg = "/tmp/semblend_force_delta.json"
+            try:
+                import json as _json
+                with open(_fd_cfg) as _f:
+                    _cfg = _json.load(_f)
+                force_delta = int(_cfg.get("delta", force_delta))
+                force_correct = bool(_cfg.get("correct", force_correct))
+            except (FileNotFoundError, ValueError, KeyError):
+                pass
+            if force_delta != 0:
+                from synapse_kv_connector.rope_correction import apply_rope_delta_inplace
+                pos_map = hook._position_map
+                num_matched = pos_map.num_pairs if hasattr(pos_map, 'num_pairs') else 0
+                positions = list(range(num_matched))
+                fd_t0 = _t.monotonic()
+                fd_modified = 0
+                for layer_kv in kv_list:
+                    fd_modified += apply_rope_delta_inplace(
+                        layer_kv, block_table, positions, force_delta,
+                    )
+                if force_correct:
+                    for layer_kv in kv_list:
+                        apply_rope_delta_inplace(
+                            layer_kv, block_table, positions, -force_delta,
+                        )
+                fd_ms = (_t.monotonic() - fd_t0) * 1000
+                print(
+                    f"[SemBlend] FORCE_DELTA={force_delta} applied: "
+                    f"{fd_modified} K positions corrupted across {len(kv_list)} layers, "
+                    f"correct={force_correct}, {fd_ms:.1f}ms, "
+                    f"req={hook._request_id}",
+                    file=sys.stderr, flush=True,
+                )
+        except Exception:
+            import traceback
+            print(f"[SemBlend] RoPE FAILED:\n{traceback.format_exc()}", file=sys.stderr, flush=True)
+        finally:
+            import synapse_kv_connector.semblend_connector as _m
+            _m._semblend_active_hook = None
 
     def wait_for_layer_load(self, layer_name: str) -> None:
         t0 = time.monotonic()
@@ -838,15 +988,35 @@ class SemBlendConnectorV1(KVConnectorBase_V1):
             # Store position map for RoPE correction (used by worker-side
             # paged scatter after LMCache loads donor KV).
             # Skipped when SEMBLEND_DISABLE_ROPE_CORRECTION=1 (ablation).
-            if (
-                pipeline_result.position_map.needs_correction
-                and not self._disable_rope_correction
-            ):
+            #
+            # Also create hook when SEMBLEND_FORCE_DELTA is set (E2E validation):
+            # artificially applies RoPE(Δ) to K after load to simulate Δ≠0,
+            # then optionally corrects with RoPE(-Δ).
+            _force_delta = int(os.environ.get("SEMBLEND_FORCE_DELTA", "0"))
+            _need_hook = (
+                (pipeline_result.position_map.needs_correction and not self._disable_rope_correction)
+                or _force_delta != 0
+            )
+            if _need_hook:
                 self._position_maps[request.request_id] = pipeline_result.position_map
+                # Create RoPE hook and share with worker via module global
+                try:
+                    from synapse_kv_connector.model_runner_hook import RoPECorrectionHook
+                    _rope_hook = RoPECorrectionHook(
+                        position_map=pipeline_result.position_map,
+                        plan=None,
+                        request_id=request.request_id,
+                    )
+                    self._active_hook = _rope_hook
+                    import synapse_kv_connector.semblend_connector as _mod_hook
+                    _mod_hook._semblend_active_hook = _rope_hook
+                except Exception as _rope_err:
+                    print(f"[SemBlend] RoPE hook creation failed: {_rope_err}", file=sys.stderr, flush=True)
+                _reason = "force_delta" if _force_delta != 0 else "position_correction"
                 print(
-                    f"[SemBlend] RoPE correction needed: "
+                    f"[SemBlend] RoPE hook created ({_reason}): "
                     f"{pipeline_result.position_map.num_pairs} position pairs, "
-                    f"req={request.request_id}",
+                    f"force_delta={_force_delta}, req={request.request_id}",
                     file=sys.stderr, flush=True,
                 )
             elif (
@@ -884,6 +1054,8 @@ class SemBlendConnectorV1(KVConnectorBase_V1):
                             plan=plan,
                             request_id=request.request_id,
                         )
+                        import synapse_kv_connector.semblend_connector as _mod_hook2
+                        _mod_hook2._semblend_active_hook = self._active_hook
                         self._stats["partial_attn_applied"] += 1
                         print(
                             f"[SemBlend] PartialAttention plan built: "
@@ -1081,6 +1253,44 @@ class SemBlendConnectorV1(KVConnectorBase_V1):
             # (its KV won't be saved to LMCache).
             self._donor_token_map[request.request_id] = donor_token_ids
             self._donor_matched_reqs.add(request.request_id)
+
+            # FORCE_DELTA hook (legacy path): create hook when env var or
+            # config file requests forced RoPE corruption.
+            _force_delta_legacy = int(os.environ.get("SEMBLEND_FORCE_DELTA", "0"))
+            try:
+                import json as _json_fd
+                with open("/tmp/semblend_force_delta.json") as _ffd:
+                    _fd_cfg = _json_fd.load(_ffd)
+                _force_delta_legacy = int(_fd_cfg.get("delta", _force_delta_legacy))
+            except (FileNotFoundError, ValueError, KeyError):
+                pass
+            if _force_delta_legacy != 0:
+                try:
+                    from semblend_core.pipeline import PositionMapping
+                    from synapse_kv_connector.model_runner_hook import RoPECorrectionHook
+                    _pos_map = PositionMapping(
+                        donor_positions=list(range(donor_hit)),
+                        target_positions=list(range(donor_hit)),
+                    )
+                    _rope_hook = RoPECorrectionHook(
+                        position_map=_pos_map,
+                        plan=None,
+                        request_id=request.request_id,
+                    )
+                    self._active_hook = _rope_hook
+                    import synapse_kv_connector.semblend_connector as _mod_fd
+                    _mod_fd._semblend_active_hook = _rope_hook
+                    print(
+                        f"[SemBlend] FORCE_DELTA hook created (legacy): "
+                        f"delta={_force_delta_legacy}, positions={donor_hit}, "
+                        f"req={request.request_id}",
+                        file=sys.stderr, flush=True,
+                    )
+                except Exception as _fd_err:
+                    print(
+                        f"[SemBlend] FORCE_DELTA hook FAILED (legacy): {_fd_err}",
+                        file=sys.stderr, flush=True,
+                    )
 
             # Return value must be need_to_allocate =
             # donor_hit - num_computed_tokens (matching LMCache's
