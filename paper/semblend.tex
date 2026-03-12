@@ -1734,13 +1734,19 @@ $P_h$ & Predicted (ms) & Measured (ms) \\
 \end{center}
 
 \paragraph{Break-even analysis.}
-The blended TTFT equals cold TTFT only at $P_h{=}0$; any nonzero
-hit rate strictly reduces latency. At $P_h{=}0.25$, blended TTFT
-is $0.77\times$ cold (23\% reduction). At the production default
+At $\geq$8K tokens, the blended TTFT equals cold TTFT only at $P_h{=}0$;
+any nonzero hit rate strictly reduces latency. At $P_h{=}0.25$, blended
+TTFT is $0.77\times$ cold (23\% reduction). At the production default
 ($\tau{=}0.60$, 62--100\% hit rate across datasets),
 Eq.~\ref{eq:expected-ttft} predicts blended TTFT of
 $0.36\times$--$0.09\times$ cold---matching the
 $2.2$--$10.7\times$ range in Table~\ref{tab:cross-dataset}.
+At 4K tokens, live break-even measurement ($n{=}500$ per condition)
+shows that KV retrieval overhead exceeds prefill savings: hit TTFT
+averages 1,359\,ms vs.\ cold 1,278\,ms ($+6.3\%$), confirming that
+\semblend's benefits emerge at longer contexts where prefill
+dominates inference latency (code generation at 4K shows only 4\%
+overhead; see \S\ref{sec:codegen}).
 
 \paragraph{Temperature invariance.}
 KV injection is a prefill-side operation: sampling temperature does not
@@ -1947,28 +1953,37 @@ filler) at 8K tokens, measuring TTFT speedup and hit rate.
 \begin{table}[h]
 \centering
 \small
-\caption{\textbf{Chunk size ablation (offline alignment, $n{=}1000$).}
-Cross-instruction reuse ratio at 8K tokens.
-Smaller chunks recover more reuse because fewer boundaries are disrupted
-by instruction-prefix shifts (${\sim}50$ tokens).}
+\caption{\textbf{Chunk size ablation (live E2E, $n{=}1000$ per size).}
+Cross-instruction hit rate and speedup at 8K tokens across four chunk
+sizes. Hit rate is invariant to chunk size---hit/miss is determined by
+whether the instruction variant preserves token-count alignment at all
+chunk boundaries (a binary outcome), not by chunk granularity.}
 \label{tab:chunk-size-ablation}
-\begin{tabular}{rrr}
+\begin{tabular}{rrrr}
 \toprule
-\textbf{Chunk Size} & \textbf{8K Reuse} & \textbf{Relative} \\
+\textbf{Chunk Size} & \textbf{Hit Rate} & \textbf{Speedup} & \textbf{Cold (ms)} \\
 \midrule
-64   & 48.1\% & $2.5\times$ vs.\ 512 \\
-128  & 41.7\% & $2.1\times$ \\
-256  & 25.1\% & $1.3\times$ \\
-512  & 19.4\% & $1.0\times$ (baseline) \\
+64   & 59.6\% & $0.88\times$ & 1887 \\
+128  & 59.6\% & $0.89\times$ & 1888 \\
+256  & 59.6\% & $0.88\times$ & 1877 \\
+512  & 59.6\% & $0.88\times$ & 1882 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-At 8K tokens, chunk size 64 achieves $2.5\times$ more cross-instruction
-reuse than 512. However, smaller chunks increase metadata overhead (more
-LMCache chunk entries per prompt) and reduce exact-match probability for
-document-body chunks. The current default of 256 balances reuse opportunity
-against LMCache storage efficiency.
+Contrary to offline alignment predictions (which suggested $2.5\times$
+more reuse at chunk size 64 vs.\ 512), the live E2E results show
+\textbf{identical hit rates across all chunk sizes}. The cross-instruction
+hit/miss outcome is binary: if the instruction variant tokenizes to the
+same length as the donor instruction, \emph{all} subsequent chunk boundaries
+align and LMCache achieves full reuse; if the token count differs by even
+one token, \emph{all} boundaries shift and no chunks match.
+This binary alignment effect dominates chunk granularity, making chunk
+size irrelevant for cross-instruction reuse in practice. The overall
+speedup of $0.88\times$ reflects net SemBlend overhead on misses
+(40\% of queries with misaligned instructions), consistent with the
+short-context overhead observed in break-even analysis
+(\S\ref{sec:analysis:wildchat}).
 
 \subsubsection{Shifted-Prefix Limitation: PartialAttention Opportunity}
 \label{sec:analysis:partial-attn-gap}
@@ -2228,6 +2243,51 @@ sharded KV caches may change the overhead profile.
 server restarts, providing clean measurements but limiting total sample
 size per configuration.
 
+\subsubsection{Multi-Turn Dialogue}
+\label{sec:multiturn}
+
+Multi-turn conversations are a natural fit for KV cache reuse: each
+successive turn shares most of the prior context. We evaluate 200
+independent conversations at 4K tokens, measuring TTFT across 3 turns
+(turn~1 establishes the cold baseline, turns 2--3 append user/assistant
+content and re-query).
+
+\begin{center}
+\small
+\begin{tabular}{@{}rrrr@{}}
+\toprule
+\textbf{Turn} & \textbf{P50 TTFT (ms)} & \textbf{Hit Rate} & \textbf{Speedup} \\
+\midrule
+1 (cold)  & 4,019 & ---    & $1.0\times$ \\
+2         & 791   & 99.5\% & $5.08\times$ \\
+3         & 787   & 99.5\% & $5.10\times$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Turn~2 achieves $\mathbf{5.1\times}$ speedup with 99.5\% hit rate
+(199/200 conversations). The near-perfect hit rate is expected:
+multi-turn prompts extend the same prefix, producing identical
+LMCache chunk alignment. The single miss is attributable to LRU
+eviction under the 15\,GB CPU buffer constraint. This result
+validates \semblend as effective for the common multi-turn chat
+serving pattern.
+
+\subsubsection{Code Generation (Negative Control)}
+\label{sec:codegen}
+
+To measure overhead on workloads with \emph{no} semantic overlap,
+we evaluate 1,000 independent coding problems at 4K tokens.
+Each prompt contains a unique algorithmic task with no shared
+context between problems.
+
+\textbf{Result:} 0.0\% hit rate, $0.96\times$ speedup (4\% overhead).
+SemBlend correctly determines that no donors match (cosine similarity
+$< \tau{=}0.60$) and falls through to cold prefill. The 4\% overhead
+comprises the MiniLM embedding (${\sim}5$\,ms) and cosine search
+(${\sim}1$\,ms) on every request. This confirms that \semblend
+imposes minimal interference on dissimilar workloads.
+
 \paragraph{Limitations.}\label{sec:limitations}
 \textbf{Shifted-prefix gap.}
 The chunk-swap injection path guarantees $\Delta{=}0$ but cannot reuse
@@ -2251,12 +2311,12 @@ speedup; routing accuracy on diverse production workloads will depend on
 the semantic overlap distribution.
 \textbf{Short prompts} ($<$500 tokens) may not benefit, as the
 ${\sim}8$\,ms pipeline overhead can exceed the cold prefill time saved.
-\textbf{Benchmark scope.} Current evaluations use NLP summarization
-datasets (CNN/DM, XSum, WikiHow, SAMSum, MultiNews), the WildChat
-conversational corpus, and code generation workloads (\S\ref{sec:results}).
-Multi-turn dialogue and larger-scale diverse production workloads (customer
-support, search) are needed to more rigorously characterize the operational
-envelope.
+\textbf{Benchmark scope.} Evaluations span NLP summarization
+datasets (CNN/DM, XSum, WikiHow, SAMSum, MultiNews), WildChat
+conversations, multi-turn dialogue (\S\ref{sec:multiturn}), and code
+generation (\S\ref{sec:codegen}). Larger-scale diverse production workloads
+(customer support, search) are needed to more rigorously characterize
+the operational envelope.
 
 % ============================================================================
 \section{Conclusion}
