@@ -34,13 +34,6 @@ import requests
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-# Repeatable filler sentence to pad prompts to target token count.
-# ~4 chars per token, each sentence ~120 chars => ~30 tokens.
-_FILLER_SENTENCE = (
-    "The research committee reviewed the quarterly findings and recommended "
-    "further investigation into the observed anomalies. "
-)
-
 _PROMPT_TEMPLATE = (
     "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n"
     "<|im_start|>user\n"
@@ -50,11 +43,69 @@ _PROMPT_TEMPLATE = (
     "<|im_start|>assistant\n"
 )
 
+# Pool of diverse sentences for generating unique context per prompt.
+# Each sentence ~100-120 chars (~25-30 tokens). Using a large pool ensures
+# that each prompt's random sampling produces text that does NOT match any
+# other prompt at the 256-token chunk level, preventing cross-batch LMCache hits.
+_CONTEXT_SENTENCES = [
+    "The research committee reviewed the quarterly findings and recommended further investigation into the observed anomalies. ",
+    "Tropical rainforests host approximately half of all known species on Earth despite covering less than seven percent of the planet. ",
+    "Advances in quantum error correction have brought fault-tolerant quantum computing closer to practical deployment timelines. ",
+    "The International Space Station orbits at roughly four hundred kilometers altitude completing sixteen revolutions per day. ",
+    "Renewable energy capacity additions exceeded fossil fuel additions globally for the third consecutive year in recent reports. ",
+    "Archaeologists discovered a previously unknown trade route connecting ancient Mesopotamian city-states to Indus Valley settlements. ",
+    "Machine learning models trained on protein sequences can now predict three-dimensional folding structures with atomic accuracy. ",
+    "The deep ocean floor contains vast deposits of polymetallic nodules rich in manganese cobalt nickel and rare earth elements. ",
+    "Climate reconstructions from ice cores reveal abrupt temperature shifts occurring within decades during the last glacial period. ",
+    "High-temperature superconductors operating above liquid nitrogen temperatures remain an active area of condensed matter research. ",
+    "The human gut microbiome contains trillions of bacteria that play essential roles in digestion immunity and mental health regulation. ",
+    "Autonomous underwater vehicles equipped with sonar mapping systems survey uncharted seafloor terrain at depths exceeding six kilometers. ",
+    "Gravitational wave detectors have confirmed the existence of binary black hole mergers occurring billions of light years from Earth. ",
+    "Agricultural soil degradation threatens food security as topsoil erosion rates accelerate beyond natural replenishment capacity worldwide. ",
+    "The development of mRNA vaccine platforms demonstrated remarkable adaptability during the recent global pandemic response efforts. ",
+    "Satellite constellations in low Earth orbit provide broadband internet connectivity to previously underserved rural and remote communities. ",
+    "Volcanic eruptions inject sulfur dioxide particles into the stratosphere creating temporary cooling effects on regional climate patterns. ",
+    "Neuroplasticity research shows that adult brains retain the ability to form new neural connections throughout the entire lifespan. ",
+    "Coral reef bleaching events have increased in frequency and severity as ocean temperatures rise beyond historical seasonal averages. ",
+    "Synthetic biology enables engineering of microorganisms capable of producing pharmaceuticals biofuels and industrial chemicals efficiently. ",
+    "The discovery of water ice deposits in permanently shadowed lunar craters has renewed interest in establishing permanent Moon bases. ",
+    "Continental drift theory evolved into plate tectonics providing a unified framework for understanding earthquakes volcanoes and mountain formation. ",
+    "Electric vehicle battery technology continues advancing with solid-state designs promising higher energy density and faster charging rates. ",
+    "Ancient DNA analysis has revolutionized our understanding of human migration patterns and population mixing over the last hundred thousand years. ",
+    "Microplastic contamination has been detected in drinking water sources marine sediments atmospheric samples and human blood specimens globally. ",
+    "Precision agriculture uses satellite imagery drone surveys and soil sensors to optimize crop yields while minimizing fertilizer and water usage. ",
+    "The standard model of particle physics successfully describes three of the four fundamental forces but does not incorporate gravity. ",
+    "Geothermal energy systems tap into heat stored deep within the Earth providing reliable baseload power generation with minimal carbon emissions. ",
+    "Recent paleontological discoveries suggest that many dinosaur species possessed feathers challenging traditional cold-blooded reptilian depictions. ",
+    "Blockchain technology applications have expanded beyond cryptocurrency to include supply chain verification digital identity and voting systems. ",
+    "Ocean acidification caused by dissolved carbon dioxide threatens shell-forming marine organisms including oysters mussels and coral polyps. ",
+    "The James Webb Space Telescope has captured infrared images of galaxies formed within the first few hundred million years after the Big Bang. ",
+    "Epigenetic modifications allow environmental factors to influence gene expression without altering the underlying DNA sequence itself permanently. ",
+    "Wildfire intensity and burned area have increased dramatically in Mediterranean climates due to prolonged drought conditions and rising temperatures. ",
+    "CRISPR gene editing technology offers potential treatments for genetic disorders including sickle cell disease and certain forms of hereditary blindness. ",
+    "Tidal energy converters installed in narrow coastal channels harness predictable ocean currents to generate electricity with high capacity factors. ",
+    "The global semiconductor shortage exposed critical vulnerabilities in just-in-time manufacturing supply chains across automotive and electronics industries. ",
+    "Permafrost thaw across Arctic regions releases stored methane and carbon dioxide accelerating positive feedback loops in the global climate system. ",
+    "Artificial photosynthesis research aims to replicate natural light-harvesting processes for direct solar fuel production from water and carbon dioxide. ",
+    "The human genome project completed in 2003 mapped approximately three billion base pairs enabling subsequent advances in personalized medicine approaches. ",
+]
 
-def _build_synthetic_context(target_chars: int) -> str:
-    """Return repeating filler text of approximately *target_chars* characters."""
-    repeats = max(1, target_chars // len(_FILLER_SENTENCE) + 1)
-    return (_FILLER_SENTENCE * repeats)[:target_chars]
+
+def _build_unique_context(target_chars: int, seed: int) -> str:
+    """Return seeded pseudo-random text of approximately *target_chars* characters.
+
+    Each seed produces a unique sequence of sentences from _CONTEXT_SENTENCES,
+    ensuring no two prompts share the same 256-token chunk content in LMCache.
+    """
+    import random
+    rng = random.Random(seed)
+    parts: list[str] = []
+    total = 0
+    while total < target_chars:
+        sentence = rng.choice(_CONTEXT_SENTENCES)
+        parts.append(sentence)
+        total += len(sentence)
+    return "".join(parts)[:target_chars]
 
 
 def _build_prompt(uid: str, context: str) -> str:
@@ -207,7 +258,6 @@ def run_length(
     For each batch: cold → register donors → hit → miss, then aggregate.
     """
     target_chars = token_length * 4  # ~4 chars per token
-    context_body = _build_synthetic_context(target_chars)
 
     batch_size = _compute_batch_size(token_length)
     n_batches = (n_samples + batch_size - 1) // batch_size
@@ -216,9 +266,19 @@ def run_length(
           f"({n_batches} batches for {n_samples} samples)")
 
     # --- Generate ALL unique prompts up front ---
-    uids_a = [f"brk-a-{uuid.uuid4().hex[:12]}" for _ in range(n_samples)]
-    prompts_a = [_build_prompt(uid, context_body) for uid in uids_a]
+    # Each prompt gets a UNIQUE context body (seeded) to prevent cross-batch
+    # LMCache contamination: batch N's stored KV must never match batch N+1's
+    # "cold" prompts.
+    prompts_a = []
+    for i in range(n_samples):
+        uid = f"brk-a-{uuid.uuid4().hex[:12]}"
+        context = _build_unique_context(target_chars, seed=1_000_000 + i)
+        prompts_a.append(_build_prompt(uid, context))
 
+    # Hit prompts: exact same prompts_a re-sent. LMCache matches on exact
+    # 256-token chunk content — same prompt text = same tokens = hit.
+
+    # Miss prompts: completely different seed range, no chunk overlap.
     prompts_b = []
     for i in range(n_samples):
         uid = f"brk-b-{uuid.uuid4().hex[:12]}"
@@ -242,21 +302,23 @@ def run_length(
         print(f"\n  --- Batch {batch_idx + 1}/{n_batches} "
               f"(samples {start + 1}-{end}) ---")
 
-        # Phase 1: Cold TTFT
+        # Phase 1: Cold TTFT — each prompt has unique context body,
+        # so LMCache cannot match chunks from any prior batch.
         print(f"  Phase 1: Cold TTFT (n={batch_n})")
         cold_lat = run_condition("cold", endpoint, model, batch_a)
         all_cold.extend(cold_lat)
 
-        # Phase 2: Register donors
+        # Phase 2: Register donors — re-send cold prompts to store KV
         print(f"  Phase 2: Register donors (n={batch_n})")
         run_condition("donor", endpoint, model, batch_a, max_tokens=50)
 
-        # Phase 3: Hit TTFT — re-send same batch (should match in LMCache)
+        # Phase 3: Hit TTFT — re-send exact same prompts as cold phase.
+        # LMCache matches on exact 256-token chunk content → hit.
         print(f"  Phase 3: Hit TTFT (n={batch_n})")
         hit_lat = run_condition("hit", endpoint, model, batch_a)
         all_hit.extend(hit_lat)
 
-        # Phase 4: Miss TTFT — topically different content
+        # Phase 4: Miss TTFT — topically different content, no chunk overlap
         print(f"  Phase 4: Miss TTFT (n={batch_n})")
         miss_lat = run_condition("miss", endpoint, model, batch_b)
         all_miss.extend(miss_lat)

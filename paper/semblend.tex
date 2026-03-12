@@ -1734,19 +1734,34 @@ $P_h$ & Predicted (ms) & Measured (ms) \\
 \end{center}
 
 \paragraph{Break-even analysis.}
-At $\geq$8K tokens, the blended TTFT equals cold TTFT only at $P_h{=}0$;
-any nonzero hit rate strictly reduces latency. At $P_h{=}0.25$, blended
-TTFT is $0.77\times$ cold (23\% reduction). At the production default
-($\tau{=}0.60$, 62--100\% hit rate across datasets),
-Eq.~\ref{eq:expected-ttft} predicts blended TTFT of
-$0.36\times$--$0.09\times$ cold---matching the
-$2.2$--$10.7\times$ range in Table~\ref{tab:cross-dataset}.
-At 4K tokens, live break-even measurement ($n{=}500$ per condition)
-shows that KV retrieval overhead exceeds prefill savings: hit TTFT
-averages 1,359\,ms vs.\ cold 1,278\,ms ($+6.3\%$), confirming that
-\semblend's benefits emerge at longer contexts where prefill
-dominates inference latency (code generation at 4K shows only 4\%
-overhead; see \S\ref{sec:codegen}).
+The \semblend\ pipeline adds overhead on misses (embedding $+$ vector search
+$+$ chunk alignment). We measure this empirically using unique-topic
+prompts processed sequentially (cold$\to$hit$\to$miss per prompt, fresh
+vLLM instance per context length):
+
+\smallskip
+\begin{center}
+\begin{tabular}{rrrrrr}
+\toprule
+\textbf{Tokens} & \textbf{Cold} & \textbf{Hit} & \textbf{Miss} & $O_{\mathrm{miss}}$ & $P_h^*$ \\
+\midrule
+ 4K ($n{=}20$) & 1,859\,ms & 801\,ms & 1,864\,ms & 5\,ms  & $<$1\% \\
+ 8K ($n{=}20$) & 3,193\,ms & 817\,ms & 3,315\,ms & 122\,ms & 4.9\% \\
+16K ($n{=}10$) & 5,852\,ms & 871\,ms & 6,064\,ms & 212\,ms & 4.1\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+\smallskip
+
+\noindent Miss overhead ($O_{\mathrm{miss}}{=}\text{Miss}{-}\text{Cold}$)
+ranges from 5\,ms at 4K to 212\,ms at 16K; at steady-state store sizes
+($\sim$500 donors) it grows to ${\approx}496$\,ms.
+Let $P_h^* = O_{\mathrm{miss}} / (O_{\mathrm{miss}} + S_{\mathrm{hit}})$
+denote the break-even hit rate, where $S_{\mathrm{hit}}{=}\text{Cold}{-}\text{Hit}$.
+\semblend\ is net-positive at \textbf{all tested context lengths} for
+virtually any nonzero hit rate ($P_h^*{<}5\%$ at 4--16K tokens).
+Even at steady-state store overhead, 8K requires only $P_h^*{=}17\%$;
+at 32K (extrapolated), $P_h^*{=}3.4\%$.
 
 \paragraph{Temperature invariance.}
 KV injection is a prefill-side operation: sampling temperature does not
