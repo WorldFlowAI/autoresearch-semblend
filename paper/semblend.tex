@@ -1745,6 +1745,7 @@ vLLM instance per context length):
 \toprule
 \textbf{Tokens} & \textbf{Cold} & \textbf{Hit} & \textbf{Miss} & $O_{\mathrm{miss}}$ & $P_h^*$ \\
 \midrule
+ 2K ($n{=}20$) & 1,187\,ms & 768\,ms & 1,161\,ms & 0\,ms  & 0\% \\
  4K ($n{=}20$) & 1,859\,ms & 801\,ms & 1,864\,ms & 5\,ms  & $<$1\% \\
  8K ($n{=}20$) & 3,193\,ms & 817\,ms & 3,315\,ms & 122\,ms & 4.9\% \\
 16K ($n{=}10$) & 5,852\,ms & 871\,ms & 6,064\,ms & 212\,ms & 4.1\% \\
@@ -1753,13 +1754,15 @@ vLLM instance per context length):
 \end{center}
 \smallskip
 
-\noindent Miss overhead ($O_{\mathrm{miss}}{=}\text{Miss}{-}\text{Cold}$)
-ranges from 5\,ms at 4K to 212\,ms at 16K; at steady-state store sizes
-($\sim$500 donors) it grows to ${\approx}496$\,ms.
+\noindent At 2K the pipeline overhead is \emph{zero}---embedding and vector
+search complete within the prefill compute window. Miss overhead grows
+with context length (5\,ms at 4K, 212\,ms at 16K) because larger stores
+require more chunk alignment checks; at steady-state sizes ($\sim$500
+donors) it reaches ${\approx}496$\,ms.
 Let $P_h^* = O_{\mathrm{miss}} / (O_{\mathrm{miss}} + S_{\mathrm{hit}})$
 denote the break-even hit rate, where $S_{\mathrm{hit}}{=}\text{Cold}{-}\text{Hit}$.
-\semblend\ is net-positive at \textbf{all tested context lengths} for
-virtually any nonzero hit rate ($P_h^*{<}5\%$ at 4--16K tokens).
+\semblend\ is net-positive at \textbf{all tested context lengths}
+($P_h^*{<}5\%$ at 2--16K tokens).
 Even at steady-state store overhead, 8K requires only $P_h^*{=}17\%$;
 at 32K (extrapolated), $P_h^*{=}3.4\%$.
 
