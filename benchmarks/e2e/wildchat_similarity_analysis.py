@@ -53,8 +53,10 @@ def get_embedder():
                 device="cpu",
             )
             print("  Embedder: MiniLM-L6-v2 loaded on CPU")
-        except ImportError:
-            print("  ERROR: pip install sentence-transformers")
+        except ImportError as exc:
+            import traceback
+            traceback.print_exc()
+            print(f"  ERROR: pip install sentence-transformers ({exc})")
             sys.exit(1)
     return _EMBEDDER
 

@@ -6,7 +6,7 @@ import logging
 import random
 
 from benchmarks.e2e.config import BenchmarkConfig
-from benchmarks.e2e.datasets.loader import DatasetQueries, Query
+from benchmarks.e2e.bench_datasets.loader import DatasetQueries, Query
 
 logger = logging.getLogger(__name__)
 

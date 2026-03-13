@@ -21,11 +21,15 @@ import sys
 # ---------------------------------------------------------------------------
 
 REPO_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Primary source of truth for SemBlend connector code
+SEMBLEND_DEMO_DIR = os.path.expanduser("~/dev/worldflowai/semblend-demo")
+# Fallback for benchmarks/paper if not in semblend-demo
 SYNAPSE_DIR = os.path.expanduser("~/dev/worldflowai/ONECONTEXT/synapse")
 
 SOURCE_PATHS = {
     "synapse_kv_connector": os.path.join(
-        SYNAPSE_DIR, "services", "vllm", "synapse_kv_connector"
+        SEMBLEND_DEMO_DIR, "src", "connector", "synapse_kv_connector"
     ),
     "benchmarks/e2e": os.path.join(SYNAPSE_DIR, "benchmarks", "e2e"),
     "paper": os.path.join(SYNAPSE_DIR, "paper"),

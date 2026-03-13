@@ -65,6 +65,9 @@ cd "$REPO_DIR"
 # Copy our modified synapse_kv_connector (not symlink)
 cp -rL "$REPO_DIR/synapse_kv_connector" "$BUILD_CTX/services/vllm/synapse_kv_connector"
 
+# Copy semblend_core (synapse_kv_connector shims import from it)
+cp -rL "$REPO_DIR/semblend_core" "$BUILD_CTX/services/vllm/semblend_core"
+
 # Build services/lmcache with real copy from git
 mkdir -p "$BUILD_CTX/services/lmcache"
 cd "$SYNAPSE_DIR"
@@ -77,6 +80,11 @@ cd "$REPO_DIR"
 DOCKERFILE_PATH="$BUILD_CTX/Dockerfile.vllm"
 cd "$SYNAPSE_DIR" && git show HEAD:services/vllm/Dockerfile > "$DOCKERFILE_PATH"
 cd "$REPO_DIR"
+
+# Patch Dockerfile to also COPY semblend_core (not in upstream)
+echo "" >> "$DOCKERFILE_PATH"
+echo "# semblend_core: backend-agnostic SemBlend core (autoresearch addition)" >> "$DOCKERFILE_PATH"
+echo "COPY services/vllm/semblend_core /opt/synapse/semblend_core" >> "$DOCKERFILE_PATH"
 
 # Build from the vLLM Dockerfile
 docker build \

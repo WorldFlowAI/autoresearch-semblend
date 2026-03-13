@@ -60,7 +60,7 @@ providers:
     image:
       repository: 198333343348.dkr.ecr.us-east-1.amazonaws.com/synapse-vllm
       # Use existing staging image to start — agent will build new images for code changes
-      tag: semblend-autoresearch-c8020ea
+      tag: semblend-autoresearch-8aa1f9b
       pullPolicy: Always
     model: "Qwen/Qwen2.5-7B-Instruct-AWQ"
     maxModelLen: "32768"

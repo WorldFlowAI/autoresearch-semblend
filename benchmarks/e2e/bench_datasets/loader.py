@@ -47,13 +47,13 @@ def load_dataset_queries(
     logger.info("Loading dataset %s (size=%d)", name, size)
 
     if name == "sharegpt":
-        from benchmarks.e2e.datasets.sharegpt import load_sharegpt
+        from benchmarks.e2e.bench_datasets.sharegpt import load_sharegpt
         return load_sharegpt(size, config)
     if name == "multinews":
-        from benchmarks.e2e.datasets.multinews import load_multinews
+        from benchmarks.e2e.bench_datasets.multinews import load_multinews
         return load_multinews(size, config)
     if name == "bitext":
-        from benchmarks.e2e.datasets.bitext import load_bitext
+        from benchmarks.e2e.bench_datasets.bitext import load_bitext
         return load_bitext(size, config)
 
     raise ValueError(f"Unknown dataset: {name}")

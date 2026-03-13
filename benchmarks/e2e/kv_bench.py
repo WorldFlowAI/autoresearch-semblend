@@ -30,7 +30,7 @@ from tqdm import tqdm
 
 from benchmarks.e2e.clients.vllm_client import VllmClient
 from benchmarks.e2e.config import BenchmarkConfig
-from benchmarks.e2e.datasets.loader import DatasetQueries, Query, load_dataset_queries
+from benchmarks.e2e.bench_datasets.loader import DatasetQueries, Query, load_dataset_queries
 
 logger = logging.getLogger(__name__)
 console = Console()

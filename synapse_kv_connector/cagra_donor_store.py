@@ -29,8 +29,8 @@ from collections import OrderedDict
 
 import numpy as np
 
-from synapse_kv_connector.alignment import AlignmentResult, compute_alignment
-from synapse_kv_connector.donor_store import DonorMatch, DonorNode
+from semblend_core.alignment import AlignmentResult, compute_alignment
+from semblend_core.donor_store import DonorMatch, DonorNode
 
 logger = logging.getLogger(__name__)
 
@@ -353,7 +353,7 @@ def make_donor_store(
         use_cagra: Force CAGRA (True), force numpy (False), or auto-detect (None).
                    Auto-detect uses SEMBLEND_USE_CAGRA env var (default: False).
     """
-    from synapse_kv_connector.donor_store import DonorStore
+    from semblend_core.donor_store import DonorStore
 
     if use_cagra is None:
         use_cagra = os.environ.get("SEMBLEND_USE_CAGRA", "0").lower() in ("1", "true", "yes")
