@@ -5,12 +5,15 @@ build/
 dist/
 wheels/
 *.egg-info
+.DS_Store
+*.aux
+*.log
+*.out
+paper/.DS_Store
 
 # Virtual environments
 .venv
 worktrees/
-results/
-queue/
 
 # Agent prompt files (generated per-session by launchers)
 CLAUDE.md
@@ -18,3 +21,11 @@ AGENTS.md
 
 # Experimental code/artifacts
 dev/
+
+# Autoresearch-specific
+run.log
+benchmarks/data/
+paper/results/
+.build_context/
+results/
+queue/

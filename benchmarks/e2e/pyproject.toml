@@ -1,0 +1,27 @@
+[project]
+name = "synapse-e2e-bench"
+version = "0.1.0"
+description = "End-to-end benchmark harness for Synapse semantic KV cache"
+requires-python = ">=3.10"
+dependencies = [
+    "aiohttp>=3.9",
+    "datasets>=2.16",
+    "nltk>=3.8",
+    "rouge-score>=0.1",
+    "tqdm>=4.66",
+    "rich>=13.7",
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]

@@ -1,0 +1,102 @@
+# Autoresearch namespace overrides
+# Layers on top of staging.yaml for isolated SemBlend experimentation
+#
+# Deploy:
+#   helm upgrade --install autoresearch \
+#     ~/dev/worldflowai/ONECONTEXT/synapse/helm/synapse \
+#     -n autoresearch \
+#     -f ~/dev/worldflowai/ONECONTEXT/synapse/helm/synapse/values/staging.yaml \
+#     -f infra/values-autoresearch.yaml
+
+# Disable GPU operator time-slicing — staging already creates the cluster-scoped ConfigMap
+gpuOperator:
+  timeSlicing:
+    enabled: false
+
+# Disable dashboard (not needed for benchmarks)
+dashboard:
+  enabled: false
+
+# Disable services not needed for benchmarks
+billing:
+  enabled: false
+audit:
+  enabled: false
+proxy:
+  enabled: false
+  replicaCount: 0
+
+# Disable Kafka (only needed by billing/audit)
+gateway:
+  replicaCount: 1
+  database:
+    enabled: false
+  auth:
+    enabled: false
+  memory:
+    enabled: false
+  ingress:
+    enabled: false
+  kafka:
+    enabled: false
+
+# Disable jina-v4 (we use local MiniLM embedder in SemBlend)
+jinaV4:
+  enabled: false
+
+# vLLM with SemBlend — use staging image until we build our own
+providers:
+  defaultProvider: "vllm"
+  defaultModel: "Qwen/Qwen2.5-7B-Instruct-AWQ"
+  openai:
+    enabled: false
+  anthropic:
+    enabled: false
+
+  vllm:
+    enabled: true
+    deploy: true
+    replicaCount: 1
+    image:
+      repository: 198333343348.dkr.ecr.us-east-1.amazonaws.com/synapse-vllm
+      # Use existing staging image to start — agent will build new images for code changes
+      tag: semblend-autoresearch-8aa1f9b
+      pullPolicy: Always
+    model: "Qwen/Qwen2.5-7B-Instruct-AWQ"
+    maxModelLen: "32768"
+    gpuMemoryUtilization: "0.90"
+    dtype: "half"
+    quantization: "awq"
+    prefixCaching:
+      enabled: true
+    kvConnector:
+      enabled: true
+      semblend: true
+      minSimilarity: "0.60"
+      usePipeline: "1"
+      embedder: "minilm"
+      useAlignment: true
+      usePartialAttn: true
+    resources:
+      requests:
+        cpu: "4"
+        memory: "16Gi"
+        nvidia.com/gpu: "1"
+      limits:
+        cpu: "8"
+        memory: "28Gi"
+        nvidia.com/gpu: "1"
+    nodeSelector:
+      eks.amazonaws.com/nodegroup: gpu-nodes-g5-2xl
+    tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+    probes:
+      initialDelaySeconds: 180
+      readinessInitialDelaySeconds: 90
+
+  # Disable secondary vLLM
+  vllm7b:
+    enabled: false
+    deploy: false
